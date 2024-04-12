@@ -1,15 +1,17 @@
 
 function Welcome(){
     var userLang = navigator.language || navigator.userLanguage;
-    console.log(window.location.pathname)
     if(userLang.toLowerCase() === 'pt-br'){if(window.location.pathname.includes('en')){window.location='./'}}
     else if(!window.location.pathname.includes('en')){window.location='en.html'}
-    removeLoader()
-    document.title = "John Vitor"
-    document.getElementById('anim1').classList.remove('enteranimation1')
-    document.getElementById('anim2').classList.remove('enteranimation2')
-    document.getElementById('anim3').classList.remove('enteranimation3')
-    document.getElementById('anim4').classList.remove('enteranimation4')
+    setTimeout(function (){
+        removeLoader()
+        document.title = "John Vitor"
+        document.getElementById('anim1').classList.remove('enteranimation1')
+        document.getElementById('anim2').classList.remove('enteranimation2')
+        document.getElementById('anim3').classList.remove('enteranimation3')
+        document.getElementById('anim4').classList.remove('enteranimation4')
+    },300)
+
 }
 function removeLoader(){
 
