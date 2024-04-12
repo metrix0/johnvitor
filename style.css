@@ -50,7 +50,7 @@ a:hover{color: var(--shiny); transition: 0.15s}
  }
 .enteranimation4{
     transform: translateY(-100%) scale(80%);
-    opacity: 0%;
+    opacity: 0% !important;
 
 }
 .verticalpanels{
