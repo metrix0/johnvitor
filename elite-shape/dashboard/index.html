@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Course Hub</title>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../style.css">
+    <link rel="icon" type="image/x-icon" href="../img/favicon.ico">
+</head>
+
+<body onload="CookieGet()">
+<div class="pb" style="background-color: var(--bgr); height: 100%; position: fixed ; z-index: 9999; width: 4.5%; float: left">
+  <img src="../img/logo.png"  onclick="window.location='../' "style="width: 70%;;margin-left: 22%;height: auto ;; cursor: pointer;; pointer-events: auto;margin-top: 20px">
+  <div style="height: 35%; position: absolute; top: 0;; text-align: center; bottom: 0; margin: auto; ; width: 100%">
+    <span onclick="tabs(1)" id="button1" class="tabs tabselected"><i class="fa-solid fa-heart"></i></span><br><br><br style="display: block; content: '';margin-top: 8px">
+    <span id="button2" onclick="tabs(2)" class="tabs"><i class="fa-solid fa-film"></i></span><br><br><br style="display: block; content: '';margin-top: 8px">
+    <span id="button3" class="tabs" onclick="tabs(3)"><i class="fa-solid fa-bowl-food"></i></span><br><br><br style="display: block; content: '';margin-top: 8px">
+    <span id="button4" class="tabs" onclick="tabs(4)"><i class="fa-solid fa-gear"></i></span>
+  </div>
+</div>
+<div class="pcb" style="background-color: white; height: 5%; position: fixed ; z-index: 9999; width: 100%;bottom: 0; float: left"                                                   >
+  <img src="../img/phonelogo.png"  onclick="window.location='../' "style="height: 100%;;width: auto; cursor: pointer;; pointer-events: auto;z-index: 9999!important; position: absolute; top: 0; bottom: 25%; margin:auto; left: 3%;">
+  <div style=" position: absolute; top: 0;background: white; text-align: center; bottom: 0; margin: auto; ; width: 100%;line-height: 230%; padding-bottom: 12%;padding-top: 1.2%">
+    <span onclick="window.location='#workouttab'; ptabs(1)" id="pbutton1" class="ptabs tabselected"><i class="fa-solid fa-heart"></i></span>
+    <span id="pbutton2" class="ptabs" onclick="window.location='#diettab'; ptabs(2)"><i class="fa-solid fa-bowl-food"></i></span>
+    <span id="pbutton3" onclick="window.location='#statstab'; ptabs(3); closebox('box4')" class="ptabs"><i class="fa-solid fa-chart-line"></i></span>
+    <span id="pbutton4" class="ptabs" onclick="ptabs(4)"><i class="fa-solid fa-gear"></i></span>
+  </div>
+</div>
+
+<div class="bigbox" style="float: left; position: fixed; background-color: var(--bgr); height: 100%">
+  <div id="box5" class="hiddencfg none" style="transition: 0.5s;background-color: var(--bgr); width: 100%; z-index: 100;color: rgba(255,255,255,0.85); position: fixed; height: 100%">
+    <div class="cfgbox" style="position: relative; margin-top: 5%">
+      <div style="width: 20%;float: left">
+        <p class="smalltext configcategs" style="color: rgba(255,255,255,0.85);font-size: 80%;line-height: 250%; position: relative; top: 0; bottom: 0; margin-top: 100%">
+          <span style="cursor: pointer;">Main Page</span><br>
+          <span style="cursor: pointer;" onclick="emailsent()">Privacy</span><br>
+          <span style="cursor: pointer;" onclick="emailsent()">Help</span><br>
+          <span style="cursor: pointer;" onclick="emailsent()">Legal</span><br>
+        </p>
+      </div>
+      <div style="width: 80%; float: left" class="phonecgf">
+        <p class="bigtext pb" style="text-align: center">Jack Archer's Platform</p>
+        <p class="mediumtext configcategs" style="font-size: 80%;margin-top:5%; color: rgba(255,255,255,0.85)">User ID</p>
+        <input id="username" class="mediumtext" style="text-align: left;font-size: 80%; font-weight: 700;cursor: pointer; color: rgba(255,255,255,0.85);" placeholder="Insert your ID!" autocomplete="off"> <i class="fa-solid fa-pen" style="cursor: pointer;" onclick="let a = document.getElementById('username'); if(a.value===''){a.focus()}else{userIdapp()}"></i>
+        <p class="mediumtext configcategs" style="font-size: 80%;margin-top:5%; color: rgba(255,255,255,0.85)">Backup Code</p>
+        <input autocomplete="off" id="export" class="mediumtext" style="font-size: 80%; font-weight: 500; width: 50%;color: rgba(255,255,255,0.85); margin-top: 1.5%" placeholder="fpry1389de-fhy134789-dfh12...">
+        <p class="mediumtext" style="margin-top: 5%"><span style="background: rgb(255,255,255,0.85); color: var(--bgr); padding: 2px 25px 2px 25px;cursor: pointer; border-radius: 50px" onclick="exportcookies()"><i class="fa-solid fa-copy"></i> Copy Backup Code</span></p>
+        <p class="mediumtext configcategs" style="font-size: 80%;margin-top:9%; color: rgba(255,255,255,0.85)">Import old Data</p>
+        <input autocomplete="off" id="backupcode" class="mediumtext" style="margin-top: 1.5%;text-align: left;width: 65%;font-size: 80%; font-weight: 500;cursor: pointer; color: rgba(255,255,255,0.85);; border-radius: 3px" placeholder="Proceed only if instructed.">
+        <p class="mediumtext" style="margin-top: 4%"><span style="cursor: pointer;background: rgb(255,255,255,0.85); color: var(--bgr); padding: 2px 25px 2px 25px; border-radius: 50px" onclick="importcookies()"><i class="fa-solid fa-triangle-exclamation"></i> Import Backup Code</span></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="basicbox hiddenbox withmoney" id="box1"  style="background: white;transition: 0.5s;transition-timing-function: ease-out;z-index: 9; height: 85.8%;float: left; width: 31%; margin-left: 1%; margin-top: 1.8%;border-top-left-radius: 12px; border-top-right-radius: 12px">
+    <div style="position: relative;text-align: center;color: var(--apptext);padding-top: 6%;padding-bottom: 6%;font-size: 125%; border-radius: 15px; height: 100%">
+      <div style="width: 100%; height: 15%; background: linear-gradient(0deg, white 40%, transparent 100%); position: absolute; bottom: 0; z-index: 5; pointer-events: none; border-radius: 15px"></div>
+      <p class="subtitle" style="position: relative; z-index: 4">Exercises</p>
+      <p class="smalltext" style="font-size: 95%; position: absolute; left: 1.3dvw; top: 1dvw;z-index: 5"><i onclick="tabs(1)" class="fa-solid fa-angle-down iconbutton" style="padding-bottom: 8px"></i>
+      <div style="margin-top: 6%;width: 92%;margin-left: 4%; text-align: left">
+        <div class="searchcontainer" style="margin-bottom: 3%;border-radius: 90px; width: 96%; padding: 4px 7px 4px 7px; position: relative;">
+          <span style="margin-left: 2%;margin-right: 2%"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <input autocomplete="off" id="searchinput" onkeyup="vidsearch()" placeholder="Search" class="mediumtext" style="background: transparent;position: absolute;top: 0;bottom: 0;margin: auto;font-family: Poppins, 'sans-serif';caret-color: var(--main);color: var(--apptext);">
+        </div>
+      <div id="vidul" class="ul" style="overflow: auto;scrollbar-color: var(--unselected); height: 75vh">
+        <div style="display: inline-block">
+            <p class="mediumtext" style="margin-top: 3%; margin-left: 2%">Chest</p>
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+          </div>
+        <div style="display: inline-block">
+          <p class="mediumtext" style="margin-top: 10%; margin-left: 2%">Back</p>
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+
+          </div>
+        <div style="display: inline-block">
+
+          <div style="display: inline-block">
+            <p class="mediumtext" style="margin-top: 10%; margin-left: 2%">Warm Up</p>
+            <img id="WarmUp" style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 1%; border-radius: 20px; width: 49%; height: 18dvh;cursor:pointer; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+
+          </div>
+          <br><br><br><br><br><br></div>
+      </div>
+      </div>
+    </div>
+  </div>
+  <div class="basicbox hiddenbox withmoney" id="box2"  style="background: white;transition: 0.5s;transition-timing-function: ease-out;z-index: 9; height: 92.8%;float: left; width: 31%; margin-left: 33.64%; margin-top: 1.8%;border-radius: 12px">
+    <div style="position: relative;text-align: center;color: var(--apptext);padding-top: 6%;padding-bottom: 6%;font-size: 125%; border-radius: 15px; height: 100%">
+      <div style="width: 100%; height: 15%;  background: linear-gradient(0deg, white 0%, transparent 100%); position: absolute; bottom: 7.5%; z-index: 5; pointer-events: none; border-radius: 15px"></div>
+      <p class="subtitle" style="position: relative; z-index: 4">Consumed</p>
+      <p class="smalltext" style="font-size: 95%; position: absolute; left: 1.3dvw; top: 1dvw;z-index: 5"><i onclick="tabs(1)" class="fa-solid fa-angle-down iconbutton" style="padding-bottom: 8px"></i>
+      <div style="margin-top: 6%;width: 92%;margin-left: 4%; text-align: left">
+        <div class="ul" style="overflow: auto;scrollbar-color: var(--unselected); height: 75vh">
+          <div style="display: inline-block; width: 100%">
+            <p class="mediumtext" style="margin-top: 3%; margin-left: 2%">Breakfast</p>
+            <div id="mealtype1">
+            </div>
+          </div>
+          <div style="display: inline-block; width: 100%">
+            <p class="mediumtext" style="margin-top: 3%; margin-left: 2%">Lunch</p>
+            <div id="mealtype2">
+            </div>
+          </div>
+          <div style="display: inline-block; width: 100%">
+            <p class="mediumtext" style="margin-top: 3%; margin-left: 2%">Dinner</p>
+            <div id="mealtype3">
+            </div>
+          </div>
+          <div style="display: inline-block; width: 100%">
+            <p class="mediumtext" style="margin-top: 3%; margin-left: 2%">Snacks</p>
+            <div id="mealtype4">
+            </div>
+          </div>
+
+            <br><br><br><br><br><br>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="basicbox hiddenbox withmoney" id="box3"  style="background: white;transition: 0.5s;transition-timing-function: ease-out;z-index: 9; height: 92.8%;float: left; width: 31%; margin-left: 33.64%; margin-top: 1.8%;border-radius: 12px">
+    <div style="position: relative;text-align: center;color: var(--apptext);padding-top: 6%;padding-bottom: 6%;font-size: 125%; border-radius: 15px; height: 100%">
+      <div style="width: 100%; height: 15%;  background: linear-gradient(0deg, white 0%, transparent 100%); position: absolute; bottom: 7.5%; z-index: 5; pointer-events: none; border-radius: 15px"></div>
+      <p class="smalltext" style="font-size: 95%; position: absolute; left: 1.3dvw; top: 1dvw;z-index: 5"><i onclick="tabs(1)" class="fa-solid fa-angle-down iconbutton" style="padding-bottom: 8px"></i>
+      <p class="subtitle" style="position: relative; z-index: 4">Meals</p>
+      <div style="width: 90%; margin-left: 5%">
+        <p id="diettab1" class="selected diettabs" style="transition: 0.5s;position: relative;height: auto;cursor: pointer;margin-top: 5%;border: 2px solid var(--select);border-radius: 15px;padding: 10px 25px 10px 25px; line-height: 100%" onclick="diettabs(1)">
+          <span style="font-weight: 600" class="smalltext">Core Meals</span>
+          <i class="fa-solid fa-burger" style="height: 25px; position: absolute; right: 5%; z-index: 7; top: 0; bottom: 0; margin: auto;padding-top: 5px"></i>
+        </p>
+        <div  style="display: inline-block; margin-top: 3%; position: relative" >
+          <div id="dietfade1"  style="width: 100%; height: 20%; background: linear-gradient(0deg, white 0%, transparent 80%); position: absolute; bottom: 0; z-index: 5; pointer-events: none;"></div>
+          <div id="dietcat1" style="transition: .6s;overflow: scroll; height: 45vh" class="ul">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <p style="display: inline-block; width: 100%"><br></p>
+          </div>
+        </div>
+        <p id="diettab2" class="diettabs" style="transition: 0.5s;position: relative;height: auto;cursor: pointer;margin-top: 2%;border: 2px solid var(--select);border-radius: 15px;padding: 10px 25px 10px 25px; line-height: 100%" onclick="diettabs(2)">
+          <span style="font-weight: 600" class="smalltext">Snacks</span>
+          <i class="fa-solid fa-carrot" style="height: 25px; position: absolute; right: 5%; z-index: 7; top: 0; bottom: 0; margin: auto;padding-top: 5px"></i>
+        </p>
+        <div  style="display: inline-block; margin-top: 3%; position: relative" >
+          <div class="none" id="dietfade2"  style="width: 100%; height: 20%; background: linear-gradient(0deg, white 0%, transparent 80%); position: absolute; bottom: 0; z-index: 5; pointer-events: none;"></div>
+          <div id="dietcat2" style="transition: .6s;overflow: scroll; height: 0" class="ul">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <p style="display: inline-block; width: 100%"><br></p>
+          </div>
+        </div>
+        <p id="diettab3" class="diettabs" style="position: relative;height: auto;cursor: pointer;margin-top: 2%;border: 2px solid var(--select);border-radius: 15px;padding: 10px 25px 10px 25px; line-height: 100%" onclick="diettabs(3)">
+          <span style="font-weight: 600" class="smalltext">Mindset</span>
+          <i class="fa-solid fa-brain" style="height: 25px; position: absolute; right: 5%; z-index: 7; top: 0; bottom: 0; margin: auto;padding-top: 5px"></i>
+        </p>
+        <div  style="display: inline-block; margin-top: 3%; position: relative" >
+          <div id="dietfade3" class="none" style="width: 100%; height: 20%; background: linear-gradient(0deg, white 0%, transparent 80%); position: absolute; bottom: 0; z-index: 5; pointer-events: none;"></div>
+          <div  id="dietcat3" style="transition: .6s;overflow: scroll; height: 0" class="ul">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-right: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <img style="margin-top: 3%; border-radius: 20px;cursor: pointer; width: 49%; height: 18dvh; margin-left: 1%; float: left" src="../img/placeholder.jpg">
+            <p style="display: inline-block; width: 100%"><br></p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="first" style="background-color: white;float: left; position: relative" id="workouttab">
+    <div style="position: relative;text-align: center;color: var(--apptext);padding-top: 6%;padding-bottom: 6%;padding-left: 2.5%;padding-right: 2.5%;font-size: 125%; border-radius: 15px;">
+      <p class="subtitle" style="position: relative; z-index: 4">Workout <span class="mediumtext" style="font-weight: 600"><span style="transform: translateY(-3.5%); display: inline-block; font-weight:600; font-size: 110%" id="workoutphase" class="textpop1">| START</span></span></p>
+      <p id="traintip" style="text-align: right; margin-top: -6.7%; font-size: 80%; z-index: 5; position: relative; margin-right: 1.33%" class="smalltext none" ><i class="fa-solid fa-circle-info iconbutton tooltip" style="position: relative"><span class="tooltiptext mediumtext" style="position: absolute; right: 100%; width: 500%; text-transform: none; font-family: 'Poppins', sans-serif; line-height: 135%; font-size: 80%">Click on each exercise name to open a specific guiding video.</span></i></p>
+      <div class="" id="loaderp1" style="width: 100%; height: 100%; position: relative;">
+        <p class="loader" style="position: absolute;top: 50%;left: 0;z-index: 99;bottom: 0;right: 0;margin:auto;margin-top: 50%; color: var(--main);height: 100%;font-size: 200%"><i class="fa-solid fa-circle-notch spin"></i></p>
+      </div>
+      <div id="frequencycontainer" class="none" style="width: 95%; margin-left: 2.5%">
+        <p style="position: relative;height: auto;cursor: pointer;margin-top: 12%;border: 2px solid var(--select);border-radius: 15px;padding: 10px 25px 10px 25px; line-height: 100%" onclick="frequencydropdown(true)">
+          <span style="background: white;position: absolute; left: 15px; top: -8px; z-index: 5; padding: 0 10px 0 10px; font-weight: 600; font-size: 65%" class="mediumtext">Frequency</span>
+          <span id="chosenfrequency" style="font-weight: 600" class="smalltext" >6 Days (Recommended)</span>
+          <i class="fa-solid fa-calendar" style="height: 25px; position: absolute; right: 5%; z-index: 7; top: 0; bottom: 0; margin: auto;padding-top: 5px"></i>
+        <div class="dropdown-content mediumtext" id="fdrop" style="width: 89%; margin-left: 0;margin-top: -10%;border-top: none;;;animation-duration: 0.5s"><span class="oneweek" style="font-weight: 600 "onclick="frequencyselect(this)">3 Days</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" style="font-weight: 600 "onclick="frequencyselect(this)">4 Days</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" style="font-weight: 600 "onclick="frequencyselect(this)">5 Days</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" style="font-weight: 600 "onclick="frequencyselect(this)">6 Days</span></div>
+        </p>
+        <p class="mediumtext" style="margin-top: 15%"><span onclick="Cookie('CurrentFrequency', document.getElementById('chosenfrequency').innerHTML.split(' ')[0]); window.location.reload()" style="cursor: pointer;background: var(--selectcolor); color: white; padding: 2px 25px 2px 25px; border-radius: 50px">Select</span></p>
+
+      </div>
+      <div class="none ul" style="margin-top: 3%; width: 90%; margin-left: 1%; display: inline-block; overflow: scroll; height: 80vh" id="workoutul">
+      </div>
+      <div class="none" style="margin-top: 3%; width: 94%; margin-left: 1%; display: inline-block" id="routinesul">
+      </div>
+    </div>
+    <div class="" id="workoutfade" style="width: 100%; height: 15%; background: linear-gradient(0deg, white 0%, transparent 100%); position: absolute; bottom: 0; z-index: 3; pointer-events: none; border-radius: 15px">
+      <p id="excvideos" class="mediumtext" style="font-weight: 400; font-size: 70%;position: absolute; bottom: 20%; text-align: center; width: 100%; opacity: 1; cursor: pointer;pointer-events: all;" ><span onclick="openbox('box1')">Exercises Videos <i class="fa-solid fa-film"></i></span><span id="frequencypicker"> | <span onclick="pickfrequency()">Pick Frequency <i class="fa-solid fa-share" style="transform: scaleX(-1)"></i></span></span></p>
+    </div>
+  </div>
+  <div class="first" style="background-color: white;float: left; position: relative" id="diettab">
+    <div style="position: relative;text-align: center;color: var(--apptext);padding-top: 6%;padding-bottom: 6%;padding-left: 2.5%;padding-right: 2.5%;font-size: 125%; border-radius: 15px;">
+      <p class="subtitle" style="position: relative; z-index: 4">Diet</p>
+      <div style="width: 100%; height: 100%; position: relative;">
+        <p class="withmoney loader" style="position: absolute;top: 50%;left: 0;z-index: 99;bottom: 0;right: 0;margin:auto; color: var(--main);height: 100%;font-size: 200%"><i class="fa-solid fa-circle-notch spin"></i></p>
+      </div>
+      <div class="" style="width: 95%; margin-left: 2.5%;">
+        <div style="width: 98%; margin-left: 1%; margin-top: 7%;display: inline-block; position: relative">
+          <p class="mediumtext" style="width: 100%; float: left; text-align: left; color: var(--apptext); font-weight: 600"><span id="cal1">N/A</span> Calories
+            <br><span style="font-weight: 400; font-size: 90%; color: var(--appsmalltext)">
+          <span id="remaining">N/A</span> Remaining<br>
+
+
+          </span>
+          <p style="text-align: right; position: absolute;top: -1%; right: -1%" class="smalltext" onclick="premiumfunction()"><i class="fa-brands fa-whatsapp iconbutton" style="font-weight: 500; font-size: 130%"></i></p>
+        </div>
+        <div class="ul" style=" overflow: scroll; height: 72.6vh; position: relative">
+          <div style="min-height: 100%; position: relative">
+            <div id="addmealul">
+              </div>
+            <div style="margin-bottom:30%;;display: inline-block;width: 100%; text-align: center; margin-top: 18%; font-size: 110%"><span style="background-color: var(--select);border-radius: 100px; padding: 0px 8px 0px 8px; cursor: pointer" onclick="tabs(3)">+</span></div>
+            <div style="position: absolute; bottom: 0; width: 100%;">
+            <p class="mediumtext" style="font-weight: 400;font-size: 56%; text-align: center; width: 100%; opacity: 1; cursor: pointer;" onclick="openbox('box3')">Meals Videos <i class="fa-solid fa-film"></i><!-- ㅤ|ㅤ Meal Schedule <i class="fa-solid fa-gears"></i>--></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="first" style="background-color: white;float: left;" id="statstab">
+  <div style="position: relative;text-align: center;color: var(--apptext);padding-top: 6%;padding-bottom: 6%;padding-left: 2.5%;padding-right: 2.5%;font-size: 125%; border-radius: 15px;">
+    <p class="subtitle" style="position: relative; z-index: 4">Stats</p>
+    <p style="text-align: right; margin-top: -6.7%; font-size: 80%; z-index: 5; position: relative; margin-right: 1.33%" class="smalltext"><i class="fa-solid fa-circle-info iconbutton tooltip" style="position: relative"><span class="tooltiptext mediumtext" style="position: absolute; right: 100%; width: 600%; text-transform: none; font-family: 'Poppins', sans-serif; line-height: 135%; font-size: 80%">Weight yourself every Monday on an empty stomach, ideally at the same time.</span></i></p>
+    <p class="bigtext" style="; margin-bottom: 2%; text-align: left; width: 80%; margin-left: 10%"><span id="currentweight">00.00</span> Kg <span class="smalltext " style="font-size: 52%; font-weight: 600; color: var(--green); background-color: rgba(120,196,143,0.3); padding: 0 5px 0 5px;border-radius: 90px" id="gomo_weight">+0%</span></p>
+    <div style="width: 80%; margin-left: 10%">
+      <div style="z-index: 99; position: relative;padding-bottom: 10%; padding-top: 10%" id="chartcontainer">
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+    <p class="mediumtext" style="cursor: default;margin-left: 5%;margin-top: 3.33%; font-weight: 600; width: 30%; text-align: center; float: left">
+      <span id="weekdrop" class="graphtype dropdown" onclick="weeksdropdown(true)">WEEK 1 <i class="fa-solid fa-angle-down" style="margin-left: 5%; transform: translateY(10%)"></i></span>
+      <div class="dropdown-content mediumtext" id="drop" style="animation-duration: 0.5s"><span class="oneweek" onclick="weekselect(this)">WEEK 1</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 2</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 3</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 4</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 5</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 6</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 7</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 8</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 9</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 10</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 11</span><br style="display: block; content: '';margin-top: 8px"><span class="oneweek" onclick="weekselect(this)">WEEK 12</span></div>
+    </p>
+    <div style="float: left;width: 50%; margin-top: 3%; display: inline-block; margin-left: 10%">
+      <input id="kginput" value="00.00" onclick="weightinputclick()" type="number" style="margin-left: 26.3%;width: 40%;  float: left; border-bottom: 1px solid var(--appsmalltext);margin-right: 2%;padding: 0;" class="mediumtext"><p class="mediumtext" style="width: 5%;float: left; text-align: left; color: var(--appsmalltext); font-weight: 600">Kg</p><p class="mediumtext" style="float: left;font-weight: 400; font-size: 58.5%; color: var(--apptext); ; width: 8%; background-color: var(--select); text-align: center; padding: 2%;padding-bottom: 1%;border-radius: 15px; cursor: pointer; transition: 0.5s;margin-left: 10%" onclick="uploadweight()"><i class="fa-solid fa-arrow-up"></i></p>
+    </div>
+    <div style="width: 90%; margin-left: 5%;margin-top: 15%; display: inline-block">
+      <p class="mediumtext" style="width: 100%; float: left; text-align: left; color: var(--apptext); font-weight: 600">Target Calories: <span id="cal2">N/A</span>
+        <br><p id="desc1" class="mediumtext" style="font-weight: 400;line-height: 135%;margin-top: 7%; font-size: 58.5%; color: var(--appsmalltext); text-align: left">Insert your User ID.</p>
+      <p class="mediumtext" style="margin-top: 15%;width: 100%; float: left; text-align: left; color: var(--apptext); font-weight: 600">Coming Next
+        <br><p id="desc2" class="mediumtext" style="font-weight: 400;line-height: 135%;margin-top: 7%; font-size: 58.5%; color: var(--appsmalltext); text-align: left"></p>
+    </div>
+    <div style="width: 100%; height: 100%; position: relative;">
+      <p class="withmoney loader" style="position: absolute;top: 50%;left: 0;z-index: 99;bottom: 0;right: 0;margin:auto; color: var(--main);height: 100%;font-size: 200%"><i class="fa-solid fa-circle-notch spin"></i></p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="../custom/workouts.js"></script>
+<script src="../custom/meals.js"></script>
+<script src="../custom/stats.js"></script>
+<script src="../main.js"></script>
+<script src="../chart.js"></script>
