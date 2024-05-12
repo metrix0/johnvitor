@@ -11,4 +11,10 @@ var userstats = [
         'caloriesDescription': "Test",
         'comingNext': "Test",
     },
+    {
+        'userid': 'Cowboy',
+        'targetCalories': 3100,
+        'caloriesDescription': "Na SEMANA 1 vamos testar sua responsividade ao treino.",
+        'comingNext': "Na SEMANA 2 vamos refinar seu consumo de calorias e treino.",
+    },
 ]
