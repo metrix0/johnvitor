@@ -181,6 +181,7 @@ function starttraining(workout, wname, restore){
     }
     for(let i=0;i < workout.length; i++){
         let id = Id(workout[i].name)
+        if(id.includes("(")){id = id.split("(")[0]}
         if(!exerciselist.includes(workout[i].name)){id = "Transparent"}
         let div = document.createElement("div");
         div.style.marginTop='2%'
@@ -440,15 +441,17 @@ function mealsadd(){
             tag = ' <span style="font-size: 65%; background-color: #1249b6; color: white; border-radius: 50px; padding: 0 4px 0 3px; display: inline-block; transform: translateY(-10%)"> BED <i class="fa-solid fa-bed"></i></span>'
         }
         div.onclick = function (){dietadd(j, true)}
-        let ingredients = "•"+meals[j].ingredients.split("-")[1].slice(0,14)+'<br>•'+meals[j].ingredients.split("-")[2].slice(0,12)+"..."
+        let ingredients;
+        if(meals[j].ingredients.split("-").length === 2){ingredients = "•"+meals[j].ingredients.split("-")[1].slice(0,13)}
+        else{ingredients = "•"+meals[j].ingredients.split("-")[1].slice(0,13)+'<br>•'+meals[j].ingredients.split("-")[2].slice(0,13)+"..."}
         div.innerHTML = '                <div style="display: flex; align-items: center;margin-top: 3%; position: relative">' +
             '                  <div style="width:80%; float: left;display: flex; align-items: center;">' +
-            '                    <img src="../img/meals/'+name.replace(/\s/g, "")+'.jpg" style="width: 45px; float: left; border-radius: 100px; margin-right: 6%">' +
-            '                    <p class="mediumtext" style="; text-align: left; color: var(--apptext); font-weight: 600; font-size: 70%">'+name.slice(0,14)+tag+'<br>' +
+            '                    <img src="../img/meals/'+/*name.replace(/\s/g, "")*/'Meal1'+'.jpg" style="width: 45px; float: left; border-radius: 100px; margin-right: 6%">' +
+            '                    <p class="mediumtext" style="; text-align: left; color: var(--apptext); font-weight: 600; font-size: 70%">'+name.slice(0,16)+tag+'<br>' +
             '                      <span class="mediumtext" style=";font-weight: 400;line-height: 135%;margin-top: 2%; font-size: 80%; color: var(--appsmalltext); text-align: left">'+meals[j].calories+'</span>' +
             '                    </p>' +
             '                  </div>' +
-            '                  <div style="width: 30%; float: left">' +
+            '                  <div style="width: 33%; float: left">' +
             '                    <p class="mediumtext" style="position: relative;;width: 100%;float: right;font-weight: 400;; font-size: 58.5%; color: var(--appsmalltext); text-align: right; line-height: 150%">'+ingredients+'</p>' +
             '' +
             '                  </div>' +
