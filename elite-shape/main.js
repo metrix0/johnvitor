@@ -50,7 +50,11 @@ function CookieGet(){
         }
     }
     if(!foundid && location.toString().includes('#!')){
-        Cookie('userId',location.toString().split("#!")[1])
+        let id = location.toString().split("#!")[1]
+        Cookie('userId',id)
+        if(workoutlist().find(o => o.frequency === id)){
+            Cookie('CurrentFrequency', id);
+        }
         setTimeout(function (){window.location = '../dashboard'},300)
     }
     mobilecheck()
