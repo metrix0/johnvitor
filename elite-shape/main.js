@@ -10,6 +10,7 @@ function CookieGet(){
     let foundfrequency = false;
     if(stringed.includes("Current#Workout=1")){workout = true; currentworkout.push(["1>"+stringed.split("Current#Workout=1>")[1].split(",")[0]])}
     let dietaddarray = []
+    let foundid = false;
     for(let i = 0; i<cookies.length; i++){
         if(cookies[i].includes("AddedMeals=")){
             var list = cookies[i].split("AddedMeals=")[1].split(',')
@@ -40,12 +41,17 @@ function CookieGet(){
             document.getElementById('weekdrop').innerHTML ='WEEK '+ cookies[i].split("CurrentWeek=")[1]+' <i class="fa-solid fa-angle-down" style="margin-left: 5%; transform: translateY(10%)"></i>'
         }
         else if(cookies[i].includes("userId=")){
+            foundid = true;
             updateuseridstuff(cookies[i].split("userId=")[1])
         }
         else if(cookies[i].includes("CurrentFrequency=")){
             loadworkouts(cookies[i].split('=')[1])
             foundfrequency = true
         }
+    }
+    if(!foundid && location.toString().includes('#!')){
+        Cookie('userId',location.toString().split("#!")[1])
+        setTimeout(function (){window.location = '../dashboard'},300)
     }
     mobilecheck()
     if(workout){workoutupdate()}
