@@ -233,7 +233,8 @@ function starttraining(workout, wname, restore){
     let div = document.createElement("div");
     div.style.marginTop='18%'
     div.style.marginBottom='20%'
-    div.innerHTML='          <div id="doneb" style="margin-bottom: 30%;font-size: 85%;transition: 0.5s;display: flex; align-items: center;margin-top: 3%; background: var(--apptext); padding: 2%;padding-right: 6%;padding-left: 6%;;border-radius: 15px">' +
+    div.innerHTML=
+        '          <div id="doneb" style="font-size: 85%;transition: 0.5s;display: flex; align-items: center;margin-top: 3%; background: var(--apptext); padding: 2%;padding-right: 6%;padding-left: 6%;;border-radius: 15px">' +
         '            <div style="width: 74%; float: left;display: flex; align-items: center">' +
         '              <p id="donec" class="mediumtext" style="float: left; text-align: left; color: white; font-weight: 400; font-size: 70%">Finish Workout </p>' +
         '            </div>' +
@@ -248,7 +249,9 @@ function starttraining(workout, wname, restore){
 
         '<i class="fa-solid fa-check"></i></p>' +
         '            </div>' +
-        '          </div>'
+        '          </div>'+
+        '<div style="margin-bottom: 30%;margin-top: 4%;cursor: pointer; text-align: center; font-size: 50%; font-weight: 600" class="smalltext" onclick="finishworkout();window.location.reload()">Cancel Workout <i class="fa-solid fa-xmark" style="font-size: 120%; transform: translateY(12%)"></i></div>'
+
     ul.appendChild(div)
     document.getElementById('excvideos').classList.add('none')
     setTimeout(function (){
