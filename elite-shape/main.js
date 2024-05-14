@@ -9,13 +9,14 @@ function CookieGet(){
     let stringed = cookies.toString()
     let foundfrequency = false;
     if(stringed.includes("Current#Workout=1")){workout = true; currentworkout.push(["1>"+stringed.split("Current#Workout=1>")[1].split(",")[0]])}
+    let dietaddarray = []
     for(let i = 0; i<cookies.length; i++){
         if(cookies[i].includes("AddedMeals=")){
             var list = cookies[i].split("AddedMeals=")[1].split(',')
             if(list.length === 1 && list[0] === ''){}
             else{addedmealslist = list}
             for (let j = 0; j < addedmealslist.length; j++){
-                dietadd(parseInt(addedmealslist[j]), false)
+                dietaddarray.push(parseInt(addedmealslist[j]))
             }
         }
         else if(cookies[i].includes("UserWeight=")){
@@ -52,9 +53,12 @@ function CookieGet(){
         document.getElementById('frequencycontainer').classList.remove('none')
     }
     updatecalories();
-    /*
-    document.getElementById('workoutfade').classList.add('none')
-    document.getElementById('workoutul').classList.add('none')*/
+    adaptcalories(); //and add meals to menu!!
+    for(let j = 0; j < dietaddarray.length; j++){
+        dietadd(dietaddarray[j], false)
+    }
+
+
 }
 
 
@@ -394,7 +398,7 @@ function dietadd(which, newitem){
     div.id='addedmeal_'+addedmeals+"type"+which
     div.innerHTML = '          <div style="display: flex; align-items: center;margin-top: 3%">' +
         '            <div style="width: 75%; float: left;display: flex; align-items: center">' +
-        '              <img src="../img/meals/Meal1.jpg" style="width: 45px; float: left; margin-right: 6%; border-radius: 100px">' +
+        '              <img src="../img/meals/'+meal.img+'.jpg" style="width: 45px; float: left; margin-right: 6%; border-radius: 100px">' +
         '              <p class="mediumtext" style="float: left; text-align: left; color: var(--apptext); font-weight: 600; font-size: 70%">'+meal.name+'</p></div> <div style="width: 25%; float: left">' +
         '            <p class="mediumtext" style="float: left; text-align: right; width: 97%">'+meal.timing+'</p>' +
         '          </div>' +
@@ -417,8 +421,6 @@ function dietadd(which, newitem){
     }
     else dietcheck(document.getElementById('diet>'+addedmeals+'-v'))
 }
-
-mealsadd()
 function mealsadd(){
     let i = 0;
     let mealtype;
@@ -446,12 +448,12 @@ function mealsadd(){
         else{ingredients = "•"+meals[j].ingredients.split("-")[1].slice(0,13)+'<br>•'+meals[j].ingredients.split("-")[2].slice(0,13)+"..."}
         div.innerHTML = '                <div style="display: flex; align-items: center;margin-top: 3%; position: relative">' +
             '                  <div style="width:80%; float: left;display: flex; align-items: center;">' +
-            '                    <img src="../img/meals/'+/*name.replace(/\s/g, "")*/'Meal1'+'.jpg" style="width: 45px; float: left; border-radius: 100px; margin-right: 6%">' +
+            '                    <img src="../img/meals/'+/*name.replace(/\s/g, "")*/meals[j].img+'.jpg" style="width: 45px; float: left; border-radius: 100px; margin-right: 6%">' +
             '                    <p class="mediumtext" style="; text-align: left; color: var(--apptext); font-weight: 600; font-size: 70%">'+name.slice(0,16)+tag+'<br>' +
             '                      <span class="mediumtext" style=";font-weight: 400;line-height: 135%;margin-top: 2%; font-size: 80%; color: var(--appsmalltext); text-align: left">'+meals[j].calories+'</span>' +
             '                    </p>' +
             '                  </div>' +
-            '                  <div style="width: 33%; float: left">' +
+            '                  <div style="width: 35%; float: left">' +
             '                    <p class="mediumtext" style="position: relative;;width: 100%;float: right;font-weight: 400;; font-size: 58.5%; color: var(--appsmalltext); text-align: right; line-height: 150%">'+ingredients+'</p>' +
             '' +
             '                  </div>' +
@@ -597,7 +599,7 @@ function workoutvalues(id, set, rep){
 }
 
 function workoutupdate(){
-    let id1=workoutlist().findIndex(x => x.frequency === 6)
+    let id1=workoutlist().findIndex(x => x.frequency === workoutfrequency )
     let wklist = workoutlist()[id1].workout[workoutlist()[id1].workout.findIndex(z => z.varname === currentworkout[0][0].split('>')[1])]
     starttraining(wklist.id, currentworkout[0], true)
     for(let i = 1; i < currentworkout.length; i++){
@@ -726,8 +728,6 @@ function loadworkouts(freq){
     let h = workoutlist().findIndex(x => x.frequency === freq)
 
     for(let i = 0; i < workoutlist()[h].workout.length; i++){
-        console.log(i)
-        console.log(workoutlist()[h].workout[i].id)
         let selectedworkout = workoutlist()[h].workout[i].id
         let div = document.createElement("div");
         div.classList = 'workouts'
@@ -771,4 +771,54 @@ function pickfrequency(){
 function updatecalories(){
     document.getElementById("remaining").innerHTML = -parseInt(usercalories)+parseInt(thisuserstats.targetCalories);
 }
+function adaptcalories(){
+    for(let i = 0; i < meals.length; i++){
+        if(meals[i].firstingredientcalories){
+            let ingredientamount = parseInt(meals[i].ingredients.split(" ")[1].replace(/\D/g,''))
+            let mealcalories = parseInt(meals[i].calories.split(" ")[0])
+            let newmealcalories = (mealcalories*thisuserstats.targetCalories)/3041
+            let newingredientamount
+            if(meals[i].secondingredientcalories){
+                if(meals[i].ingredients.split("- ")[2].split(" ")[0].includes("g")){
+                    newingredientamount = (((ingredientamount*meals[i].firstingredientcalories)+((newmealcalories-mealcalories)/3)*2))/meals[i].firstingredientcalories
+                    let ingredientamount2 = parseInt(meals[i].ingredients.split("- ")[2].split(" ")[0].replace(/\D/g,''))
+                    let newingredientamount2 = (((ingredientamount2*meals[i].secondingredientcalories)+((newmealcalories-mealcalories)/3)*1))/meals[i].secondingredientcalories
+                    meals[i].ingredients = "- "+round(newingredientamount,5)+meals[i].ingredients.split(ingredientamount)[1].split("- ")[0]+ "- "+round(newingredientamount2,5)+meals[i].ingredients.split(ingredientamount2)[1]
+                }
+                else{
+                    let ingredientamount2 = parseInt(meals[i].ingredients.split("- ")[2].split(" ")[0].replace(/\D/g,''))
+                    let extracals = (newmealcalories-mealcalories)/2
+                    let units = 0;
+                    if(Math.abs(extracals) >= meals[i].secondingredientcalories){
+                        if(extracals > 0){
+                            while(extracals >= meals[i].secondingredientcalories){
+                                units++;
+                                extracals = extracals-meals[i].secondingredientcalories
+                            }
+                        }
+                        else if(extracals < 0){
+                            while(Math.abs(extracals) >= meals[i].secondingredientcalories){
+                                units--;
+                                extracals = extracals+meals[i].secondingredientcalories
+                            }
+                        }
+                    }
+                    let newingredientamount2 = ingredientamount2 + units
+                    newingredientamount = ingredientamount + extracals/meals[i].firstingredientcalories
+                    meals[i].ingredients = "- "+round(newingredientamount,5)+meals[i].ingredients.split(ingredientamount)[1].split("- ")[0]+ "- "+newingredientamount2+meals[i].ingredients.split(ingredientamount2)[1]
 
+                }
+            }
+            else{
+                newingredientamount = (((ingredientamount*meals[i].firstingredientcalories)+(newmealcalories-mealcalories)))/meals[i].firstingredientcalories
+                meals[i].ingredients = "- "+round(newingredientamount,5)+meals[i].ingredients.split(ingredientamount)[1]
+            }
+            meals[i].calories = round(newmealcalories,5)+meals[i].calories.split(mealcalories)[1]
+        }
+    }
+    mealsadd()
+}
+
+function round(num,multipleOf) {
+    return Math.floor((num + multipleOf/2) / multipleOf) * multipleOf;
+}

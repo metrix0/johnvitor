@@ -4,41 +4,63 @@ var meals = [
     },
     {
         "name": "Maromba",
-        "calories": "613 Calories, 65g Protein",
+        "calories": "613 Calories, 66g Protein",
         "ingredients": "- 250g Sweet Potato - 200g Chicken - 1 Apple",
+        "firstingredientcalories": 0.76,
+        "secondingredientcalories": 1.7,
         "timing": "PRE",
         "tag": "PRE",
+        "img": "Meal1",
     },
     {
-        "name": "Sea Moss",
-        "calories": "833 Calories, 34g Protein",
-        "ingredients": "- 220g Avocado - 2 Bananas - 50g Oat - 30g Protein Powder - (Optional) Any Green Leafs",
+        "name": "Moss Smoothie",
+        "calories": "813 Calories, 36g Protein",
+        "ingredients": "- 30g Oat - 220g Avocado - 2 Bananas - 30g Protein Powder - (Optional) Any Green Leafs",
+        "firstingredientcalories": 3.8,
+        "secondingredientcalories": 1.7,
         "timing": "POST",
         "tag": "POST",
+        "img": "Smoothie",
     },
-    /*{
-        "name": "Clássico",
-        "calories": "682 Calories, 23g Protein",
-        "ingredients": "- 200g Rice - 200g Chicken - 200g Black Beans",
-        "timing": "POST",
-        "tag": "POST",
-    },*/
     {
         "name": "Quick Snack",
-        "calories": "682 Calories, 23g Protein",
-        "ingredients": "- 180g Oat",
+        "calories": "667 Calories, 21g Protein",
+        "ingredients": "- 160g Oat - 20g Honey - (Optional) Berries - (Optional) Cinnamon",
+        "firstingredientcalories": 3.8,
         "timing": "MEAL",
+        "img": "Meal1",
     },
     {
-        "name": "Black & White",
-        "calories": "974 Calories, 56g Protein",
-        "ingredients": "- 6 Fried Eggs - 200g Black Beans - 1 tbsp Butter",
+        "name": "Black & Whites",
+        "calories": "947 Calories, 56g Protein",
+        "ingredients": "- 180g Black Beans - 6 Fried Eggs - 1 tbsp Butter",
+        "firstingredientcalories": 1.32,
+        "secondingredientcalories": 90,
         "timing": "BED",
         "tag": "BED",
+        "img": "Meal1",
     },
     {
         "name":"!PRE-WORKOUT"
     },
+    {
+        "name": "Very Quick Snack",
+        "calories": "663 Calories, 23g Protein",
+        "ingredients": "- 175g Oat - (Optional) Berries - (Optional) Cinnamon",
+        "firstingredientcalories": 3.8,
+        "timing": "MEAL",
+        "img": "Meal1",
+    },
+    {
+        "name": "Black & White",
+        "calories": "950 Calories, 48g Protein",
+        "ingredients": "- 160g Black Beans - 5 Fried Eggs - 100g White Rice - 1 tbsp Butter",
+        "firstingredientcalories": 1.32,
+        "secondingredientcalories": 90,
+        "timing": "BED",
+        "tag": "BED",
+        "img": "Meal1",
+    },/*
     {
         "name": "Chicken, Rice and Beans",
         "calories": "370 Calories, 24g Protein",
@@ -50,7 +72,7 @@ var meals = [
         "calories": "370 Calories, 24g Protein",
         "ingredients": "- 180g Chicken - 250g Sweet Potatoes",
         "timing": "PREWORKOUT"
-    },
+    },*/
     {
         "name":"!POST-WORKOUT"
     },

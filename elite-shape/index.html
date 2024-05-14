@@ -1,3 +1,249 @@
-<script>
-  window.location.href="dashboard"
-</script>
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Jack Archer</title>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link href="https://github.com/metrix0/Brae_Page_DB/raw/main/augustus.ttf" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="img/favicon.ico">
+</head>
+<body onload="CookieGet();">
+
+<div id="black" class="withmoney" style="top: 0;transition: 0.8s;width: 100%; height: 100% ; background-color: black; position: fixed; z-index: 99999; opacity: 0%">
+</div>
+<div id="shift" class="hiddencfg withmoney" style="top: 0;transition: 0.5s;width: 100%; height: 100% ;position: fixed; z-index: 999999;">
+  <div class="loginboxd" style="text-align: center;width: 30%; background-color: white; position: absolute; top: 0; margin: auto; bottom: 0; left: 0; right: 0; border-radius: 15px; height: 70%">
+    <p class="smalltext" style="font-size: 110%; position: absolute; right: 1dvw; top: 0.5dvw;z-index: 5"><i onclick="openlogin(false, '')" class="fa-solid fa-xmark iconbutton" style="padding-bottom: 8px"></i></p>
+    <img src="img/logo.png" style="width: 15%; margin-top: 5%">
+    <p class="syne" style="font-weight: 700; text-align: center; margin-top: 4%; font-size: 130%;margin-bottom: 12%">WELCOME TO HYDRA</p>
+    <div id="usercontainer" class="searchcontainer" style="font-size: 130%;margin-top: 3%;text-align: left;margin-left: 8%;border-radius: 90px; width: 80%; padding: 4px 7px 4px 7px; position: relative;">
+      <input  id="userholder"  placeholder="Full Name" class="mediumtext" style="width: 85%;;background: transparent;position: absolute;top: 0;bottom: 0;margin: auto;margin-left: 1%;font-family: Poppins, 'sans-serif';caret-color: var(--main);color: var(--apptext);">
+      <span style="margin-left: 2%;margin-right: 2%; visibility: hidden"><i class="fa-solid fa-envelope"></i></span>
+      <span style="margin-left: 2%;margin-right: 5%; position: absolute; right: 0"><i class="fa-solid fa-user"></i></span>
+    </div>
+    <div id="emailcontainer" class="searchcontainer" style="font-size: 130%;margin-top: 3%;text-align: left;margin-left: 8%;border-radius: 90px; width: 80%; padding: 4px 7px 4px 7px; position: relative;">
+      <input  id="emailholder" placeholder="Email" class="mediumtext" style="width: 85%;;background: transparent;position: absolute;top: 0;bottom: 0;margin: auto;margin-left: 1%;font-family: Poppins, 'sans-serif';caret-color: var(--main);color: var(--apptext);">
+      <span style="margin-left: 2%;margin-right: 2%; visibility: hidden"><i class="fa-solid fa-envelope"></i></span>
+      <span style="margin-left: 2%;margin-right: 5%; position: absolute; right: 0"><i class="fa-solid fa-envelope"></i></span>
+    </div>
+    <div id="pwdcontainer" class="searchcontainer" style="font-size: 130%;margin-top: 3%;text-align: left;margin-left: 8%;border-radius: 90px; width: 80%; padding: 4px 7px 4px 7px; position: relative;">
+      <input type="password" id="pwdholder"  placeholder="Password" class="mediumtext" style="width: 85%;background: transparent;position: absolute;top: 0;bottom: 0;margin: auto;margin-left: 1%;font-family: Poppins, 'sans-serif';caret-color: var(--main);color: var(--apptext);">
+      <span style="margin-left: 2%;margin-right: 2%; visibility: hidden"><i class="fa-solid fa-envelope"></i></span>
+      <span style="margin-left: 2%;margin-right: 5%; position: absolute; right: 0"><i class="fa-solid fa-key"></i></span>
+    </div>
+    <div style="position: absolute; bottom: 10%; left: 0; right: 0; margin: auto">
+      <span class="button syne" onclick="login()">Get Started</span>
+    </div>
+  </div>
+</div>
+
+</div>
+<div style="width: 100%; height: 100vh; top: 0;position: relative; background: linear-gradient(56deg, rgba(222,217,214,1) 0%, #ebe6e3 20%, #ebe6e3 80%, rgba(222,217,214,1) 100%);">
+  <div style="width: 100%; text-align: center; padding-top: 2%">
+    <img src="img/logo.png">
+    <p class="augustus">WITH THE NAME HERE</p>
+    <p class="superbold" style="margin-top: 1.5%">I'm Jack Archer</p>
+    <div style="width: 100%; text-align: center; display: flex; justify-content: center">
+      <img style="height: calc((50dvw/2)*1.1); float: left; opacity: 0.6" src="img/golden%20bar.png">
+      <iframe class="conrvid" style="margin-top: 1%; border-radius: 20px; float: left" src="https://www.youtube.com/embed/n-uWtKO6JDo?controls=1&disablekb=1&egm=1" title="Comece uma nova fase na sua vida." frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+      <img style="height: calc((50dvw/2)*1.1); transform: scaleX(-1); float: left; opacity: 0.5" src="img/golden%20bar.png">
+    </div>
+    <p style="color: var(--text); margin-top: 1%">
+      X year transformation through Y and Z. You'l get the same results, with my X Y and Z.
+    </p>
+    <div style="margin-top: 1.5%; width: 100%; position: relative; display: flex;justify-content: center;">
+      <div style="float: left">
+          <img src="img/leaf.png" style="width:30px; float: left">
+          <p style="float: left; font-size: 75%; margin-top: 5%" class="superbold">SEE TRANSFORMATIONS
+          <br><span style="font-weight: 500">4+ Lifes changed</span></p>
+          <img src="img/leaf.png" style="width:30px; transform: scalex(-1); float: left">
+      </div>
+      <div style="float: left;width: 1px;height: 55px; background-color: #484848; margin-left: 2%"></div>
+      <div style="float: left; margin-left: 2%">
+        <p style="float: left; font-size: 75%; margin-top: 5%;line-height: 200%" class="superbold"><span style="font-size: 120%; background: linear-gradient(150deg, var(--selectcolor) 0%, #202020 100%); color: white; font-weight: 600; padding: 2px 15px 2px 15px; border-radius: 50px">CALL TO ACTION</span>
+          <br><span style="font-weight: 500">12 Slots left</span>
+        </p>
+      </div>
+      </div>
+      </div>
+  </div>
+</div>
+
+<div style="width: 100%; height: 100vh; top: 0;position: relative; background: linear-gradient(304deg, rgba(222,217,214,1) 0%, #ebe6e3 20%, #ebe6e3 80%, rgba(222,217,214,1) 100%);">
+  <p class="superbold" style="width: 100%; text-align: center; padding-top: 3%">Very hooking phrase or feature</p>
+  <div style="width: 65%;margin-left: 5%; float: left; margin-top: 1%">
+    <p style="font-size: 135%; letter-spacing: 5px; margin-top: 8%" class="augustus">
+      <i class="fa-solid fa-heart"></i> LOREM IPSUM
+    </p>
+    <p style="margin-top: 1%">
+      Lorem ipsum dolor sit amet, <b2>et dolore</b2> magna aliqua. Ut enim ad minim veniam.
+    </p>
+    <p style="font-size: 135%; letter-spacing: 5px; margin-top: 8%" class="augustus">
+      <i class="fa-solid fa-bowl-food"></i> LOREM IPSUM
+    </p>
+    <p style="margin-top: 1%">
+      Lorem ipsum dolor sit amet, <b2>et dolore</b2> magna aliqua. Ut enim ad minim veniam.
+    </p>
+    <p style="font-size: 135%; letter-spacing: 5px; margin-top: 8%" class="augustus">
+      <i class="fa-solid fa-headphones"></i> LOREM IPSUM
+    </p>
+    <p style="margin-top: 1%">
+      Lorem ipsum dolor sit amet, <b2>et dolore</b2> magna aliqua. Ut enim ad minim veniam.
+    </p>
+    <p style="float: left; font-size: 75%; margin-top: 6.5%;line-height: 200%" class="superbold"><span style="font-size: 120%; background: linear-gradient(150deg, var(--selectcolor) 0%, #202020 100%); color: white; font-weight: 600; padding: 2px 15px 2px 15px; border-radius: 50px">CALL TO ACTION</span>
+      <br><span style="font-weight: 500">12 Slots left</span>
+    </p>
+  </div>
+  <div style="width: 30%; float: left;position: relative">
+    <img src="img/thestatue.png" style="width: 70%; position: absolute; right: 0; margin-top: 30%">
+  </div>
+</div>
+
+<div style="text-align: center;width: 100%; top: 0;position: relative; background: linear-gradient(56deg, rgba(222,217,214,1) 0%, #ebe6e3 20%, #ebe6e3 80%, rgba(222,217,214,0) 100%);">
+  <p style="width: 100%; text-align: center; padding-top: 5%"><b2>BILL CLINTON <span style="font-weight: 300">|</span> 3 MONTHS AFTER</b2></p>
+  <p class="superbold" style="width: 100%; text-align: center;"><i class="fa-solid fa-quote-left" style="font-size: 50%"></i> I had no confidence <i class="fa-solid fa-quote-right" style="font-size: 50%; transform: translateY(-50%)"></i></p>
+  <iframe class="conrvid" style="margin-top: 1%; border-radius: 20px" src="https://www.youtube.com/embed/n-uWtKO6JDo?controls=1&disablekb=1&egm=1" title="Comece uma nova fase na sua vida." frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+  <p style="width: 100%; text-align: center; padding-top: 5%"><b2>BILL CLINTON <span style="font-weight: 300">|</span> 3 MONTHS AFTER</b2></p>
+  <p class="superbold" style="width: 100%; text-align: center;"><i class="fa-solid fa-quote-left" style="font-size: 50%"></i> I had no confidence <i class="fa-solid fa-quote-right" style="font-size: 50%; transform: translateY(-50%)"></i></p>
+  <iframe class="conrvid" style="margin-top: 1%; border-radius: 20px" src="https://www.youtube.com/embed/n-uWtKO6JDo?controls=1&disablekb=1&egm=1" title="Comece uma nova fase na sua vida." frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+</div>
+<div style="text-align: center;width: 100%; height: 100vh;top: 0;position: relative; background: linear-gradient(304deg, rgba(222,217,214,1) 0%, #ebe6e3 20%, #ebe6e3 80%, rgba(222,217,214,1) 100%);">
+
+  <p style="width: 100%; text-align: center; padding-top: 5%"><b2>BILL CLINTON <span style="font-weight: 300">|</span> 3 MONTHS AFTER</b2></p>
+  <p class="superbold" style="width: 100%; text-align: center;"><i class="fa-solid fa-quote-left" style="font-size: 50%"></i> I had no confidence <i class="fa-solid fa-quote-right" style="font-size: 50%; transform: translateY(-50%)"></i></p>
+  <iframe class="conrvid" style="margin-top: 1%; border-radius: 20px" src="https://www.youtube.com/embed/n-uWtKO6JDo?controls=1&disablekb=1&egm=1" title="Comece uma nova fase na sua vida." frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+
+</div>
+
+
+<div style="position: relative;width: 100%; height: 100%; display: inline-block; margin-top: 15%">
+  <p class="round" style="font-size: 200%; margin-top: 5%; text-align: center">
+    Money makes the world go round
+  </p>
+  <p class="syne bigb" style=" color: var(--main);; text-align: center;font-weight: 700;line-height: 100%">
+    CRYPTO MAKES THE WORLD GO <b style="font-weight: 800">FORWARD</b>
+  </p>
+  <img class="planet" src="img/world.png" style="width: 15%; position: absolute; left: 0;right: 0; margin: auto; bottom: -50%">
+</div>
+<div class="cont1" style="position: relative;width: 100%; height: 100%; position: relative; display: inline-block; margin-top: 15%">
+  <p style="font-size: 200%; margin-top: 5%; text-align: center; color: var(--main);margin-bottom: 3%">
+    Hydra is a crypto trade for everyone
+  </p>
+  <div class="stats" style=";color: var(--text); text-align: center; float: left">
+    <b style="font-weight: 600;font-size: 300%; color: var(--main)">100K+</b><br>Clients
+  </div>
+  <div class="stats" style="font-size: 100%;  text-align: center; float: left">
+    <b style="font-weight: 600;font-size: 300%; color: var(--main)">300+</b><br>Cryptos Supported
+  </div>
+  <div class="stats" style="font-size: 100%;  text-align: center; float: left">
+    <b style="font-weight: 600;font-size: 300%; color: var(--main)">$17.5M+</b><br>Quarterly trading volume
+  </div>
+  <div style="width: 90%; margin-top: 12%; margin-left: 5%;display: inline-block" id="buycrypto">
+    <div class="mockup" style="position: relative; width: 49%; float: left">
+      <img src="img/mockup.png" style="width: 100%; position: relative">
+    </div>
+    <div class="mockuptext" style=" width: 45%; margin-left: 5%; font-size: 130%; display: inline-block; color: var(--text)">
+      <p class="syne" style="font-weight: 500">CRYPTO TRADE</p>
+      <br>
+      <p style="font-size: 200%; font-weight: 500; color: var(--main);margin-bottom: 3%">
+        Buy crypto in seconds
+      </p>
+      <p style="width: 90%;margin-left: 5%">
+        <br><i class="fa-solid fa-1" style="color: var(--main)"></i> Create your free Hydra account<br><br>
+        <i class="fa-solid fa-2" style="color: var(--main)"></i> Connect your funding method<br><br>
+        <i class="fa-solid fa-3" style="color: var(--main)"></i> Buy and sell 300+ cryptocurrencies
+      </p>
+      <p class="but1" style="display: inline-block; text-align: left; margin-top: 10%; width: 90%;margin-left: 5%; font-size: 80%"><span class="button syne" onclick="openlogin(true, '')">Buy Crypto</span></p>
+
+    </div>
+  </div>
+  <p class="cont2" style="font-size: 250%; font-weight: 500; margin-top: 15%; text-align: center; color: var(--main);">
+    Build your crypto portfolio
+  </p>
+  <div style="width: 100%; font-weight: 500; margin-top: 1% ">
+    <div style="height: 300px; width: 100%; position: absolute;z-index: 2; ; background: linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%, rgba(255,255,255,0) 80%, rgba(255,255,255,1) 100%);">
+    </div>
+    <div id="mul1" style="width: 100%; display: inline-block; margin-top: 3%"></div>
+    <div id="mul2" style="width: 100%; margin-top: 7%; display: inline-block"></div>
+    <div id="mul3" style="width: 100%; margin-top:7%; display: inline-block"></div>
+  </div>
+  <p class="but2" style="display: inline-block; text-align: center; margin-top: 10%; width: 90%;margin-left: 5%; font-size: 100%"><span class="button syne" onclick="openlogin(true, '')">Buy Crypto</span></p>
+
+  <div class="cont3" style="width: 100%; margin-top: 15%; display: inline-block" id="whyhydra">
+    <p style="font-size: 250%; font-weight: 500; text-align: center; color: var(--main);">
+      Why Hydra?
+    </p>
+    <div style="width: 75%;margin-left: 12.5%; margin-top: 4%; color: var(--text); display: inline-block">
+      <div class="features" style="float: left;  text-align: center">
+        <img src="img/hands.png" style="width: 70%">
+        <p><b style="font-weight: 600; font-size: 150%">Simplicity</b>
+          <br>Hydra makes it easy to buy crypto using our <b style="color: var(--main)">dashboard</b>.
+        </p>
+      </div>
+      <div class="features" style="float: left; text-align: center">
+        <img src="img/objects.png" style="width: 70%">
+        <p><b style="font-weight: 600; font-size: 150%">Education</b>
+          <br>Not sure where to start? Head to our <b style="color: var(--main)">Learn Center</b>  and learn about all things crypto.
+        </p>
+      </div>
+      <div class="features" style="float: left;  text-align: center">
+        <img src="img/technology.png" style="width: 70%">
+        <p><b style="font-weight: 600; font-size: 150%">Simplicity</b>
+          <br>Find your answers instantly in our <b style="color: var(--main)">Support Center</b>. Or reach us 24/7/365 on Live Chat, phone or by email.
+        </p>
+      </div>
+    </div>
+    <p class="but3" style="display: inline-block; text-align: center; margin-top: 4%; width: 100%"><span class="button syne" onclick="openlogin(true, '')">Get started with Hydra</span></p>
+
+  </div>
+  <div style="margin-top: 10%" id="rewards">
+    <div class="rewards" style="width: 50%; margin-left: 10%; float: left; color: var(--text)">
+      <p class="rewardtitle" style="font-size: 250%;margin-top: 10%; text-align: left; color: var(--main); font-weight: 500">
+        Hydra rewards
+      </p>
+      <p style="font-size: 180%;margin-top: 2%">
+        <b style="font-size: 50%">FOR A LIMITED TIME</b><br>
+        <span style="font-size: 115%; font-weight: 600">Get <span style="color: var(--main)">$100</span> free<br></span>
+        <p style="font-size: 120%; width: 80%;margin-top: 0.8%" class="phoneadaptsecondpop">if you deposit $200 or more to a new or existing account with less than $1,000</p>
+      </p>
+      <p class="but4" style="display: inline-block; margin-top: 6%; width: 100%"><span class="button syne" onclick="openlogin(true, '')">Get started with Hydra</span></p>
+    </div>
+    <img class="rewardimg" src="img/advantages.png" style="width: 35%;margin-top: 1.5%">
+  </div>
+</div>
+<br>
+<br>
+<br>
+<br>
+<br><br>
+<br>
+<br>
+
+<p style="font-size: 70%; color: var(--appsmalltext); text-align: center; width: 86%; margin-left: 7%; font-style: italic">
+  <b>Margin, futures</b> and <b>opt-in</b> rewards are subject to certain geographic limitations and eligibility criteria.
+  <br><br>
+
+
+  Reward rates are subject to change and compliance with Hydra's terms and conditions. These materials are for general information purposes only and are not investment advice or a recommendation or solicitation to buy, sell, stake or hold any cryptoasset or to engage in any specific trading strategy. Some crypto products and markets are unregulated, and you may not be protected by government compensation and/or regulatory protection schemes. The unpredictable nature of the cryptoasset markets can lead to loss of funds. Tax may be payable on any return and/or on any increase in the value of your cryptoassets and you should seek independent advice on your taxation position. For more information, please see our <b>Terms of Service</b>.
+  <br><br>
+
+
+
+  Trading futures, derivatives and other instruments using leverage involves an element of risk and may not be suitable for everyone. Read <b>Hydra’s risk disclosure</b> to learn more.
+</p>
+<br>
+<footer id="support" style="background-color: var(--main); padding-top: 3%; padding-bottom: 3%; color: rgba(255,255,255,0.7)">
+  <p style="text-align: center">© 2011 - 2024 Hydra, Inc.ㅤ <u onclick="location.reload()">Privacy Notice</u> ㅤ<u onclick="location.reload()">Terms of Service</u>ㅤ <u onclick="location.reload()">Cookies Policy</u> ㅤ<u onclick="location.reload()">Disclosure</u></p>
+</footer>
+</body>
+</html>
+
+<script src="index.js"></script>
