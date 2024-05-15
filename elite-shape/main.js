@@ -101,20 +101,22 @@ function tabs(which){
         closebox('box1'); //selectcoinbox
         closebox('box2'); //selectcoinbox
         closebox('box3', 100); //selectcoinbox
+        closebox('box4'); //selectcoinbox
     }
     else if (which === 3) { //history
         removeallbut(3, '')
         openbox('box2')
         closebox('box1'); //selectcoinbox
         closebox('box3'); //selectcoinbox
+        closebox('box4'); //selectcoinbox
         opconfig(false) //config
     }
     else if(which === 2){ //market
         openbox('box1')
         openbox('box3',100)
         removeallbut(2, '')
-        closebox('exchangebox1'); //selectcoinbox
         closebox('box2'); //transaction history box
+        closebox('box4'); //selectcoinbox
         opconfig(false) //config
     }
     else if (which === 1) { //main
@@ -122,6 +124,7 @@ function tabs(which){
         closebox('box1'); //selectcoinbox
         closebox('box2'); //selectcoinbox
         closebox('box3', 100); //selectcoinbox
+        closebox('box4'); //selectcoinbox
         opconfig(false) //config
     }
 }
@@ -834,4 +837,86 @@ function adaptcalories(){
 
 function round(num,multipleOf) {
     return Math.floor((num + multipleOf/2) / multipleOf) * multipleOf;
+}
+
+
+function generategroceries(){
+    let loader = document.getElementById('loaderp2')
+    loader.classList.remove('none')
+    document.getElementById('loadedp2').classList.add('none')
+    let list = document.getElementById('grocerieslist')
+    list.classList.remove('vanishdq')
+    list.classList.remove('Failed')
+    let grocerieslist = []
+    for(let i = 0; i < addedmeals; i++){
+        for(let j = 1; j < (meals[addedmealslist[i]].ingredients.split('- ').length); j++){
+            grocerieslist.push({
+                "ingredient": meals[addedmealslist[i]].ingredients.split('- ')[j].split(meals[addedmealslist[i]].ingredients.split('- ')[j].split(" ")[0])[1],
+                "quantity": meals[addedmealslist[i]].ingredients.split('- ')[j].split(" ")[0],
+            })
+            if(grocerieslist[grocerieslist.length-1].quantity.toString().includes("g")){
+                grocerieslist[grocerieslist.length-1].quantity = parseInt(grocerieslist[grocerieslist.length-1].quantity.replace(/\D/g,''))*7
+                if(grocerieslist[grocerieslist.length-1].quantity > 999){
+                    grocerieslist[grocerieslist.length-1].quantity = parseFloat(grocerieslist[grocerieslist.length-1].quantity)/1000+"Kg"
+                }
+                else{
+                    grocerieslist[grocerieslist.length-1].quantity += 'g';
+                }
+            }
+            else if(grocerieslist[grocerieslist.length-1].quantity.toString().includes("ptional")){
+                grocerieslist[grocerieslist.length-1].quantity = ""
+            }
+            else{
+                grocerieslist[grocerieslist.length-1].quantity = parseInt(grocerieslist[grocerieslist.length-1].quantity)*7+"x"
+            }
+            if(grocerieslist[grocerieslist.length-1].ingredient[grocerieslist[grocerieslist.length-1].ingredient.length-1] === " "){
+                grocerieslist[grocerieslist.length-1].ingredient = grocerieslist[grocerieslist.length-1].ingredient.slice(0, -1)
+            }
+            if(grocerieslist[grocerieslist.length-1].ingredient[0] === " "){
+                grocerieslist[grocerieslist.length-1].ingredient = grocerieslist[grocerieslist.length-1].ingredient.slice(1)
+            }
+
+        }
+    }
+    let groceriestext = 'Your Groceries List for a Week:<br><br style="display: block; content: \'\';margin-top: 5px">'
+    let extralist = []
+    if(grocerieslist.length === 0){
+        groceriestext = "Add Meals on the Diet tab to generate your Groceries."
+        list.classList.add('Failed')
+    }
+    for(let i = 0; i < grocerieslist.length; i++){
+        for(let j = 0; j < grocerieslist.length; j++){
+            if(grocerieslist[i].ingredient === grocerieslist[j].ingredient && i !== j){
+                if(grocerieslist[i].quantity.includes('g')){grocerieslist[i].quantity = parseInt(grocerieslist[i].quantity)+parseInt(grocerieslist[j].quantity)+'g'}
+                else{grocerieslist[i].quantity = parseInt(grocerieslist[i].quantity)+parseInt(grocerieslist[j].quantity)+'x'}
+                grocerieslist.splice(j,1)
+            }
+        }
+        if(grocerieslist[i].quantity === ''){
+            console.log(grocerieslist[i])
+            extralist.push(grocerieslist[i])
+            grocerieslist.splice(i,1)
+        }
+        else{
+            groceriestext += '<i class="fa-regular fa-circle-check" style="transition: 0.2s;font-size: 120%; display: inline-block; margin-right: 2%;cursor: pointer; transform: translateY(4%);" onclick="circlecheck(this)"></i><b style="user-select: none">'+grocerieslist[i].quantity+"</b> "+grocerieslist[i].ingredient+"<br>"
+        }
+    }
+    for(let i = 0; i < extralist.length; i++){
+        groceriestext += '<b style="user-select: none; font-size: 70%; font-weight: 700; transform: translateY(-5%); display: inline-block; margin-right: 2%">OPTIONAL</b>'+extralist[i].ingredient+'<br>'
+    }
+    setTimeout(function (){
+        loader.classList.add('none')
+        document.getElementById('loaded2p2').classList.remove("none")
+        list.innerHTML = groceriestext
+        list.classList.add('vanishdq')
+    },300)
+}
+
+function circlecheck(which){
+    if (which.className === "fa-regular fa-circle-check"){
+        which.className = "fa-solid fa-circle-check"
+    }
+    else{
+        which.className = "fa-regular fa-circle-check"
+    }
 }

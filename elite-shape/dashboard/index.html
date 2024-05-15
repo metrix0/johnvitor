@@ -45,7 +45,7 @@
         </p>
       </div>
       <div style="width: 80%; float: left" class="phonecgf">
-        <p class="bigtext pb" style="text-align: center">Jack Archer's Platform</p>
+        <p class="bigtext pb" style="text-align: center">Options</p>
         <p class="mediumtext configcategs" style="font-size: 80%;margin-top:5%; color: rgba(255,255,255,0.85)">User ID</p>
         <input id="username" class="mediumtext" style="text-align: left;font-size: 80%; font-weight: 700;cursor: pointer; color: rgba(255,255,255,0.85);" placeholder="Insert your ID!" autocomplete="off"> <i class="fa-solid fa-pen" style="cursor: pointer;" onclick="let a = document.getElementById('username'); if(a.value===''){a.focus()}else{userIdapp()}"></i>
         <p class="mediumtext configcategs" style="font-size: 80%;margin-top:5%; color: rgba(255,255,255,0.85)">Backup Code</p>
@@ -105,7 +105,7 @@
       <p class="subtitle" style="position: relative; z-index: 4">Consumed</p>
       <p class="smalltext" style="font-size: 95%; position: absolute; left: 1.3dvw; top: 1dvw;z-index: 5"><i onclick="tabs(1)" class="fa-solid fa-angle-down iconbutton" style="padding-bottom: 8px"></i>
       <div style="margin-top: 6%;width: 92%;margin-left: 4%; text-align: left">
-        <div class="ul" style="overflow: auto;scrollbar-color: var(--unselected); height: 75vh">
+        <div class="ul" style="overflow: auto;scrollbar-color: var(--unselected); height: 80vh">
           <div style="display: inline-block; width: 100%">
             <p class="mediumtext" style="margin-top: 3%; margin-left: 2%">Selected</p>
             <div id="mealtype1">
@@ -187,6 +187,28 @@
 
     </div>
   </div>
+    <div class="basicbox hiddenbox withmoney" id="box4"  style="background: white;transition: 0.5s;transition-timing-function: ease-out;z-index: 9; height: 92.8%;float: left; width: 31%; margin-left: 33.64%; margin-top: 1.8%;border-radius: 12px">
+        <div style="position: relative;text-align: center;color: var(--apptext);padding-top: 6%;padding-bottom: 6%;font-size: 125%; border-radius: 15px; height: 100%">
+            <div style="width: 100%; height: 15%;  background: linear-gradient(0deg, white 0%, transparent 100%); position: absolute; bottom: 7.5%; z-index: 5; pointer-events: none; border-radius: 15px"></div>
+            <p class="subtitle" style="position: relative; z-index: 4">Groceries</p>
+            <div class="none" id="loaderp2" style="width: 100%; height: 100%; position: relative;">
+                <p class="loader" style="position: absolute;top: 35%;left: 0;z-index: 99;bottom: 0;right: 0;margin:auto;margin-top: 0%; color: var(--main);height: 100%;font-size: 200%"><i class="fa-solid fa-circle-notch spin"></i></p>
+            </div>
+            <p class="smalltext" style="font-size: 95%; position: absolute; left: 1.3dvw; top: 1dvw;z-index: 9"><i onclick="closebox('box4')" class="fa-solid fa-angle-down iconbutton" style="padding-bottom: 8px"></i>
+            <div id="loadedp2">
+                <div style="margin-top: 6%;width: 92%;margin-left: 4%; text-align: left">
+                <p class="mediumtext" style="font-weight: 400;line-height: 135%;margin-top: 7%; color: var(--appsmalltext); text-align: center">A weekly list will be generated based on the added meals on your Diet tab.</p>
+                <p class="mediumtext" style="font-weight: 400;line-height: 135%;margin-top: 50%; font-size: 58.5%; color: white; text-align: center"><span style="background-color: var(--apptext);cursor: pointer; padding: 2px 20px 2px 20px; border-radius: 15px" onclick="generategroceries()">Generate</span></p>
+                </div>
+            </div>
+          <div id="loaded2p2" class="none">
+            <div style="margin-top: 6%;width: 92%;margin-left: 4%; text-align: left; position: relative; z-index: 99">
+              <p class="mediumtext" style="font-weight: 400;line-height: 205%;width: 80%;margin-left: 10%;margin-top: 7%; color: var(--appsmalltext); text-align: left" id="grocerieslist"></p>
+              <p class="mediumtext" style="font-weight: 400;line-height: 135%;margin-top: 30%; font-size: 58.5%; color: white; text-align: center"><span style="background-color: var(--apptext);cursor: pointer; padding: 2px 20px 2px 20px; border-radius: 15px" onclick="generategroceries()">Generate Again</span></p>
+            </div>
+          </div>
+        </div>
+    </div>
 
   <div class="first" style="background-color: white;float: left; position: relative" id="workouttab">
     <div style="position: relative;text-align: center;color: var(--apptext);padding-top: 6%;padding-bottom: 6%;padding-left: 2.5%;padding-right: 2.5%;font-size: 125%; border-radius: 15px;">
@@ -205,7 +227,7 @@
         <p class="mediumtext" style="margin-top: 15%"><span onclick="Cookie('CurrentFrequency', document.getElementById('chosenfrequency').innerHTML.split(' ')[0]); window.location.reload()" style="cursor: pointer;background: var(--selectcolor); color: white; padding: 2px 25px 2px 25px; border-radius: 50px">Select</span></p>
 
       </div>
-      <div class="none ul" style="margin-top: 3%; width: 90%; margin-left: 1%; display: inline-block; overflow: scroll; height: 80vh" id="workoutul">
+      <div class="none ul" style="margin-top: 3%; width: 90%; margin-left: 1%; display: inline-block; overflow-y: scroll;overflow-x: visible; height: 80vh" id="workoutul">
       </div>
       <div class="none" style="margin-top: 3%; width: 94%; margin-left: 1%; display: inline-block" id="routinesul">
       </div>
@@ -236,7 +258,7 @@
               </div>
             <div style="margin-bottom:30%;;display: inline-block;width: 100%; text-align: center; margin-top: 18%; font-size: 110%"><span style="background-color: var(--select);border-radius: 100px; padding: 0px 8px 0px 8px; cursor: pointer" onclick="tabs(3)">+</span></div>
             <div style="position: absolute; bottom: 0; width: 100%;">
-            <p class="mediumtext" style="font-weight: 400;font-size: 56%; text-align: center; width: 100%; opacity: 1; cursor: pointer;" onclick="openbox('box3')">Meals Videos <i class="fa-solid fa-film"></i><!-- ㅤ|ㅤ Meal Schedule <i class="fa-solid fa-gears"></i>--></p>
+                <p class="mediumtext" style="font-weight: 400;font-size: 56%; text-align: center; width: 100%; opacity: 1; cursor: pointer;"><span onclick="openbox('box3')">Meals Videos <i class="fa-solid fa-film"></i></span> ㅤ|ㅤ <span onclick="openbox('box4')">Groceries List <i class="fa-solid fa-newspaper"></i></span></p>
             </div>
           </div>
         </div>
@@ -271,7 +293,7 @@
     </div>
   </div>
 </div>
-
+</div>
 </body>
 </html>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

@@ -13,7 +13,7 @@ var userstats = [
     },
     {
         'userid': 'Cowboy',
-        'targetCalories': 3000,
+        'targetCalories': 3100,
         'caloriesDescription': "Na SEMANA 1 vamos testar sua responsividade ao treino. *Suas calorias são 3100, estou contando como 3000 pelos 100g de arroz.",
         'comingNext': "Na SEMANA 2 vamos refinar seu consumo de calorias e treino.",
     },

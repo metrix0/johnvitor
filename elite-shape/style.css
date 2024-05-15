@@ -334,9 +334,25 @@ input{
     animation-duration: 1s;
     animation-iteration-count: 1;
 }
+.vanishdq{
+    animation-name: vanishdq;
+    animation-duration: .75s;
+    animation-iteration-count: 1;
+}
 @keyframes vanishd {
     0%{
         transform: translateX(-100%);
+        opacity: 0%;
+    }
+    100%{
+        transform: translateX(0%);
+        opacity: 100%;
+    }
+}
+
+@keyframes vanishdq {
+    0%{
+        transform: translateX(50%);
         opacity: 0%;
     }
     100%{
@@ -469,3 +485,5 @@ input{
     .bigbox{overflow-y: hidden}
     #username{color: var(--appsmalltext) !important}
 }
+
+.Failed{text-align: center !important; line-height: 135% !important;}

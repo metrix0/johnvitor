@@ -3,7 +3,7 @@ var meals = [
         "name":"!WORK"
     },
     {
-        "name": "Maromba",
+        "name": "Maromba Pre",
         "calories": "613 Calories, 66g Protein",
         "ingredients": "- 250g Sweet Potato - 200g Chicken - 1 Apple",
         "firstingredientcalories": 0.76,
@@ -60,7 +60,37 @@ var meals = [
         "timing": "BED",
         "tag": "BED",
         "img": "Meal1",
-    },/*
+    },
+    {
+        "name": "Moss Milkshake",
+        "calories": "815 Calories, 38g Protein",
+        "ingredients": "- 190g Whole Milk - 220g Avocado - 2 Bananas - 30g Protein Powder - (Optional) Any Green Leafs",
+        "firstingredientcalories": 0.6,
+        "secondingredientcalories": 1.7,
+        "timing": "POST",
+        "tag": "POST",
+        "img": "Smoothie",
+    },
+    {
+        "name": "Maromba Post",
+        "calories": "817 Calories, 81g Protein",
+        "ingredients": "- 200g White Rice - 160g Black Beans - 200g Chicken",
+        "firstingredientcalories": 1.3,
+        "secondingredientcalories": 1.3,
+        "timing": "POST",
+        "tag": "POST",
+        "img": "Meal1",
+    },
+    {
+        "name": "Maromba Meal",
+        "calories": "658 Calories, 69g Protein",
+        "ingredients": "- 100g White Rice - 190g Black Beans - 160g Chicken",
+        "firstingredientcalories": 1.3,
+        "secondingredientcalories": 1.3,
+        "timing": "MEAL",
+        "img": "Meal1",
+    },
+    /*
     {
         "name": "Chicken, Rice and Beans",
         "calories": "370 Calories, 24g Protein",
