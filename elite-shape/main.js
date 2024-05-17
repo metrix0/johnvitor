@@ -213,7 +213,7 @@ function starttraining(workout, wname, restore){
         div.innerHTML =           '<div style="display: flex; align-items: center;margin-top: 3%"> ' +
             '<div style="width: 75%; float: left;display: flex; align-items: center"> ' +
             '<img src="../img/exercises/'+id+'.jpg" style="width: 45px; float: left; margin-right: 6%"> ' +
-            '<p onclick="openbox(\'box1\'); window.location=\'#'+id+'\'" class="mediumtext workoutexercisename">'+workout[i].name+' ' +
+            '<p onclick="openbox(\'box1\'); window.location=\'#'+id+'\'; selectvideo('+id+')" class="mediumtext workoutexercisename">'+workout[i].name+' ' +
             '</div> ' +
             '<div style="width: 25%; float: left"> ' +
             '<p class="mediumtext" style="float: left; text-align: right; width: 100%">'+sets+' '+setsorseconds +
@@ -235,7 +235,7 @@ function starttraining(workout, wname, restore){
                                     '<div> ' +
                                     '<p class="mediumtext" style="width: 50%;float: left;font-weight: 400;line-height: 135%;margin-top: 2%; font-size: 58.5%; color: var(--appsmalltext); text-align: left">'+(j+1)+' - </p> ' +
                                     '<div style="width: 50%; float: left; text-align: right;position: relative"> ' +
-                                        '<input autocomplete="off" id="'+i+'!'+j+'-Set" onkeyup="onkeyupworkoutvalue(\''+i+'!'+j+'-Set\')" class="mediumtext" style="float: left;font-weight: 400;line-height: 135%;margin-top: 2%; font-size: 58.5%; color: var(--appsmalltext); text-align: right; width: 50%" placeholder="'+weightornone+'"> ' +
+                                        '<input autocomplete="off" id="'+i+'!'+j+'-Set" onkeyup="onkeyupworkoutvalue(\''+i+'!'+j+'-Set\','+workout[i].sets+')" class="mediumtext" style="float: left;font-weight: 400;line-height: 135%;margin-top: 2%; font-size: 58.5%; color: var(--appsmalltext); text-align: right; width: 50%" placeholder="'+weightornone+'"> ' +
                                         '<input autocomplete="off" id="'+i+'!'+j+'-Reps" onkeyup="onkeyupworkoutvalue(\''+i+'!'+j+'-Reps\')" class="mediumtext" style="float: left;font-weight: 400;line-height: 135%;margin-top: 2%; font-size: 58.5%; color: var(--appsmalltext); text-align: right; width: 50%" placeholder="'+onesetordone+'"> ' +
                                     '</div> '+
                                 '</div> '
@@ -256,7 +256,7 @@ function starttraining(workout, wname, restore){
         '            var b = document.getElementById(\'doneb\');' +
         '            b.style.backgroundColor = \'var(--green)\';' +
         '            a.style.transform = \'translateX(50%)\';' +
-        '            a.onclick = function (){window.location.reload()};' +
+        '            a.onclick = function (){sendworkoutlog()};' +
         '            b.style.cursor = \'pointer\';' +
         '            document.getElementById(\'donec\').innerHTML=\'Send to Whatsapp\'">' +
 
@@ -319,8 +319,9 @@ function vidsearch(){
     for (let i = 0; i < list.length; i++) {
         let a = list[i].getElementsByTagName("p")[0].innerHTML.toString().toUpperCase();
         if (a.toUpperCase().indexOf(searchinput) > -1) {
-            list[i].style.display = "unset";
-        } else {
+            list[i].style.display = "inline-block";
+        }
+        else {
             list[i].style.display = "none";
         }
     }
@@ -572,10 +573,21 @@ function fadein(id, bool){
     }
 }
 
-function onkeyupworkoutvalue(id){
+function onkeyupworkoutvalue(id, sets){
     /*if(!id.includes("Check")){*/
     var set = document.getElementById(id.split("-")[0]+"-Set")
     var rep = document.getElementById(id.split("-")[0]+"-Reps")
+    if(sets && id.includes('Set') && set.value !== ''){
+        for(let k = parseInt(id.split("!")[1].split('-')[0]); k < sets; k++){
+            let newid = id.split("!")[0]+"!"+k+"-Set"
+            setTimeout(function (){
+                if(document.getElementById(newid).value === ''){
+                    document.getElementById(newid).value = document.getElementById(id).value
+                }
+            },1000)
+
+        }
+    }
     if (set.value !== '' && rep.value !== ''){
         workoutvalues(id, set, rep)
     }
@@ -893,7 +905,6 @@ function generategroceries(){
             }
         }
         if(grocerieslist[i].quantity === ''){
-            console.log(grocerieslist[i])
             extralist.push(grocerieslist[i])
             grocerieslist.splice(i,1)
         }
@@ -919,4 +930,35 @@ function circlecheck(which){
     else{
         which.className = "fa-regular fa-circle-check"
     }
+}
+
+var stored = ''
+function selectvideo(which){
+    stored = which
+    if (which.className.includes("selectedvideo")){
+
+    }
+    else{
+        which.classList.add("selectedvideo")
+    }
+}
+
+function sendworkoutlog(){
+    console.log(currentworkout)
+    let id1=workoutlist().findIndex(x => x.frequency === workoutfrequency )
+    let wklist = workoutlist()[id1].workout[workoutlist()[id1].workout.findIndex(z => z.varname === currentworkout[0][0].split('>')[1])]
+    console.log(wklist)
+    let bigtxt = ''
+    let holder = ''
+    for(let i = 1; i < currentworkout.length; i++){
+        let wkexercise = wklist.id[parseInt(currentworkout[i][0])]
+        if(wkexercise !== holder){
+            bigtxt += "%0a"+wkexercise.name+": %0a"
+            holder = wkexercise
+        }
+        bigtxt += (parseInt(currentworkout[i][1])+1)+" - "+currentworkout[i][2].split('&')[0]+" KG for "+currentworkout[i][2].split('&')[1]+" Reps%0a"
+    }
+    console.log(bigtxt)
+    window.open('https://api.whatsapp.com/send/?phone=5519988760900&text='+bigtxt)
+    //window.location.reload()
 }

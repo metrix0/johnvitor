@@ -279,7 +279,7 @@ a{font-weight: 700; font-size: 65%; opacity: 50%}
 .augustus{font-family: 'augustus', sans-serif}
 .superbold{font-weight: 800; font-size: 200%;color: #111111
 }
-.conrvid{width: 48dvw; height: calc((50dvw/2)*1.1)}
+.conrvid{margin-top: 1%; border-radius: 20px; width: 49%; height: 15.5dvh;cursor:pointer; margin-left: 1%; float: left; transition: 0.6s; transition-delay: 0.4s !important}
 b2{font-weight: 700; text-transform: uppercase}
 
 .none{display: none!important;}
@@ -487,3 +487,4 @@ input{
 }
 
 .Failed{text-align: center !important; line-height: 135% !important;}
+.selectedvideo{width: 99% !important; height: 31dvh!important;}

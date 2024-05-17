@@ -188,6 +188,35 @@ var workoutlist = function() {
                 },
             ]
         },
+        {
+            "frequency": "Neo",
+            "sequence": "Push (Chest) > Pull > Leg > Rest > Push (Shoulder) > Pull > Rest",
+            "workout": [{
+                "id": StarterLeg6,
+                "varname": "StarterLeg6",
+                "name": "Neo's Leg Destruction",
+                "duration": '30-45 MINUTES'
+            },
+                {
+                    "id": StarterPush6,
+                    "varname": "StarterPush6",
+                    "name": "Neo's Chest Annihilation",
+                    "duration": '60-75 MINUTES'
+                },
+                {
+                    "id": StarterPull6,
+                    "varname": "StarterPull6",
+                    "name": "Neo's Back Demolition",
+                    "duration": '60-75 MINUTES'
+                },
+                {
+                    "id": StarterShoulder6,
+                    "varname": "StarterShoulder6",
+                    "name": "Neo's Shoulder Obliteration",
+                    "duration": '60-75 MINUTES'
+                },
+            ]
+        },
 
 
 
@@ -597,6 +626,210 @@ var BBLeg6 = [
     {
         "name": "Squat", // Exercise name on Quotes
         "sets": 4, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Weights and Reps" // "Weights and Reps", or "Seconds"
+    },
+    {
+        "name": "Romanian Leg Deadlift",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Lunges",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Leg Extension",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Leg Raises",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Cable Crunch",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Stretch", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds150" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds
+    },
+]
+
+var StarterPull6 = [
+    {
+        "name": "Warm Up", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds60" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds, or "Check"
+    },
+    {
+        "name": "Pull Up",
+        "sets": 3,
+        "warmup": 1,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Barbell Row",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Seated Row (One Arm)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Shrugs (DB)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Bicep Curl (Bar)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Hammer Curl (DB)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Stretch", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds150" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds
+    },
+]
+
+var StarterPush6 = [
+    {
+        "name": "Warm Up", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds60" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds, or "Check"
+    },
+    {
+        "name": "Incline Bench Press", // Exercise name on Quotes
+        "sets": 3, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Weights and Reps" // "Weights and Reps", or "Seconds"
+    },
+    {
+        "name": "Machine Shoulder Press",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Dips (Weighted)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Pec Deck",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Lateral Raise",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Triceps Pushdown",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Stretch", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds150" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds
+    },
+]
+
+var StarterShoulder6 = [
+    {
+        "name": "Warm Up", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds60" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds, or "Check"
+    },
+    {
+        "name": "Shoulder Press", // Exercise name on Quotes
+        "sets": 3, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Weights and Reps" // "Weights and Reps", or "Seconds"
+    },
+    {
+        "name": "Incline Bench Press",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Dips (Weighted)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Pec Deck",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Lateral Raise",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Triceps Pushdown",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Stretch", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds150" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds
+    },
+]
+
+var StarterLeg6 = [
+    {
+        "name": "Warm Up", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds60" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds, or "Check"
+    },
+    {
+        "name": "Squat", // Exercise name on Quotes
+        "sets": 3, // Number of sets
         "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
         "type": "Weights and Reps" // "Weights and Reps", or "Seconds"
     },
