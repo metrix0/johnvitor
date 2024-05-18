@@ -485,6 +485,7 @@ input{
     .bigbox{overflow-y: hidden}
     #username{color: var(--appsmalltext) !important}
     .phonenavbar{padding-bottom: 4%}
+    .diettabul{}
 }
 
 .Failed{text-align: center !important; line-height: 135% !important;}
