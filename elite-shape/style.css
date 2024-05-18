@@ -489,4 +489,18 @@ input{
 .Failed{text-align: center !important; line-height: 135% !important;}
 .selectedvideo{width: 99% !important; height: 31dvh!important;}
 
-html, body { height: 100% !important}
+html {
+    height: -webkit-fill-available;
+}
+
+body {
+
+    height: -webkit-fill-available;
+}
+
+.thecontainer{
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+    height: -webkit-fill-available;
+}
