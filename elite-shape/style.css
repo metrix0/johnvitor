@@ -479,7 +479,7 @@ input{
     .bigbox{background-color: white !important}
     .tabselected{color: var(--main);}
     #box5{background-color: white!important; color: var(--bgr)!important;}
-    .configcategs{color: var(--bgr) !important; width: 20% !important}
+    .configcategs{color: var(--bgr) !important; width: 40% !important}
     .phonecgf{margin-top: 15%; }
     #statstab{padding-bottom: 15%}
     .bigbox{overflow-y: hidden}
