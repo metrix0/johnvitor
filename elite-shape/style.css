@@ -486,6 +486,8 @@ input{
     #username{color: var(--appsmalltext) !important}
     .phonenavbar{padding-bottom: 4%}
     .diettabul{}
+    .comingnext{margin-top: 7% !important}
+    .mealsivds{margin-bottom: 2% !important}
 }
 
 .Failed{text-align: center !important; line-height: 135% !important;}
