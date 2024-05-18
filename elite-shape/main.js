@@ -962,3 +962,10 @@ function sendworkoutlog(){
     window.open('https://api.whatsapp.com/send/?phone=5519988760900&text='+bigtxt)
     //window.location.reload()
 }
+
+window.addEventListener("load",function() {
+    setTimeout(function(){
+        // This hides the address bar:
+        window.scrollTo(0, 1);
+    }, 0);
+});
