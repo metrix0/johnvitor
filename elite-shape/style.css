@@ -489,9 +489,4 @@ input{
 .Failed{text-align: center !important; line-height: 135% !important;}
 .selectedvideo{width: 99% !important; height: 31dvh!important;}
 
-html{
-    height: 100svh
-}
-body{
-    height: 100svh
-}
+html, body { height: 100% !important}
