@@ -490,17 +490,14 @@ input{
 .selectedvideo{width: 99% !important; height: 31dvh!important;}
 
 html {
-    height: -webkit-fill-available;
+    height: 100svh;
 }
 
 body {
 
-    height: -webkit-fill-available;
+    height: 100svh;
 }
 
 .thecontainer{
-    height: 100vh;
-    width: 100vw;
-    position: relative;
-    height: -webkit-fill-available;
+    height: 100svh;
 }
