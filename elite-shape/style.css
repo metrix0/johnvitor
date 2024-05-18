@@ -484,6 +484,7 @@ input{
     #statstab{padding-bottom: 15%}
     .bigbox{overflow-y: hidden}
     #username{color: var(--appsmalltext) !important}
+    .phonenavbar{padding-bottom: 4%}
 }
 
 .Failed{text-align: center !important; line-height: 135% !important;}
