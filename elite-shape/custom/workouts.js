@@ -99,6 +99,25 @@ var workoutlist = function() {
                     "name": "Cowb's Shoulder Obliteration",
                     "duration": '75-90 MINUTES'
                 },
+                {
+                    "id": HighlanderLeg6,
+                    "varname": "HighlanderLeg6",
+                    "name": "Highlander Leg",
+                    "duration": '75-90 MINUTES'
+                },
+                {
+                    "id": HighlanderPush6,
+                    "varname": "HighlanderPush6",
+                    "name": "Highlander Push",
+                    "duration": '75-90 MINUTES'
+                },
+                {
+                    "id": HighlanderPull6,
+                    "varname": "HighlanderPull6",
+                    "name": "Highlander Pull",
+                    "duration": '75-90 MINUTES'
+                },
+
             ]
         },
         {
@@ -913,5 +932,135 @@ var workout1day = [
         "sets": 3,
         "warmup": 0,
         "type": "Weights and Reps"
+    },
+]
+
+
+var HighlanderPull6 = [
+    {
+        "name": "Warm Up", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds60" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds, or "Check"
+    },
+    {
+        "name": "Deadlift", // Exercise name on Quotes
+        "sets": 3, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Weights and Reps" // "Weights and Reps", or "Seconds"
+    },
+    {
+        "name": "Pull Up (Weighted)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Yates Row",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Bicep Curl (Alternate with Dumbell, Drop Hammer)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Stretch", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds150" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds
+    },
+]
+
+var HighlanderPush6 = [
+    {
+        "name": "Warm Up", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds60" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds, or "Check"
+    },
+    {
+        "name": "Bench Press", // Exercise name on Quotes
+        "sets": 3, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Weights and Reps" // "Weights and Reps", or "Seconds"
+    },
+    {
+        "name": "Machine Shoulder Press (Superset #1)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Dips (Weighted) (Superset #1)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Lateral Raise (Superset #2)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Triceps Pushdown (Superset #2)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Stretch", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds150" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds
+    },
+]
+
+var HighlanderLeg6 = [
+    {
+        "name": "Warm Up", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds60" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds, or "Check"
+    },
+    {
+        "name": "Squat (Deep)", // Exercise name on Quotes
+        "sets": 3, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Weights and Reps" // "Weights and Reps", or "Seconds"
+    },
+    {
+        "name": "Romanian Leg Deadlift (Superset #1)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Lunges (Superset #1)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Leg Extension (Superset #2)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Leg Raises (Superset #2)",
+        "sets": 3,
+        "warmup": 0,
+        "type": "Weights and Reps"
+    },
+    {
+        "name": "Stretch", // Exercise name on Quotes
+        "sets": 0, // Number of sets
+        "warmup": 1, // 0 for no warmup sets, 1 for one warmup set
+        "type": "Seconds150" // "Weights and Reps" or "Seconds180", 180 being the amount of seconds
     },
 ]
