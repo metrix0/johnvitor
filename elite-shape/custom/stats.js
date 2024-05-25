@@ -25,7 +25,7 @@ var userstats = [
     },
     {
         'userid': 'Luigi',
-        'targetCalories': 2500,
+        'targetCalories': 2600,
         'caloriesDescription': "Na SEMANA 1 vamos testar sua responsividade ao treino.",
         'comingNext': "Na SEMANA 2 vamos refinar seu consumo de calorias e treino.",
     },
@@ -37,7 +37,7 @@ var userstats = [
     },
     {
         'userid': 'Neo',
-        'targetCalories': 2700,
+        'targetCalories': 2800,
         'caloriesDescription': "Na SEMANA 1 vamos testar sua responsividade ao treino.",
         'comingNext': "Na SEMANA 2 vamos refinar seu consumo de calorias e treino.",
     },

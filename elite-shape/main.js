@@ -868,12 +868,7 @@ function generategroceries(){
             })
             if(grocerieslist[grocerieslist.length-1].quantity.toString().includes("g")){
                 grocerieslist[grocerieslist.length-1].quantity = parseInt(grocerieslist[grocerieslist.length-1].quantity.replace(/\D/g,''))*7
-                if(grocerieslist[grocerieslist.length-1].quantity > 999){
-                    grocerieslist[grocerieslist.length-1].quantity = parseFloat(grocerieslist[grocerieslist.length-1].quantity)/1000+"Kg"
-                }
-                else{
-                    grocerieslist[grocerieslist.length-1].quantity += 'g';
-                }
+                grocerieslist[grocerieslist.length-1].quantity += 'g';
             }
             else if(grocerieslist[grocerieslist.length-1].quantity.toString().includes("ptional")){
                 grocerieslist[grocerieslist.length-1].quantity = ""
@@ -899,10 +894,29 @@ function generategroceries(){
     for(let i = 0; i < grocerieslist.length; i++){
         for(let j = 0; j < grocerieslist.length; j++){
             if(grocerieslist[i].ingredient === grocerieslist[j].ingredient && i !== j){
-                if(grocerieslist[i].quantity.includes('g')){grocerieslist[i].quantity = parseInt(grocerieslist[i].quantity)+parseInt(grocerieslist[j].quantity)+'g'}
+                if(grocerieslist[i].quantity.includes('g')){grocerieslist[i].quantity = parseInt(grocerieslist[i].quantity)+parseInt(grocerieslist[j].quantity)+'g'
+                    if(grocerieslist[grocerieslist.length-1].quantity > 999){
+                        console.log(grocerieslist[grocerieslist.length-1].ingredient)
+                        console.log(grocerieslist[grocerieslist.length-1].quantity)
+                        console.log(parseFloat(grocerieslist[grocerieslist.length-1].quantity))
+                        grocerieslist[grocerieslist.length-1].quantity = parseFloat(grocerieslist[grocerieslist.length-1].quantity)/1000+"Kg"
+                        console.log(grocerieslist[grocerieslist.length-1].quantity)
+                    }
+                }
                 else{grocerieslist[i].quantity = parseInt(grocerieslist[i].quantity)+parseInt(grocerieslist[j].quantity)+'x'}
                 grocerieslist.splice(j,1)
             }
+
+        }
+    }
+
+    for(let i = 0; i < grocerieslist.length; i++) {
+        if(parseInt(grocerieslist[i].quantity) > 999){
+            console.log(grocerieslist[i].ingredient)
+            console.log(grocerieslist[i].quantity)
+            console.log(parseFloat(grocerieslist[i].quantity))
+            grocerieslist[i].quantity = parseFloat(grocerieslist[i].quantity)/1000+"Kg"
+            console.log(grocerieslist[i].quantity)
         }
         if(grocerieslist[i].quantity === ''){
             extralist.push(grocerieslist[i])
@@ -912,7 +926,8 @@ function generategroceries(){
             groceriestext += '<i class="fa-regular fa-circle-check" style="transition: 0.2s;font-size: 120%; display: inline-block; margin-right: 2%;cursor: pointer; transform: translateY(4%);" onclick="circlecheck(this)"></i><b style="user-select: none">'+grocerieslist[i].quantity+"</b> "+grocerieslist[i].ingredient+"<br>"
         }
     }
-    for(let i = 0; i < extralist.length; i++){
+
+        for(let i = 0; i < extralist.length; i++){
         groceriestext += '<b style="user-select: none; font-size: 70%; font-weight: 700; transform: translateY(-5%); display: inline-block; margin-right: 2%">OPTIONAL</b>'+extralist[i].ingredient+'<br>'
     }
     setTimeout(function (){
@@ -962,10 +977,3 @@ function sendworkoutlog(){
     window.open('https://api.whatsapp.com/send/?phone=5519988760900&text='+bigtxt)
     //window.location.reload()
 }
-
-window.addEventListener("load",function() {
-    setTimeout(function(){
-        // This hides the address bar:
-        window.scrollTo(0, 1);
-    }, 0);
-});
