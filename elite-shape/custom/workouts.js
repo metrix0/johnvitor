@@ -234,6 +234,24 @@ var workoutlist = function() {
                     "name": "Neo's Shoulder Obliteration",
                     "duration": '60-75 MINUTES'
                 },
+                {
+                    "id": HighlanderLeg6,
+                    "varname": "HighlanderLeg6",
+                    "name": "Highlander Leg",
+                    "duration": '75-90 MINUTES'
+                },
+                {
+                    "id": HighlanderPush6,
+                    "varname": "HighlanderPush6",
+                    "name": "Highlander Push",
+                    "duration": '75-90 MINUTES'
+                },
+                {
+                    "id": HighlanderPull6,
+                    "varname": "HighlanderPull6",
+                    "name": "Highlander Pull",
+                    "duration": '75-90 MINUTES'
+                },
             ]
         },
 
