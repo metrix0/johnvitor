@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex,nofollow" />
+  <title>JVDashboard | Lima Imports</title>
+  <meta property="og:site_name" content="BALIERO | Fotógrafo">
+  <meta property="og:site-name" content="BALIERO | Fotógrafo">
+  <meta property="og:title" content="BALIERO | Fotógrafo">
+  <meta name="description" content="Fotos incríveis para seu evento ou produto.">
+  <meta property="og:url" content="https://atraentecomomodelo.com">
+  <meta name="keywords" content="fotógrafo,rio claro, são paulo, susano, fotos, profissional, de eventos, de produtos, de família">
+  <meta name="subject" content="Fotos incríveis para seu evento ou produto.">
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="shortcut icon" type="image/x-icon" href="../../img/favicon.ico" />
+</head>
+<body onload="Welcome()">
+<div style="position: fixed; width: 100%; height: 100vh; background: black; z-index: 9999;text-align: center" id="loader">
+  <div style="width: 100%; height: 100%; display: flex; align-content: center; align-items: center; justify-content: center">
+    <div>
+      <p style="font-weight: 700;line-height: 100%;width: 100%" class="syne"><span id="up">JOHN</span><br><span id="bottom">VITOR</span></p>
+      <p class="stretched small loading" style="width: 100%; margin-top: 50px; letter-spacing: 12px;;font-size: 50%">LOADING</p>
+    </div>
+  </div>
+</div>
+<div id="black" class="none" style="pointer-events: none;top: 0;transition: 0.8s;width: 100%; height: 100% ; background-color: black; position: fixed; z-index: 99999; opacity: 0%"></div>
+<div id="window1" class="none hiddencfg WINDOW" style="top: 0;transition: 0.5s;width: 100%; height: 100% ;position: fixed; z-index: 999999; color: var(--smallstealth)">
+  <div style="text-align: center;width: 30%; background-color: white; position: absolute; top: 0; margin: auto; bottom: 0; left: 0; right: 0; border-radius: 15px; height: 40%">
+    <p style="font-size: 110%; position: absolute; right: 1dvw; top: 0.5dvw;z-index: 5"><i onclick="closeWindows()" class="fa-solid fa-xmark iconbutton" style="padding-bottom: 8px"></i></p>
+    <p class="syne" style="font-weight: 700; text-align: center; margin-top: 6%; font-size: 110%;margin-bottom: 10%">ADICIONAR APARELHO</p>
+    <div id="usercontainer" class="searchcontainer" style="font-size: 130%;margin-top: 3%;text-align: left;margin-left: 8%;border-radius: 6px; width: 80%; padding: 4px 7px 4px 7px; position: relative;">
+      <input autocomplete="off" id="phonename"  placeholder="Nome do Aparelho" class="mediumtext" style="font-size: 70%;width: 85%;;background: transparent;position: absolute;top: 0;bottom: 0;margin: auto;margin-left: 1%;font-family: Poppins, 'sans-serif';caret-color: var(--main);color: var(--apptext);">
+      <span style="margin-left: 2%;margin-right: 2%; visibility: hidden"><i class="fa-solid fa-envelope"></i></span>
+      <span style="margin-left: 2%;margin-right: 5%; position: absolute; right: 0"><i class="fa-solid fa-mobile"></i></span>
+    </div>
+    <div style="position: absolute; bottom: 10%; left: 0; right: 0; margin: auto">
+      <span class="button syne" style="font-weight: 600; background-color: var(--smallstealth); color: white; padding: 4px 12px 4px 12px; border-radius: 4px; font-size: 85%;cursor: pointer" onclick="addDevice()">ADICIONAR</span>
+    </div>
+  </div>
+</div>
+<div style="position: fixed; z-index: 900; width: 100%; text-align: right; margin-top: 1%; transition: 0.5s; transition-timing-function: ease; color: var(--bg)">
+  <span id="Popup" style="margin-right: 1%;cursor: pointer;background: white; box-shadow: 0px 0px 15px rgba(0,0,0,0.3); border-radius: 4px; padding: 5px 16px 5px 12px; font-size: 85%;display: inline-block; transition: 0.8s; pointer-events: none" class="mediumtext errortransition"><i class="fa-solid fa-check" style="color: var(--green)"></i> ⠀Salvo com sucesso.</span>
+</div>
+<div style="position: fixed; z-index: 900; width: 100%; text-align: right; margin-top: 1%; transition: 0.5s; transition-timing-function: ease; color: var(--bg)">
+  <span id="Popup2" style="margin-right: 1%;cursor: pointer;background: white; box-shadow: 0px 0px 15px rgba(0,0,0,0.3); border-radius: 4px; padding: 5px 16px 5px 12px; font-size: 85%;display: inline-block; transition: 0.8s; pointer-events: none" class="mediumtext errortransition"><i class="fa-solid fa-xmark" style="color: var(--red)"></i> ⠀Erro ao salvar. Verifique a conexão.</span>
+</div>
+<div style="position: fixed; z-index: 900; width: 100%; text-align: right; margin-top: 1%; transition: 0.5s; transition-timing-function: ease; color: var(--bg)">
+  <span id="Popup3" style="margin-right: 1%;cursor: pointer;background: white; box-shadow: 0px 0px 15px rgba(0,0,0,0.3); border-radius: 4px; padding: 5px 16px 5px 12px; font-size: 85%;display: inline-block; transition: 0.8s; pointer-events: none" class="mediumtext errortransition"><i class="fa-solid fa-chart-line" style="color: #d319d3"></i> ⠀Seus dados ainda estão sendo adquiridos.</span>
+</div>
+<div style="width: 15%;height: 100svh; position: fixed; left: 0; top: 0; background-color: var(--stealth)">
+  <div style="width: 100%; position: relative; background-color: var(--stealth)">
+    <p id="body" class="syne" style="font-weight: 700;width: 80%;margin-left: 10%;text-align: center;margin-top: 15%; line-height: 80%">
+      JOHN VITOR
+      <br>
+      <span style="font-size: 65%; font-weight: 700; letter-spacing: 3px">DASHBOARD</span>
+      <br>
+    <div style="width: 60%;margin-left: 20%;; border-bottom: 1px solid white; margin-top: 5%; position: relative; text-align: center">
+    <i class="fa-solid fa-xmark" style=";position: absolute;width: 15%;padding-bottom: 15px; top: 0; left: 0; bottom: 0; right: 0; margin: auto; transform: scaleX(120%); font-size: 90%; background-color: var(--stealth);"></i></div>
+    </p>
+    <p style="font-weight: 400;width: 80%;margin-left: 10%;text-align: center;margin-top: 8%; line-height: 80%; position: relative;">
+      <img src="../logos/limaimports.png" style="width: 65%;">
+    </p>
+  </div>
+  <div style="width: 100%; height: 70%; margin-top: 10%; display: flex; justify-content: center; align-items: center">
+    <div style="width: 80%;position: relative;font-size: 85%;text-align: center;font-weight: 400;color: white;flex: 0 0 100%; align-items: center;justify-content: center">
+      <p class="adicionar navselected"  style="width: 96%; margin-bottom: 18%; margin-left: 2%;padding: 5px 0px 5px 0px"><span>Simulador de Upgrades <i class="fa-solid fa-gear"></i></span></p>
+      <p class="adicionar"  style="width: 96%; margin-bottom: 18%; margin-left: 2%;padding: 5px 0px 5px 0px"><span onclick="gpopup(document.getElementById('Popup3'))">Estatísticas <i class="fa-solid fa-chart-simple"></i></span></p>
+    </div>
+  </div>
+  <div style="pointer-events: none;position: absolute; bottom: 5%; color: var(--small); font-size: 72%; text-align: center; width: 90%; left: 5%">
+    Precisa de Ajuda? Contate:<br>
+    <span style="cursor: pointer; pointer-events: all"><i class="fa-brands fa-whatsapp"></i> 19 988760900<br></span>
+    <span style="cursor: pointer; pointer-events: all"><i class="fa-regular fa-envelope" style="font-size: 94%"></i> ctt@johnvitor.com</span>
+  </div>
+</div>
+<div style="height: 100svh; width: 81%;margin-left: 15%; position: fixed">
+  <div style="height: 100svh;width: 100%; position: relative; overflow: hidden" id="home">
+    <div style="position: relative;width: 45%; margin-left: 4.5%;border: 1px solid var(--small);border-radius: 18px; height: 90%; margin-top: 3.5%; float: left">
+      <p style="margin-top: 5%; width: 80%;margin-left: 10%;text-align: center; font-weight: 600;font-size: 110%;" class="syne">SIMULADOR DE UPGRADE <i class="fa-solid fa-gear" style="display: inline-block;margin-left: 0.5%;font-size: 95%"></i></p>
+      <div style="width: 100%; position: relative; margin-top: 10%">
+        <p style="width: 43%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">NOMES</p>
+        <p style="width: 40%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">VALORES</p>
+      </div>
+      <div style="width: 100%; position: relative;margin-top: 2%; display: inline-block">
+        <p style="font-size: 85%; width: 43%; margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+          Tela Trocada<br>
+          Bateria Trocada<br>
+          Bateria em Manutenção<br>
+          Teve Manutenção<br>
+          Detalhe Estético<br>
+          Algo não Funciona<br>
+      </p>
+        <p style="position: relative;font-size: 85%; width: 30%; margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+          - <span id="1#leftInputSign:0">R$</span> <input id="1#leftInput:0" onkeyup="updateList(this)" style="width: 50%; text-align: right" class="changeable" value="0.00"><br>
+          - <span id="1#leftInputSign:1">R$</span> <input id="1#leftInput:1" onkeyup="updateList(this)" style="width: 50%; text-align: right" class="changeable" value="0.00"><br>
+          - <span id="1#leftInputSign:2">R$</span> <input id="1#leftInput:2" onkeyup="updateList(this)" style="width: 50%; text-align: right" class="changeable" value="0.00"><br>
+          - <span id="1#leftInputSign:3">R$</span> <input id="1#leftInput:3" onkeyup="updateList(this)" style="width: 50%; text-align: right" class="changeable" value="0.00"><br>
+          - <span id="1#leftInputSign:4">R$</span> <input id="1#leftInput:4" onkeyup="updateList(this)" style="width: 50%; text-align: right" class="changeable" value="0.00"><br>
+          - <span id="1#leftInputSign:5">R$</span> <input id="1#leftInput:5" onkeyup="updateList(this)" style="width: 50%; text-align: right" class="changeable" value="0.00"><br>
+        </p>
+        <p style="pointer-events: none; width: 10%;font-size: 85%; margin-left: 2%; display: inline-block;line-height: 200%;white-space: nowrap">
+          <i id="1#leftBtn:0-0" onclick="clickBtn(0, 0, this.id.split(':')[0]+':')" class="fa-solid fa-percent typebutton"></i> <i onclick="clickBtn(1, 0, this.id.split(':')[0]+':')" id="1#leftBtn:0-1" class="fa-solid fa-dollar-sign typebutton typebuttonselected"></i><br>
+          <i id="1#leftBtn:1-0" onclick="clickBtn(0, 1, this.id.split(':')[0]+':')" class="fa-solid fa-percent typebutton"></i> <i onclick="clickBtn(1, 1, this.id.split(':')[0]+':')" id="1#leftBtn:1-1" class="fa-solid fa-dollar-sign typebutton typebuttonselected"></i><br>
+          <i id="1#leftBtn:2-0" onclick="clickBtn(0, 2, this.id.split(':')[0]+':')" class="fa-solid fa-percent typebutton"></i> <i onclick="clickBtn(1, 2, this.id.split(':')[0]+':')" id="1#leftBtn:2-1" class="fa-solid fa-dollar-sign typebutton typebuttonselected"></i><br>
+          <i id="1#leftBtn:3-0" onclick="clickBtn(0, 3, this.id.split(':')[0]+':')" class="fa-solid fa-percent typebutton"></i> <i onclick="clickBtn(1, 3, this.id.split(':')[0]+':')" id="1#leftBtn:3-1" class="fa-solid fa-dollar-sign typebutton typebuttonselected"></i><br>
+          <i id="1#leftBtn:4-0" onclick="clickBtn(0, 4, this.id.split(':')[0]+':')" class="fa-solid fa-percent typebutton"></i> <i onclick="clickBtn(1, 4, this.id.split(':')[0]+':')" id="1#leftBtn:4-1" class="fa-solid fa-dollar-sign typebutton typebuttonselected"></i><br>
+          <i id="1#leftBtn:5-0" onclick="clickBtn(0, 5, this.id.split(':')[0]+':')" class="fa-solid fa-percent typebutton"></i> <i onclick="clickBtn(1, 5, this.id.split(':')[0]+':')" id="1#leftBtn:5-1" class="fa-solid fa-dollar-sign typebutton typebuttonselected"></i><br>
+        </p>
+
+      </div>
+      <div style="width: 90%;; margin-left: 5%; position: absolute; bottom: 3%; text-align: center">
+        <span class="button syne bbtn" style="margin-right: 2%;font-weight: 600; background-color: #0c0c0c; color: var(--almostwhite); padding: 4px 12px 4px 12px; border-radius: 4px; font-size: 85%;" onclick="discardChanges()">DESCARTAR</span> <span class="button syne bbtn" style="font-weight: 600; background-color: #0c0c0c; color: var(--almostwhite); padding: 4px 12px 4px 12px; border-radius: 4px; font-size: 85%;" id="save1">SALVAR</span>
+      </div>
+    </div>
+    <div style="position: relative;width: 45%; margin-left: 4.5%;border: 1px solid var(--small);border-radius: 18px; height: 90%; margin-top: 3.5%; float: left">
+      <p style="margin-top: 5%; width: 80%;margin-left: 10%;text-align: center; font-weight: 600;font-size: 110%;" class="syne">SIMULADOR DE UPGRADE (CELULARES) <i class="fa-solid fa-gear" style="display: inline-block;margin-left: 0.5%;font-size: 95%"></i></p>
+      <div style="width: 100%; position: relative; margin-top: 10%">
+        <p style="width: 43%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">NOMES</p>
+        <p style="width: 40%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">VALORES</p>
+      </div>
+      <div style="width: 100%; position: relative;margin-top: 2%; display: inline-block">
+        <p id="cellphoneNames" style="font-size: 85%; width: 43%; margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p id="cellphonePrices" style="position: relative;font-size: 85%; width: 35%; margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p id="cellphoneTrashes" style="pointer-events: none; width: 5%;font-size: 85%; margin-left: 2%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <span class="adicionar" style=";width: 90%;margin-left: 5%;;font-size: 72%;color: var(--small)" onclick="openWindow(document.getElementById('window1'))">
+          <i class="fa-solid fa-plus"></i> ADICIONAR NOVO APARELHO
+        </span>
+      </div>
+      <div style="width: 90%;; margin-left: 5%; position: absolute; bottom: 3%; text-align: center">
+        <span class="button syne bbtn" style="margin-right: 2%;font-weight: 600; background-color: #0c0c0c; color: var(--almostwhite); padding: 4px 12px 4px 12px; border-radius: 4px; font-size: 85%;" onclick="discardChanges()">DESCARTAR</span> <span class="button syne bbtn" style="font-weight: 600; background-color: #0c0c0c; color: var(--almostwhite); padding: 4px 12px 4px 12px; border-radius: 4px; font-size: 85%;" id="save2">SALVAR</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+<script src="main.js"></script>
+<script src="custom.js"></script>
+</html>
