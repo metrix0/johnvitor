@@ -1,12 +1,16 @@
-:root{--bg: black;
+:root{--bg: #0E0604;
     --txt: white;
     --shine: #997444;
+    --shinespace: #AA5B00;
     --small: #6e6e6e;
+    --green: #60be7c;
+    --red: #dc2d28;
 }
+#997444{}
 html, body {scroll-behavior: smooth;overflow-x: hidden;background-color: var(--bg); color: var(--txt); font-family: "Poppins", sans-serif; margin: 0; z-index: -1}
-::-webkit-scrollbar-thumb {background-color: black}
-::-webkit-scrollbar-thumb:hover {background-color: black;}
-::-webkit-scrollbar {width: 3px;height: 0px;background: transparent;}
+::-webkit-scrollbar-thumb {background-color: var(--shine)}
+::-webkit-scrollbar-thumb:hover {background-color: var(--shine);}
+::-webkit-scrollbar {width: 1px;height: 0px;background: var(--bgr);}
 ::-moz-selection { color: var(--bg);background: var(--shine);}
 ::selection {color: var(--bg);background: var(--shine);}
 .shine {color: var(--shine)}
@@ -15,26 +19,27 @@ a{cursor: pointer !important; transition: 0.15s; color: var(--shine)}
 a:hover{color: var(--shiny); transition: 0.15s}
 .gguia{cursor: pointer;border-bottom: 1px solid transparent;text-decoration: none; color: white !important; margin-right: 1.5%; font-size: 120%;  transition: 0.15s}
 .gguia:hover{border-bottom: 1px solid white; transition: 0.15s}
-.syne{font-family: "Syne", sans-serif}
 .phonebye{display: inline-block}
 .stretched{font-family: "Poppins", sans-serif;
     display: inline-block;
-    -webkit-transform: scale(1,.9);
-    -moz-transform: scale(1,.9);
-    -ms-transform: scale(1,.9);
-    -o-transform: scale(1,.9);
-    transform: scale(1,.9);
+    -webkit-transform: scaleX(108%);
+    -moz-transform: scaleX(108%);
+    -ms-transform: scaleX(108%);
+    -o-transform: scaleX(108%);
+    transform: scaleX(108%);
     font-weight: bold;
     letter-spacing: 4px;
 }
+.syne{font-family: "Syne", sans-serif}
+
 .small{color: var(--small); font-size: 65%}
 .small2{color: var(--small); font-size: 80%}
 .ainverted{color: var(--small);text-decoration: none}
-.ainverted:hover{color: var(--shine)}
+.ainverted:hover{color: var(--shinespace); letter-spacing: 8px}
 .frames1{width: 48%; margin-right: 1%; margin-left: 1%; border-radius: 15px; float: left; position: relative;
 }
-.shining{
-    animation-name: shining; animation-duration: 10s; animation-iteration-count: infinite;
+.shining{;line-height: 80%;
+    animation-name: shining; animation-duration: 25s; animation-iteration-count: infinite;
 }
 .enteranimation1{
     transform: translateY(100%);
@@ -54,10 +59,11 @@ a:hover{color: var(--shiny); transition: 0.15s}
 
 }
 .verticalpanels{
-    position: relative;width: 21%; margin-right: 2%; margin-left: 2%; border-radius: 15px; float: left;
+    position: relative;width: 21%; margin-right: 2%; margin-left: 2%; border-radius: 8px; float: left;
     cursor: pointer;
 }
-.pcbye{display: none}
+.pcbye{display: none !important}
+.pcbye2{display: none !important}
 #up{
     display: inline-block;
     animation-name: up;
@@ -80,6 +86,7 @@ a:hover{color: var(--shiny); transition: 0.15s}
 
 @media screen and (max-width: 1000px) {
     .pcbye{display: block}
+    .pcbye2{display: inline-block!important;}
     .gguia{font-size: 90%}
     .progressionbarwidth{padding-top: 2% !important; padding-bottom: 1.6% !important;}
     .phonebye{display: none !important}
@@ -164,3 +171,133 @@ a:hover{color: var(--shiny); transition: 0.15s}
         opacity: .7
     }
 }
+
+.supertext{
+    text-transform: uppercase;
+    background-image: url("img/HeroTextClip.png");
+    background-size: auto auto;
+    background-clip: border-box;
+    background-size: auto 100%;
+    color: #fff;
+    background-clip: text;
+    background-position: 100% center;
+    text-fill-color: transparent;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation-delay: .6s;
+    display: inline-block;
+    animation-fill-mode: forwards;
+}
+.animatesuper{
+    animation: textclip 3s;
+}
+
+@keyframes textclip {
+    0% {
+        background-position: 100% center;
+    }
+    100%{
+        background-position: 150% center;
+    }
+}
+
+.progressionbarwidth a:hover{
+    scale: 115%; transform: translateY(1%);
+}
+
+html,body{
+    margin:0;
+}
+
+.keep{white-space: nowrap}
+.trow{width: 100%; position: relative; display: inline-block}
+.ttable .trow{
+    border-bottom: solid 1px var(--shine);
+}
+
+.ttable .trow:last-child{
+    border-bottom: 0;
+}
+
+.trow div:first-child{
+    border-right: 1px solid var(--shine);
+}
+
+.trow div:last-child{
+    border-left: 1px solid var(--shine);
+}
+.tcell:first-child{width: calc(40% - 40px); float: left; padding: 20px 20px 20px 20px; text-align: center}
+.tcell{min-height: 63px;width: calc(29.5% - 40px); float: left; padding: 20px 20px 20px 20px; text-align: center}
+.fa-hourglass{ scale: 80%}
+.br2{content: ''; height: 25px; display: inline-block}
+
+.cta{pointer-events: none; scale: 110%}
+.cta span{pointer-events: all; cursor: pointer; transition: .2s; display: inline-block; white-space: nowrap}
+.cta span:first-child{transition: .3s}
+.cta span:first-child:hover{scale: 110%}
+.cta span:hover{scale: 120%}
+
+.cta2 span{pointer-events: all; cursor: pointer; transition: .2s; display: inline-block; white-space: nowrap}
+.cta2 span:hover{scale: 115%; z-index: 99}
+
+
+@media screen and (max-width: 1000px) {
+
+    #anim1{scale: 180%;margin-bottom: 25% !important}
+    .phonehid{visibility: hidden}
+    .bg{ width: 250% !important; left: -75% !important}
+    .c1{width: 90% !important; margin-left: 2.5% !important}
+    .c2{width: 95% !important; margin-left: 2.5% !important; scale: 110%; margin-top: -10%!important;}
+    .to95{width: 85% !important; margin-left: 0% !important; margin-top: -5% !important}
+    .c3{position: relative!important;}
+    .tofitcontent{height: fit-content!important; padding-bottom: 30% !important}
+    .line1{width: 80% !important; margin-top: 27% !important}
+    .cta{margin-top: 10% !important; scale: 125%}
+    .cta span{margin-right: 3%!important;}
+    .cta span:last-child{margin-right: 0 !important;}
+    .fa-whatsapp, .fa-instagram{scale: 120%}
+    .prop1{left: unset!important; right: -8% !important; top: -1%!important; width: 37% !important}
+    .line2{width: 80% !important}
+    .text1{scale: 110%; line-height: 150% !important; margin-bottom: 20% !important}
+    .fa-sack-dollar{margin-top: 3% !important}
+    .tcell{min-height: 250px;width: calc(34.70% - 36px); float: left; padding: 18px 18px 18px 18px;}
+    .tcell:first-child{width: calc(30% - 36px) !important; float: left; padding: 18px 18px 18px 18px;}
+    .ttable{width: 100% !important; margin-left: 0% !important}
+    .firsttc{min-height: 37px !important}
+    .line3{width: 80% !important ;margin-top: 18% !important;margin-bottom: 10%}
+    .dashboardimage{width: 90% !important; margin-left: 5% !important; margin-top: 10% !important}
+    .dashtext{margin-top: 0% !important; width: 90% !important; margin-left: 5% !important}
+    .line4{width: 80% !important ;margin-top: 18% !important;}
+    .c5{display: inline-block!important; margin-top: -10% !important}
+    .image2{width: 70% !important; float: unset!important; margin-left: 15% !important}
+    .c4{width: 90% !important; text-align: center!important; margin-left: 5% !important;margin-top: 5% !important}
+    .cta2 span{margin-top: 5% !important; font-size: 100% !important}
+    .c7{margin-top: 40% !important}
+    .c8{transform:translateY(50%)!important; transition: 1s!important;}
+    .tofit1{padding-bottom: 50% !important}
+    .cta span:first-child{margin-right: 0!important; margin-bottom: 2% !important}
+
+}
+
+.TempBlur{filter: blur(4px); opacity: .33}
+.PropBlur{filter: blur(5px)}
+img{pointer-events: none}
+
+@media screen and (min-width: 1400px){
+    p{font-size: 145%}
+    #anim1{scale: 160%}
+    .c2{margin-top: 2%}
+    .cta{scale: 140%}
+    #t1, #t2, #t3, #t4{font-size: 150% !important; padding: 12px 24px 12px 24px !important}
+    #prop1{scale: 120%}
+    .text11{scale: 140%}
+    .tcell{font-size: 110% !important}
+    .text2{scale: 120%}
+    .c4{font-size: 130%}
+    .cta2{font-size: 120%; margin-top: 3% !important}
+    .c7{scale: 125%}
+}
+
+.hidden{transform: translateY(15vh);
+    opacity: 0;}
+.show{transform: translateY(0%) translateX(0%)!important; opacity: 100% !important}

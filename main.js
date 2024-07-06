@@ -5,18 +5,18 @@ function mobilecheck() {
     return check;
 }
 function Welcome(){
-    var userLang = navigator.language || navigator.userLanguage;
-    if(userLang.toLowerCase() === 'pt-br'){if(window.location.pathname.includes('en')){window.location='./'}}
-    else if(!window.location.pathname.includes('en')){window.location='en.html'}
+    // var userLang = navigator.language || navigator.userLanguage;
+    // if(userLang.toLowerCase() === 'pt-br'){if(window.location.pathname.includes('en')){window.location='./'}}
+    // else if(!window.location.pathname.includes('en')){window.location='en.html'}
     let time = 1
-    if (mobilecheck() === true){time = 600}
+    if (mobilecheck() === true){time = 1}
     setTimeout(function (){
         removeLoader()
         document.title = "John Vitor"
+        document.getElementById('supertext1').classList.add('animatesuper')
         document.getElementById('anim1').classList.remove('enteranimation1')
         document.getElementById('anim2').classList.remove('enteranimation2')
         document.getElementById('anim3').classList.remove('enteranimation3')
-        document.getElementById('anim4').classList.remove('enteranimation4')
     },time)
 
 }
@@ -49,3 +49,70 @@ function vclick(which, a, bool){
         document.getElementById('play'+which).innerHTML='<i class="fa-solid fa-pause"></i>'
     }
 }
+
+var MockList = [
+    'MockBaliero',
+    'MockMeeks',
+    'MockWoke',
+    'MockProteCall',
+    'MockLima',
+    'MockJV',
+    'MockCrescer',
+    'MockMultiple'
+]
+
+var TextList = [
+    '+5 <span class="syne" style="font-weight: 700">CLIENTES/SEMANA</span>',
+    '+30.000R$</span> <span class="syne" style="font-weight: 700">LÍQUIDO/MÊS</span>',
+    '+150 <span class="syne" style="font-weight: 700">HOLDERS</span>',
+    '+312 <span class="syne" style="font-weight: 700">VENDAS/ANO</span>',
+    '+ <span class="syne" style="font-weight: 700">ORGANIZAÇÃO</span>',
+    '+5.000R$ <span class="syne" style="font-weight: 700">LÍQUIDO/MÊS</span>',
+    '+<span class="syne" style="font-weight: 700">DIVULGAÇÃO E RENOME</span>',
+    '+<span class="syne" style="font-weight: 700">DIVULGAÇÃO</span>',
+
+]
+
+let s = 0;
+function seeMore(){
+    const prop = document.getElementById('prop1')
+    console.log(prop)
+    prop.classList.remove('PropBlur')
+    for (let i = 0; i < 4; i++){
+        const el = document.getElementById('m'+(i+1))
+        const el2 = document.getElementById('t'+(i+1))
+        el.classList.add('TempBlur')
+        el2.classList.add('TempBlur')
+
+        setTimeout(function (){el.classList.remove('TempBlur')
+            el2.classList.remove('TempBlur')
+            prop.classList.add('PropBlur')
+
+        },600)
+    }
+    if(s === 4){s = 0}
+    else if(s === 0){s = 4}
+    setTimeout(function (){
+        for (let i = 0; i < 4; i++){
+            document.getElementById('m'+(i+1)).src = 'img/Mocks/'+MockList[s+i]+'.png'
+            document.getElementById('t'+(i+1)).innerHTML = '<span class="stretched" style="letter-spacing: 0px; font-weight: 500">'+TextList[s+i]
+
+        }
+    },600)
+
+}
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+        if(entry.isIntersecting){
+            entry.target.classList.add('show');
+            if(entry.target.classList.contains('c2')){
+                setTimeout(function (){                document.getElementById('supertext2').classList.add('animatesuper')
+                },1000)
+            }
+        }
+    });
+});
+
+const hiddenElements = document.querySelectorAll('.hidden');
+hiddenElements.forEach((el) => observer.observe(el))
