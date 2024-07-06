@@ -277,6 +277,8 @@ html,body{
     .tofit1{padding-bottom: 50% !important}
     .cta span:first-child{margin-right: 0!important; margin-bottom: 2% !important}
 
+    body{width: 100vw; overflow-y: hidden}
+
 }
 
 .TempBlur{filter: blur(4px); opacity: .33}
