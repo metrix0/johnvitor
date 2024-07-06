@@ -88,7 +88,7 @@ function throwaway(which){
 
 const input = document.getElementById('input')
 
-const baseUrl = 'https://jvdashboard.onrender.com/'
+const baseUrl = 'https://jvapivercel.vercel.app/'
 
 window.addEventListener('load',getInfo)
 document.getElementById('save1').addEventListener('click', postInfo)
