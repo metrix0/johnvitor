@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex,nofollow" />
+  <title>JVDashboard | Crescer No Esporte</title>
+  <meta property="og:site_name" content="John Vitor Websites">
+  <meta property="og:site-name" content="John Vitor Websites">
+  <meta property="og:title" content="John Vitor Websites">
+  <meta property="og:color" content="#6E6E6E">
+  <meta name="description" content="Páginas que VENDEM. Webdesign.">
+  <meta property="og:url" content="https://johnvitor.com">
+  <meta name="keywords" content="página de vendas, vendas,pagina,webdesign,design, sales page, page, sales, designer">
+  <meta name="subject" content="Páginas que VENDEM. Webdesign.">
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="shortcut icon" type="image/x-icon" href="../../img/favicon.ico" />
+</head>
+<body onload="Welcome()">
+<div style="position: fixed; width: 100%; height: 100vh; background: black; z-index: 9999;text-align: center" id="loader">
+  <div style="width: 100%; height: 100%; display: flex; align-content: center; align-items: center; justify-content: center">
+    <div>
+      <p style="font-weight: 700;line-height: 100%;width: 100%" class="syne"><span id="up">JOHN</span><br><span id="bottom">VITOR</span></p>
+      <p class="stretched small loading" style="width: 100%; margin-top: 50px; letter-spacing: 12px;;font-size: 50%">LOADING</p>
+    </div>
+  </div>
+</div>
+<div id="black" class="none" style="pointer-events: none;top: 0;transition: 0.8s;width: 100%; height: 100% ; background-color: black; position: fixed; z-index: 99999; opacity: 0%"></div>
+<div id="window1" class="none hiddencfg WINDOW" style="top: 0;transition: 0.5s;width: 100%; height: 100% ;position: fixed; z-index: 999999; color: var(--smallstealth)">
+  <div style="text-align: center;width: 30%; background-color: white; position: absolute; top: 0; margin: auto; bottom: 0; left: 0; right: 0; border-radius: 15px; height: 40%">
+    <p style="font-size: 110%; position: absolute; right: 1dvw; top: 0.5dvw;z-index: 5"><i onclick="closeWindows()" class="fa-solid fa-xmark iconbutton" style="padding-bottom: 8px"></i></p>
+    <p id="add" class="syne" style="font-weight: 700; text-align: center; margin-top: 6%; font-size: 110%;margin-bottom: 10%">ADICIONAR</p>
+    <div id="usercontainer" class="searchcontainer" style="font-size: 130%;margin-top: 3%;text-align: left;margin-left: 8%;border-radius: 6px; width: 80%; padding: 4px 7px 4px 7px; position: relative;">
+      <input autocomplete="off" id="phonename"  placeholder="Nome" class="mediumtext" style="font-size: 70%;width: 85%;;background: transparent;position: absolute;top: 0;bottom: 0;margin: auto;margin-left: 1%;font-family: Poppins, 'sans-serif';caret-color: var(--main);color: var(--apptext);">
+      <span style="margin-left: 2%;margin-right: 2%; visibility: hidden"><i class="fa-solid fa-envelope"></i></span>
+      <span style="margin-left: 2%;margin-right: 5%; position: absolute; right: 0"><i class="fa-solid fa-person"></i></span>
+    </div>
+    <div style="position: absolute; bottom: 10%; left: 0; right: 0; margin: auto">
+      <span id="addbutton" class="button syne" style="font-weight: 600; background-color: var(--smallstealth); color: white; padding: 4px 12px 4px 12px; border-radius: 4px; font-size: 85%;cursor: pointer" onclick="addSomething()">ADICIONAR</span>
+    </div>
+  </div>
+</div>
+
+<div style="position: fixed; z-index: 900; width: 100%; text-align: right; margin-top: 1%; transition: 0.5s; transition-timing-function: ease; color: var(--bg)">
+  <span id="Popup" style="margin-right: 1%;cursor: pointer;background: white; box-shadow: 0px 0px 15px rgba(0,0,0,0.3); border-radius: 4px; padding: 5px 16px 5px 12px; font-size: 85%;display: inline-block; transition: 0.8s; pointer-events: none" class="mediumtext errortransition"><i class="fa-solid fa-check" style="color: var(--green)"></i> ⠀Salvo com sucesso.</span>
+</div>
+<div style="position: fixed; z-index: 900; width: 100%; text-align: right; margin-top: 1%; transition: 0.5s; transition-timing-function: ease; color: var(--bg)">
+  <span id="Popup2" style="margin-right: 1%;cursor: pointer;background: white; box-shadow: 0px 0px 15px rgba(0,0,0,0.3); border-radius: 4px; padding: 5px 16px 5px 12px; font-size: 85%;display: inline-block; transition: 0.8s; pointer-events: none" class="mediumtext errortransition"><i class="fa-solid fa-xmark" style="color: var(--red)"></i> ⠀Erro ao salvar. Verifique a conexão.</span>
+</div>
+<div style="position: fixed; z-index: 900; width: 100%; text-align: right; margin-top: 1%; transition: 0.5s; transition-timing-function: ease; color: var(--bg)">
+  <span id="Popup3" style="margin-right: 1%;cursor: pointer;background: white; box-shadow: 0px 0px 15px rgba(0,0,0,0.3); border-radius: 4px; padding: 5px 16px 5px 12px; font-size: 85%;display: inline-block; transition: 0.8s; pointer-events: none" class="mediumtext errortransition"><i class="fa-solid fa-chart-line" style="color: #d319d3"></i> ⠀Seus dados ainda estão sendo adquiridos.</span>
+</div>
+<div style="width: 15%;height: 100svh; position: fixed; left: 0; top: 0; background-color: var(--stealth)">
+  <div style="width: 100%; position: relative; background-color: var(--stealth)">
+    <p id="body" class="syne" style="font-weight: 700;width: 80%;margin-left: 10%;text-align: center;margin-top: 15%; line-height: 80%">
+      JOHN VITOR
+      <br>
+      <span style="font-size: 65%; font-weight: 700; letter-spacing: 3px">DASHBOARD</span>
+      <br>
+    <div style="width: 60%;margin-left: 20%;; border-bottom: 1px solid white; margin-top: 5%; position: relative; text-align: center">
+    <i class="fa-solid fa-xmark" style=";position: absolute;width: 15%;padding-bottom: 15px; top: 0; left: 0; bottom: 0; right: 0; margin: auto; transform: scaleX(120%); font-size: 90%; background-color: var(--stealth);"></i></div>
+    </p>
+    <p style="font-weight: 400;width: 80%;margin-left: 10%;text-align: center;margin-top: 8%; line-height: 80%; position: relative;">
+      <img src="../logos/crescernoesporte.png" style="width: 65%;">
+    </p>
+  </div>
+  <div style="width: 100%; height: 70%; margin-top: 0%; display: flex; justify-content: center; align-items: center">
+    <div style="width: 80%;position: relative;font-size: 85%;text-align: center;font-weight: 400;color: white;flex: 0 0 100%; align-items: center;justify-content: center">
+      <p class="adicionar"  style="width: 96%; margin-bottom: 18%; margin-left: 2%;padding: 5px 0px 5px 0px"><span>Banco de Dados <i class="fa-solid fa-database"></i></span></p>
+      <p class="adicionar navselected"  style="width: 96%; margin-bottom: 18%; margin-left: 2%;padding: 5px 0px 5px 0px"><span>Modificações <i class="fa-solid fa-gear"></i></span></p>
+      <p class="adicionar"  style="width: 96%; margin-bottom: 18%; margin-left: 2%;padding: 5px 0px 5px 0px"><span onclick="gpopup(document.getElementById('Popup3'))">Estatísticas <i class="fa-solid fa-chart-simple"></i></span></p>
+    </div>
+  </div>
+  <div style="pointer-events: none;position: absolute; bottom: 5%; color: var(--small); font-size: 72%; text-align: center; width: 90%; left: 5%">
+    Precisa de Ajuda? Contate:<br>
+    <span style="cursor: pointer; pointer-events: all"><i class="fa-brands fa-whatsapp"></i> 19 988760900<br></span>
+    <span style="cursor: pointer; pointer-events: all"><i class="fa-regular fa-envelope" style="font-size: 94%"></i> ctt@johnvitor.com</span>
+  </div>
+</div>
+<div style="height: 100svh; width: 81%;margin-left: 15%; position: fixed">
+  <div style="height: 95svh;margin-top: 4svh;width: 100%; position: relative; overflow-y: scroll" id="home">
+    <div style="position: relative;padding-bottom: 20svh;width: 95%; margin-left: 4.5%;border: 1px solid var(--small);border-radius: 18px; height: fit-content;; float: left">
+        <p style="margin-top: 4%; width: 80%;margin-left: 10%;text-align: center; font-weight: 600;font-size: 110%;" class="syne">BANNERS <i class="fa-solid fa-gear" style="display: inline-block;margin-left: 0.5%;font-size: 95%"></i></p>
+        <div style="width: 100%; position: relative; margin-top: 5%">
+          <p style="width: 40%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">BANNER</p>
+          <p style="width: 40%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">IMAGEM</p>
+
+        </div>
+        <div style="width: 100%; position: relative;margin-top: 2%; display: inline-block">
+          <p style="font-size: 85%; width: 40%; margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+            Banner 1<br>
+            Banner 2<br>
+            Banner 3
+        </p>
+          <p id="banners" style="position: relative;font-size: 85%; width: 40%; margin-left: 4%; display: inline-block;line-height: 200%;white-space: nowrap">
+            <input id="banner.src-0" onkeyup="updateList(this)" value="" placeholder="banner1.png" style="width: 100%; text-align: left" class="changeable"><br class="skip">
+            <input id="banner.src-1" onkeyup="updateList(this)" value="" placeholder="banner1.png" style="width: 100%; text-align: left" class="changeable"><br class="skip">
+            <input id="banner.src-2" onkeyup="updateList(this)" value="" placeholder="banner1.png" style="width: 100%; text-align: left" class="changeable">
+          </p>
+
+        </div>
+
+
+      <p style="margin-top: 5%; width: 80%;margin-left: 10%;text-align: center; font-weight: 600;font-size: 110%;" class="syne">CHAMAMENTO PÚBLICO <i class="fa-solid fa-gear" style="display: inline-block;margin-left: 0.5%;font-size: 95%"></i></p>
+      <div style="width: 95%; position: relative; margin-top: 2.5%;margin-left: 2.5%">
+        <p style="width: 100%; margin-left: 2%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">MENSAGEM GERAL</p>
+      </div>
+      <p id="datachamamentos" style="position: relative;font-size: 85%; width: 90%; margin-left: 4%; margin-top: 1%;display: inline-block;line-height: 200%;white-space: nowrap">
+        <input id="datachamamento.data-0" onkeyup="updateList(this)" value="Envie até 12/12/2024." placeholder="Envie até 12/12/2024." style="width: 100%; text-align: left" class="changeable"><br class="skip">
+     </p>
+      <div style="width: 95%; position: relative; margin-top: 2.5%;margin-left: 2.5%">
+        <p style="width: 20%; margin-left: 2%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">VAGA</p>
+        <p style="width: 40%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">DESCRIÇÃO</p>
+        <p style="width: 10%; margin-left: 3%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">QUANTIA</p>
+        <p style="width: 10%; margin-left: 4.5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">TEMPO</p>
+
+      </div>
+      <div id="vagas" style=";width: 95%;float: left; margin-left: 2.5%;position: relative;margin-top: 2%; display: inline-block; ">
+        <p style="font-size: 85%; width: 20%; margin-left:2%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(40% - 22px); margin-left: 4%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(10% - 22px); margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(10% - 22px); margin-left: 6%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="pointer-events: none; width: 5%;font-size: 85%;text-align: right; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+      </div>
+      <p style="display: inline-block;margin-top: 1%; width: 100%">
+      <span class="adicionar" style="width: 90%;margin-left: 5%;;font-size: 72%;color: var(--small)" onclick="openForm('vaga',document.getElementById('window1'))">
+          <i class="fa-solid fa-plus"></i> ADICIONAR NOVA VAGA
+        </span></p>
+
+      <p style="margin-top: 5%; width: 80%;margin-left: 10%;text-align: center; font-weight: 600;font-size: 110%;" class="syne">PARCERIAS <i class="fa-solid fa-gear" style="display: inline-block;margin-left: 0.5%;font-size: 95%"></i></p>
+      <div style="width: 95%; position: relative; margin-top: 5%;margin-left: 2.5%">
+        <p style="width: 20%; margin-left: 2%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">NOME</p>
+        <p style="width: 45%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">DESCRIÇÃO</p>
+        <p style="width: 15%; margin-left: 3%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">LOGO</p>
+
+      </div>
+      <div id="parceiros" style=";width: 95%;float: left; margin-left: 2.5%;position: relative;margin-top: 2%; display: inline-block; ">
+        <p style="font-size: 85%; width: 20%; margin-left:2%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(45% - 22px); margin-left: 4%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(19% - 22px); margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p  style="pointer-events: none; width: 5%;font-size: 85%; margin-left: 3%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+      </div>
+      <p style="display: inline-block;margin-top: 1%; width: 100%">
+      <span class="adicionar" style="width: 90%;margin-left: 5%;;font-size: 72%;color: var(--small)" onclick="openForm('parceiro',document.getElementById('window1'))">
+          <i class="fa-solid fa-plus"></i> ADICIONAR NOVA PARCERIA
+        </span></p>
+
+
+      <p style="margin-top: 5%; width: 80%;margin-left: 10%;text-align: center; font-weight: 600;font-size: 110%;" class="syne">ATAS <i class="fa-solid fa-gear" style="display: inline-block;margin-left: 0.5%;font-size: 95%"></i></p>
+      <div style="width: 95%; position: relative; margin-top: 5%;margin-left: 2.5%">
+        <p style="width: 20%; margin-left: 2%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">NOME</p>
+        <p style="width: 45%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">DATA</p>
+        <p style="width: 15%; margin-left: 3%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">ARQUIVO</p>
+
+      </div>
+      <div id="atas" style=";width: 95%;float: left; margin-left: 2.5%;position: relative;margin-top: 2%; display: inline-block; ">
+        <p style="font-size: 85%; width: 20%; margin-left:2%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(45% - 22px); margin-left: 4%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(19% - 22px); margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="pointer-events: none; width: 5%;font-size: 85%; margin-left: 3%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+      </div>
+      <p style="display: inline-block;margin-top: 1%; width: 100%">
+      <span class="adicionar" style="width: 90%;margin-left: 5%;;font-size: 72%;color: var(--small)" onclick="openForm('ata',document.getElementById('window1'))">
+          <i class="fa-solid fa-plus"></i> ADICIONAR NOVA ATA
+        </span></p>
+
+      <p style="margin-top: 5%; width: 80%;margin-left: 10%;text-align: center; font-weight: 600;font-size: 110%;" class="syne">PRESTAÇÃO DE CONTAS <i class="fa-solid fa-gear" style="display: inline-block;margin-left: 0.5%;font-size: 95%"></i></p>
+      <div style="width: 95%; position: relative; margin-top: 5%;margin-left: 2.5%">
+        <p style="width: 20%; margin-left: 2%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">NOME</p>
+        <p style="width: 45%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">DATA</p>
+        <p style="width: 15%; margin-left: 3%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">ARQUIVO</p>
+
+      </div>
+      <div id="prestacaos" style=";width: 95%;float: left; margin-left: 2.5%;position: relative;margin-top: 2%; display: inline-block; ">
+        <p style="font-size: 85%; width: 20%; margin-left:2%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(45% - 22px); margin-left: 4%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(19% - 22px); margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="pointer-events: none; width: 5%;font-size: 85%; margin-left: 3%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+      </div>
+      <p style="display: inline-block;margin-top: 1%; width: 100%">
+      <span class="adicionar" style="width: 90%;margin-left: 5%;;font-size: 72%;color: var(--small)" onclick="openForm('prestacao',document.getElementById('window1'))">
+          <i class="fa-solid fa-plus"></i> ADICIONAR NOVA PRESTAÇÃO
+        </span></p>
+
+      <p style="margin-top: 5%; width: 80%;margin-left: 10%;text-align: center; font-weight: 600;font-size: 110%;" class="syne">DIRETORIA <i class="fa-solid fa-gear" style="display: inline-block;margin-left: 0.5%;font-size: 95%"></i></p>
+      <div style="width: 95%; position: relative; margin-top: 5%;margin-left: 2.5%">
+        <p style="width: 20%; margin-left: 2%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">NOME</p>
+        <p style="width: 30%; margin-left: 5%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">DESCRIÇÃO</p>
+        <p style="width: 15%; margin-left: 3%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">CARGO</p>
+          <p style="width: 15%; margin-left: 3%; float: left; color: var(--small); letter-spacing: 6px; font-size: 65%; font-weight: 700" class="syne">FOTO</p>
+
+      </div>
+      <div id="diretorias" style=";width: 95%;float: left; margin-left: 2.5%;position: relative;margin-top: 2%; display: inline-block; ">
+        <p style="font-size: 85%; width: 20%; margin-left:2%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+        <p style="position: relative;font-size: 85%; width: calc(30% - 22px); margin-left: 4%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+          <p style="position: relative;font-size: 85%; width: calc(15% - 22px); margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+          </p>
+          <p style="position: relative;font-size: 85%; width: calc(15% - 22px); margin-left: 5%; display: inline-block;line-height: 200%;white-space: nowrap">
+          </p>
+        <p style="pointer-events: none; width: 5%;font-size: 85%; margin-left: 3%; display: inline-block;line-height: 200%;white-space: nowrap">
+        </p>
+      </div>
+      <p style="display: inline-block;margin-top: 1%; width: 100%">
+      <span class="adicionar" style="width: 90%;margin-left: 5%;;font-size: 72%;color: var(--small)" onclick="openForm('membro',document.getElementById('window1'))">
+          <i class="fa-solid fa-plus"></i> ADICIONAR NOVO MEMBRO
+        </span></p>
+
+
+
+
+
+
+
+
+      <div style="width: 90%;; margin-left: 5%; position: absolute; bottom: 3%; text-align: center">
+        <span class="button syne bbtn" style="margin-right: 2%;font-weight: 600; background-color: #0c0c0c; color: var(--almostwhite); padding: 4px 12px 4px 12px; border-radius: 4px; font-size: 85%;" onclick="discardChanges()">DESCARTAR</span> <span class="button syne bbtn" style="font-weight: 600; background-color: #0c0c0c; color: var(--almostwhite); padding: 4px 12px 4px 12px; border-radius: 4px; font-size: 85%;" id="save1">SALVAR</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+<script src="main.js"></script>
+<script src="custom.js"></script>
+</html>

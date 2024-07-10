@@ -25,6 +25,17 @@ function removeLoader(){
 }
 
 
+function openForm(name, window){
+    const input = document.getElementById('phonename')
+    document.getElementById('add').innerHTML = 'ADICIONAR '+name.toUpperCase();
+    document.getElementById('phonename').placeholder = 'Nome do(a) '+name
+    document.getElementById('addbutton').onclick = function (){
+        addSomething(name, input.value)
+    }
+    openWindow(window)
+    input.value = ""
+}
+
 
 function openWindow(window){
     let black = document.getElementById('black')
@@ -45,44 +56,24 @@ function closeWindows(){
     }
 }
 
-function clickBtn(which, n, place){
-    var btn1 = document.getElementById(place+n+'-0');
-    var btn2 =document.getElementById(place+n+'-1');
-    var sign = document.getElementById('1#leftInputSign:'+n);
-    valoresCategorias[n][1] = which;
-    if(which === 0){
-        btn1.classList.add('typebuttonselected')
-        btn2.classList.remove('typebuttonselected')
-        sign.innerHTML = '%<span style="visibility: hidden">..</span>'
-
-    }
-    else{
-        btn1.classList.remove('typebuttonselected')
-        btn2.classList.add('typebuttonselected')
-        sign.innerHTML = 'R$'
-    }
-}
-
-
 function updateList(input){
-    valoresCategorias[input.id.split(':')[1]][0] = input.value
-    console.log(valoresCategorias)
-}
-function updatePricePhones(input){
-    cellphones[input.id.split(':')[1]].price = input.value
-    console.log(cellphones)
+    modified = true
+    var obj = Crescer[input.id.split('.')[0]]
+    obj[input.id.split('-')[1]][input.id.split('.')[1].split('-')[0]] = input.value
 }
 
 function throwaway(which){
-    var num = which.id.split("PhonesTrash:")[1];
-    if(confirm("Você tem certeza que deseja DELETAR o "+cellphones[num].name+"?")){
-        cellphones.splice(num, 1)
+    modified = true
+    var num = which.id.split("Trash-")[1];
+    var what = which.id.split("Trash")[0];
+    if(confirm("Você tem certeza que deseja DELETAR "+Crescer[what][num].name+"?")){
+        Crescer[what].splice(num, 1)
+        const place = document.getElementById(what+'s').children
+        for(let i = 0; i < place.length; i++){
+            place[i].children[num].remove()
+        }
     }
     else{}
-    console.log(cellphones)
-    phoneNames.children[num].remove()
-    phonePrices.children[num].remove()
-    phoneTrashes.children[num].remove()
 
 }
 
@@ -92,36 +83,33 @@ const baseUrl = 'https://jvapivercel.vercel.app/'
 
 window.addEventListener('load',getInfo)
 document.getElementById('save1').addEventListener('click', postInfo)
-document.getElementById('save2').addEventListener('click', postInfo)
 
 var tfirst = true;
 
 async function getInfo(e){
     e.preventDefault()
-    const res = await fetch(baseUrl + 'info/limaImports?key=all', {
+    const res = await fetch(baseUrl + 'info/crescerNoEsporte?key=all', {
         method: 'GET'
     })
     const data = await res.json()
-    valoresCategorias = JSON.parse(JSON.parse(data.info)[0])
-    cellphones = JSON.parse(data.info)[1]
+    Crescer = JSON.parse(data.info)
     START()
 }
 
 async function postInfo(e){
     e.preventDefault()
     //if (input.value === ''){return }
-    console.log([JSON.stringify(valoresCategorias),cellphones])
-    console.log(valoresCategorias)
-    const res = await fetch(baseUrl + 'post/limaImports', {
+    const res = await fetch(baseUrl + 'post/crescerNoEsporte', {
         method: 'POST',
         headers: {
             "content-type": 'application/json'
         },
         body: JSON.stringify({
-            parcel: [JSON.stringify(valoresCategorias),cellphones]
+            parcel: Crescer
         })
     })
     if(res.status === 200){
+        modified = false
         popUp(true)
     }
     else{

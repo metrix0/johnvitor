@@ -1,0 +1,174 @@
+:root{
+    --txt: white;
+    --shine: #997444;
+    --small: #6e6e6e;
+    --bg: #181818;
+    --stealth: #252525;
+    --smallstealth: #3b3b3b;
+    --almostwhite: #dedede;
+    --select: #d7d8e3;
+    --green: #60be7c;
+    --red: #DB6F5B;
+
+}
+html, body {scroll-behavior: smooth;overflow-x: hidden;background-color: var(--bg); color: var(--txt); font-family: "Poppins", sans-serif; margin: 0; z-index: -1}
+::-webkit-scrollbar-thumb {background-color: black}
+::-webkit-scrollbar-thumb:hover {background-color: black;}
+::-webkit-scrollbar {width: 3px;height: 0px;background: transparent;}
+::-moz-selection { color: var(--bg);background: var(--shine);}
+::selection {color: var(--bg);background: var(--shine);}
+.shine {color: var(--shine)}
+p{margin: 0}
+.syne{font-family: "Syne", sans-serif}
+a{cursor: pointer !important; transition: 0.15s; color: var(--shine)}
+a:hover{color: var(--shiny); transition: 0.15s}
+.syne{font-family: "Syne", sans-serif}
+.phonebye{display: inline-block}
+
+.pcbye{display: none}
+.loading{
+    display: inline-block;
+    animation-name: loading;
+    animation-duration: 5s;
+    animation-iteration-count: 1;
+    opacity: 0.7;
+}
+@media screen and (max-width: 1000px) {
+    .pcbye{display: block}
+    .gguia{font-size: 90%}
+    .bgim{height: 100%; width: unset; transform: translateX(-50%)}
+    .progressionbarwidth{padding-top: 2% !important; padding-bottom: 1.6% !important;}
+    .baliero{position: absolute;margin: auto;top: 0 ; height: 100%; cursor: pointer; width: 100%; font-weight: 600;letter-spacing: 4px;font-size: 120%}
+    .bal{text-align: center!important;; width: 100% !important; margin-top: 1.5% !important}
+    .t1{font-size: 115% !important}
+    .phonebye{display: none !important}
+    .title{font-size: 2.8vw !important; margin-top: 55% !important}
+    #anim2{margin-top: 20% !important}
+    .undertitle{width: 85% !important; margin-left: 7.5% !important;}
+    .frameboxes{margin-top: 30% !important}
+    .frames1{width: 98%; margin-right: 0%; margin-left: 1%; border-radius: 15px; float: left; position: relative;
+    ;margin-bottom: 15%}
+    .verticalpanels{
+        position: relative;width: 80%; margin-right: 0%; margin-left: 10%; border-radius: 15px; float: left;
+        cursor: pointer;margin-bottom: 10%;margin-top: 10%;
+    }
+    .fa-hand-pointer{margin-top: 1%; margin-right: 2%}
+    .small{font-size: 58%}
+    .small2{font-size: 70%}
+    .telegramwhats{float: none !important; width: 100% !important; text-align: center!important; margin-top: 10% !important}
+    .bora{float: none !important; width: 100% !important; text-align: center!important; margin-top: 35% !important}
+    .telecontainer{display: inline-block!important; width: 100% !important}
+    .boraconv{font-size: 130% !important}
+    .ddd{width: 90% !important}
+    .prefooter{width: 90% !important; margin-left: 5% !important}
+    footer{width: 95% !important; margin-left: 2.5%}
+    .col{width: 100% !important}
+    .cols{margin-top: 20% !important}
+    .showseeventos{width: 100% !important; text-align: center!important;}
+    .terns{width: 65% !important}
+    .mgr{margin-top: 15% !important; margin-bottom: 15% !important}
+}
+
+.none{display: none}
+
+.typebutton{
+    pointer-events: all;padding: 3px 4px 1px 4px;background-color: transparent;color: var(--small); border-radius: 4px; cursor: pointer; display: inline-block;; margin-left: 0.5%;
+}
+.fa-dollar-sign{padding-left: 4px;}
+input{all: unset; transition: 0.2s}
+.typebutton:hover{background-color: var(--smallstealth)}
+.typebuttonselected{background-color: var(--small);color: white}
+.typebuttonselected:hover{background-color: var(--small);}
+.changeable{padding: 0px 11px 0px 11px; border-radius: 4px;}
+.changeable:hover{background-color: var(--smallstealth)}
+.adicionar{cursor: pointer; padding: 2px 5px 2px 4px; border-radius: 4px; transition: 0.2s}
+.adicionar:hover{background-color: var(--smallstealth)}
+.searchcontainer{background-color: transparent; transition: 0.2s}
+.searchcontainer:hover{background-color: var(--select)}
+.mediumtext{font-size: 72%;}
+.iconbutton{transition: 0.2s;
+    cursor: pointer;background-color: transparent; padding: 10px;padding-top: 8px;padding-bottom: 9px; border-radius: 90px}
+.iconbutton:hover{background-color: var(--select)}
+.hiddencfg{transform: translateY(100vh); transition: 0.4s}
+.navselected{background-color: var(--smallstealth)}
+.navselected:hover{background-color: var(--smallstealth)}
+.button{
+    cursor: pointer;}
+
+.errortransition{transform: translateX(150%); opacity: 0; display: inline-block}
+.stretched{font-family: "Poppins", sans-serif;
+    display: inline-block;
+    -webkit-transform: scale(1,.9);
+    -moz-transform: scale(1,.9);
+    -ms-transform: scale(1,.9);
+    -o-transform: scale(1,.9);
+    transform: scale(1,.9);
+    font-weight: bold;
+    letter-spacing: 4px;
+}
+.small{color: var(--small); font-size: 65%}
+.loading{
+    display: inline-block;
+    animation-name: loading;
+    animation-duration: 5s;
+    animation-iteration-count: 1;
+    opacity: 0.7;
+}
+@keyframes loading {
+    0%{
+        opacity: 0
+    }
+    100%{
+        opacity: .7
+    }
+}
+#up{
+    display: inline-block;
+    animation-name: up;
+    animation-duration: 3s;
+    animation-iteration-count: infinite;
+}
+#bottom{
+    display: inline-block;
+    animation-name: bottom;
+    animation-duration: 3s;
+    animation-iteration-count: infinite;
+}
+@keyframes up {
+    0%{
+        opacity: 0%;
+        transform: translateX(50%);
+    }
+    20%{
+        transform: translateX(0%);        opacity: 100%;
+
+    }
+    30%{
+        transform: translateX(0%);        opacity: 100%;
+
+    }
+    100%{
+        transform: translateX(-1000%);
+        opacity: 0%;
+    }
+}
+@keyframes bottom {
+    0%{
+        opacity: 0%;
+        transform: translateX(-50%);
+    }
+    20%{
+        transform: translateX(0%);        opacity: 100%;
+
+    }
+    30%{
+        transform: translateX(0%);        opacity: 100%;
+
+    }
+    100%{
+        transform: translateX(1000%);
+        opacity: 0%;
+    }
+}
+.bbtn{transition: 0.2s}
+.bbtn:hover{color: var(--small) !important}
