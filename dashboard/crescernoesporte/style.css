@@ -172,3 +172,10 @@ input{all: unset; transition: 0.2s}
 }
 .bbtn{transition: 0.2s}
 .bbtn:hover{color: var(--small) !important}
+
+@media screen and (min-width: 1400px){
+    p{font-size: 120% !important}
+    .incsize{font-size: 100% !important}
+    .titlesize{font-size: 160% !important}
+    .bbtn{scale: 150% !important; display: inline-block; margin-right: 3% !important; margin-left: 3% !important}
+}
