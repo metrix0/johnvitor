@@ -92,6 +92,7 @@ async function getInfo(e){
         method: 'GET'
     })
     const data = await res.json()
+    console.log(data);
     Crescer = JSON.parse(data.info)
     START()
 }
