@@ -90,7 +90,7 @@ a:hover{color: var(--shiny); transition: 0.15s}
     .gguia{font-size: 90%}
     .progressionbarwidth{padding-top: 2% !important; padding-bottom: 1.6% !important;}
     .phonebye{display: none !important}
-    .title{font-size: 150% !important; margin-top: 35% !important}
+    .title{font-size: 6.6dvw !important; margin-top: 35% !important; width: 95% !important; margin-left: 2.5% !important}
     .undertitle{width: 85% !important; margin-left: 7.5% !important;}
     .frameboxes{margin-top: 30% !important}
     .frames1{width: 98%; margin-right: 0%; margin-left: 1%; border-radius: 15px; float: left; position: relative;
@@ -190,6 +190,7 @@ a:hover{color: var(--shiny); transition: 0.15s}
 }
 .animatesuper{
     animation: textclip 3s;
+    animation-fill-mode: forwards;
 }
 
 @keyframes textclip {
@@ -232,10 +233,12 @@ html,body{
 .br2{content: ''; height: 25px; display: inline-block}
 
 .cta{pointer-events: none; scale: 110%}
-.cta span{pointer-events: all; cursor: pointer; transition: .2s; display: inline-block; white-space: nowrap}
-.cta span:first-child{transition: .3s}
-.cta span:first-child:hover{scale: 110%}
-.cta span:hover{scale: 120%}
+.cta span{scale: 120%;pointer-events: all; cursor: pointer; transition: .2s; display: inline-block; white-space: nowrap}
+.cta span:first-child{transition: .3s; scale: 120%}
+.cta span span{scale: unset}
+.cta span span:hover{scale: unset}
+.cta span:first-child:hover{scale: 130%}
+.cta span:hover{scale: 140%}
 
 .cta2 span{pointer-events: all; cursor: pointer; transition: .2s; display: inline-block; white-space: nowrap}
 .cta2 span:hover{scale: 115%; z-index: 99}
@@ -252,7 +255,7 @@ html,body{
     .c3{position: relative!important;}
     .tofitcontent{height: fit-content!important; padding-bottom: 30% !important}
     .line1{width: 80% !important; margin-top: 27% !important}
-    .cta{margin-top: 10% !important; scale: 125%}
+    .cta{margin-top: 13% !important; scale: 135%}
     .cta span{margin-right: 3%!important;}
     .cta span:last-child{margin-right: 0 !important;}
     .fa-whatsapp, .fa-instagram{scale: 120%}
@@ -265,7 +268,7 @@ html,body{
     .ttable{width: 100% !important; margin-left: 0% !important}
     .firsttc{min-height: 37px !important}
     .line3{width: 80% !important ;margin-top: 18% !important;margin-bottom: 10%}
-    .dashboardimage{width: 90% !important; margin-left: 5% !important; margin-top: 10% !important}
+    .dashboardimage{width: 110% !important; margin-left: -4% !important; margin-top: 15% !important}
     .dashtext{margin-top: 0% !important; width: 90% !important; margin-left: 5% !important}
     .line4{width: 80% !important ;margin-top: 18% !important;}
     .c5{display: inline-block!important; margin-top: -10% !important}
@@ -303,3 +306,52 @@ img{pointer-events: none}
 .hidden{transform: translateY(15vh);
     opacity: 0;}
 .show{transform: translateY(0%) translateX(0%)!important; opacity: 100% !important}
+
+.fancy {
+    --offset: 3px;
+    position: relative;
+    background-color: var(--bg);
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Conic gradient */
+.fancy::before {
+    content: '';
+    background: conic-gradient(transparent 270deg, var(--shinespace), transparent);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    aspect-ratio: 1;
+    width: 100%;
+    animation: rotate 2s linear infinite;
+}
+
+/* Overlay */
+.fancy::after {
+    content: '';
+    background: inherit;
+    border-radius: inherit;
+    position: absolute;
+    inset: var(--offset);
+    height: calc(100% - 2 * var(--offset));
+    width: calc(100% - 2 * var(--offset));
+}
+
+@keyframes rotate {
+    from {
+        transform: translate(-50%, -50%) scale(1.4) rotate(0turn);
+    }
+
+    to {
+        transform: translate(-50%, -50%) scale(1.4) rotate(1turn);
+    }
+}
+
+.fromup{
+    scale: 180%; transform: translateY(-100%); opacity: 0;
+}
+.fromdown{
+    scale: 180%; transform: translateY(100%); opacity: 0;
+}

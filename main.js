@@ -13,10 +13,15 @@ function Welcome(){
     setTimeout(function (){
         removeLoader()
         document.title = "John Vitor"
-        document.getElementById('supertext1').classList.add('animatesuper')
-        document.getElementById('anim1').classList.remove('enteranimation1')
-        document.getElementById('anim2').classList.remove('enteranimation2')
-        document.getElementById('anim3').classList.remove('enteranimation3')
+        document.getElementById('supertext1').classList.remove('fromdown')
+        document.getElementById('aanim1').classList.remove('fromup')
+        setTimeout(function (){
+            document.getElementById('supertext1').classList.add('animatesuper')
+
+            document.getElementById('anim2').classList.remove('enteranimation2')
+            document.getElementById('anim3').classList.remove('enteranimation3')
+        },1000)
+        // document.getElementById('anim1').classList.remove('enteranimation1')
     },time)
 
 }
@@ -65,7 +70,7 @@ var TextList = [
     '+5 <span class="syne" style="font-weight: 700">CLIENTES/SEMANA</span>',
     '+30.000R$</span> <span class="syne" style="font-weight: 700">LÍQUIDO/MÊS</span>',
     '+150 <span class="syne" style="font-weight: 700">HOLDERS</span>',
-    '+312 <span class="syne" style="font-weight: 700">VENDAS/ANO</span>',
+    '+ <span class="syne" style="font-weight: 700">VENDAS/ANO</span>',
     '+ <span class="syne" style="font-weight: 700">ORGANIZAÇÃO</span>',
     '+5.000R$ <span class="syne" style="font-weight: 700">LÍQUIDO/MÊS</span>',
     '+<span class="syne" style="font-weight: 700">DIVULGAÇÃO E RENOME</span>',
