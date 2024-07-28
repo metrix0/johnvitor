@@ -20,6 +20,7 @@ a:hover{color: var(--shiny); transition: 0.15s}
 .gguia{cursor: pointer;border-bottom: 1px solid transparent;text-decoration: none; color: white !important; margin-right: 1.5%; font-size: 120%;  transition: 0.15s}
 .gguia:hover{border-bottom: 1px solid white; transition: 0.15s}
 .phonebye{display: inline-block}
+wrapper{overflow-x: hidden}
 .stretched{font-family: "Poppins", sans-serif;
     display: inline-block;
     -webkit-transform: scaleX(108%);
