@@ -280,7 +280,7 @@ html,body{
     .tofit1{padding-bottom: 50% !important}
     .cta span:first-child{margin-right: 0!important; margin-bottom: 2% !important}
 
-    body{width: 100vw; overflow-y: hidden}
+    body,html{width: 100vw !important; overflow-y: hidden !important}
 
 }
 
@@ -292,7 +292,7 @@ img{pointer-events: none}
     p{font-size: 145%}
     #anim1{scale: 160%}
     .c2{margin-top: 2%}
-    .cta{scale: 140%}
+    .cta{scale: 120%}
     #t1, #t2, #t3, #t4{font-size: 150% !important; padding: 12px 24px 12px 24px !important}
     #prop1{scale: 120%}
     .text11{scale: 140%}

@@ -99,7 +99,7 @@ function seeMore(){
     else if(s === 0){s = 4}
     setTimeout(function (){
         for (let i = 0; i < 4; i++){
-            document.getElementById('m'+(i+1)).src = 'img/Mocks/'+MockList[s+i]+'.png'
+            document.getElementById('m'+(i+1)).src = 'img/Mocks/'+MockList[s+i]+'.webp'
             document.getElementById('t'+(i+1)).innerHTML = '<span class="stretched" style="letter-spacing: 0px; font-weight: 500">'+TextList[s+i]
 
         }
