@@ -7,7 +7,7 @@
 function Welcome(){
     // var userLang = navigator.language || navigator.userLanguage;
     // if(userLang.toLowerCase() === 'pt-br'){if(window.location.pathname.includes('en')){window.location='./'}}
-    // else if(!window.location.pathname.includes('en')){window.location='en.html'}
+    // else if(!window.location.pathname.includes('en')){window.location='en'}
     let time = 1
     // if (mobilecheck() === true){time = 1}
     setTimeout(function (){
@@ -67,14 +67,14 @@ var MockList = [
 ]
 
 var TextList = [
-    '+50% <span class="syne" style="font-weight: 700">CLIENTS</span>',
-    '+30.000$</span> <span class="syne" style="font-weight: 700">LIQUID/MO</span>',
+    '150% <span class="syne" style="font-weight: 700">CLIENTS</span>',
+    '200%</span> <span class="syne" style="font-weight: 700">REVENUE</span>',
     '+150 <span class="syne" style="font-weight: 700">HOLDERS</span>',
-    '+ <span class="syne" style="font-weight: 700">SALES/YEAR</span>',
-    '+ <span class="syne" style="font-weight: 700">130% REV IN 1 MO.</span>',
-    '+5.000R$ <span class="syne" style="font-weight: 700">REVENUE/MO</span>',
+    '135% <span class="syne" style="font-weight: 700">SALES</span>',
+    '115%<span class="syne" style="font-weight: 700">REVENUE</span>',
+    '2x <span class="syne" style="font-weight: 700">CLIENTS</span>',
     '+<span class="syne" style="font-weight: 700">AWARENESS</span>',
-    '+<span class="syne" style="font-weight: 700">AWARENESS</span>',
+    '<span class="syne" style="font-weight: 700">AND MUCH MORE</span>',
 
 ]
 

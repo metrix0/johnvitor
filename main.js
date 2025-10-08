@@ -5,9 +5,9 @@
 //     return check;
 // }
 function Welcome(){
-    // var userLang = navigator.language || navigator.userLanguage;
-    // if(userLang.toLowerCase() === 'pt-br'){if(window.location.pathname.includes('en')){window.location='./'}}
-    // else if(!window.location.pathname.includes('en')){window.location='en.html'}
+    var userLang = navigator.language || navigator.userLanguage;
+    if(userLang.toLowerCase() === 'pt-br'){if(window.location.pathname.includes('en')){window.location='./'}}
+    else if(!window.location.pathname.includes('en')){window.location='en'}
     let time = 1
     // if (mobilecheck() === true){time = 1}
     setTimeout(function (){
@@ -67,14 +67,14 @@ var MockList = [
 ]
 
 var TextList = [
-    '+5 <span class="syne" style="font-weight: 700">CLIENTES/SEMANA</span>',
-    '+30.000R$</span> <span class="syne" style="font-weight: 700">LÍQUIDO/MÊS</span>',
+    '150% <span class="syne" style="font-weight: 700">CLIENTES</span>',
+    '200%</span> <span class="syne" style="font-weight: 700">FATURAMENTO</span>',
     '+150 <span class="syne" style="font-weight: 700">HOLDERS</span>',
-    '+ <span class="syne" style="font-weight: 700">VENDAS/ANO</span>',
-    '+ <span class="syne" style="font-weight: 700">ORGANIZAÇÃO</span>',
-    '+5.000R$ <span class="syne" style="font-weight: 700">LÍQUIDO/MÊS</span>',
-    '+<span class="syne" style="font-weight: 700">DIVULGAÇÃO E RENOME</span>',
-    '+<span class="syne" style="font-weight: 700">DIVULGAÇÃO</span>',
+    '135% <span class="syne" style="font-weight: 700">VENDAS</span>',
+    '115%<span class="syne" style="font-weight: 700">FATURAMENTO</span>',
+    '2x <span class="syne" style="font-weight: 700">CLIENTES</span>',
+    '+<span class="syne" style="font-weight: 700">RECONHECIMENTO</span>',
+    '<span class="syne" style="font-weight: 700">E MUITO MAIS</span>',
 
 ]
 
