@@ -1,0 +1,376 @@
+:root{--bg: #0E0604;
+    --txt: white;
+    --shine: #997444;
+    --shinespace: #AA5B00;
+    --small: #6e6e6e;
+    --green: #60be7c;
+    --red: #dc2d28;
+}
+#997444{}
+html, body {scroll-behavior: smooth;overflow-x: hidden;background-color: var(--bg); color: var(--txt); font-family: "Poppins", sans-serif; margin: 0; z-index: -1}
+::-webkit-scrollbar-thumb {background-color: var(--shine)}
+::-webkit-scrollbar-thumb:hover {background-color: var(--shine);}
+::-webkit-scrollbar {width: 1px;height: 0px;background: var(--bgr);}
+::-moz-selection { color: var(--bg);background: var(--shine);}
+::selection {color: var(--bg);background: var(--shine);}
+.shine {color: var(--shine)}
+p{margin: 0}
+a{cursor: pointer !important; transition: 0.15s; color: var(--shine)}
+a:hover{color: var(--shiny); transition: 0.15s}
+.gguia{cursor: pointer;border-bottom: 1px solid transparent;text-decoration: none; color: white !important; margin-right: 1.5%; font-size: 120%;  transition: 0.15s}
+.gguia:hover{border-bottom: 1px solid white; transition: 0.15s}
+.phonebye{display: inline-block}
+wrapper{overflow-x: hidden}
+.stretched{font-family: "Poppins", sans-serif;
+    display: inline-block;
+    -webkit-transform: scaleX(108%);
+    -moz-transform: scaleX(108%);
+    -ms-transform: scaleX(108%);
+    -o-transform: scaleX(108%);
+    transform: scaleX(108%);
+    font-weight: bold;
+    letter-spacing: 4px;
+}
+.syne{font-family: "Syne", sans-serif}
+
+.small{color: var(--small); font-size: 65%}
+.small2{color: var(--small); font-size: 80%}
+.ainverted{color: var(--small);text-decoration: none}
+.ainverted:hover{color: var(--shinespace); letter-spacing: 8px}
+.frames1{width: 48%; margin-right: 1%; margin-left: 1%; border-radius: 15px; float: left; position: relative;
+}
+.shining{;line-height: 80%;
+    animation-name: shining; animation-duration: 25s; animation-iteration-count: infinite;
+}
+.enteranimation1{
+    transform: translateY(100%);
+    opacity: 0%;
+}
+.enteranimation2{
+    transform: translateX(-100%);
+    opacity: 0%;
+}
+.enteranimation3{
+     transform: translateX(100%);
+     opacity: 0%;
+ }
+.enteranimation4{
+    transform: translateY(-100%) scale(80%);
+    opacity: 0% !important;
+
+}
+.verticalpanels{
+    position: relative;width: 21%; margin-right: 2%; margin-left: 2%; border-radius: 8px; float: left;
+    cursor: pointer;
+}
+.pcbye{display: none !important}
+.pcbye2{display: none !important}
+#up{
+    display: inline-block;
+    animation-name: up;
+    animation-duration: 3s;
+    animation-iteration-count: infinite;
+}
+#bottom{
+    display: inline-block;
+    animation-name: bottom;
+    animation-duration: 3s;
+    animation-iteration-count: infinite;
+}
+.loading{
+    display: inline-block;
+    animation-name: loading;
+    animation-duration: 5s;
+    animation-iteration-count: 1;
+    opacity: 0.7;
+}
+
+@media screen and (max-width: 1000px) {
+
+    .pcbye{display: block}
+    .pcbye2{display: inline-block!important;}
+    .gguia{font-size: 90%}
+    .progressionbarwidth{padding-top: 2% !important; padding-bottom: 1.6% !important;}
+    .phonebye{display: none !important}
+    .title{font-size: 6.6dvw !important; margin-top: 35% !important; width: 95% !important; margin-left: 2.5% !important}
+    .undertitle{width: 85% !important; margin-left: 7.5% !important;}
+    .frameboxes{margin-top: 30% !important}
+    .frames1{width: 98%; margin-right: 0%; margin-left: 1%; border-radius: 15px; float: left; position: relative;
+    ;margin-bottom: 15%}
+    .verticalpanels{
+        position: relative;width: 80%; margin-right: 0%; margin-left: 10%; border-radius: 15px; float: left;
+        cursor: pointer;margin-bottom: 10%;margin-top: 10%;
+    }
+    .fa-hand-pointer{margin-top: 1%; margin-right: 2%}
+    .small{font-size: 58%}
+    .small2{font-size: 70%}
+    .telegramwhats{float: none !important; width: 100% !important; text-align: center!important; margin-top: 10% !important}
+    .bora{float: none !important; width: 100% !important; text-align: center!important; margin-top: 35% !important}
+    .telecontainer{display: inline-block!important; width: 100% !important}
+    .boraconv{font-size: 130% !important}
+    .ddd{width: 90% !important}
+    .prefooter{width: 90% !important; margin-left: 5% !important}
+    footer{width: 95% !important; margin-left: 2.5%}
+}
+
+@keyframes shining {
+    0%{
+        box-shadow: 0px 0px 0px -15px var(--small)
+    }
+    45%{
+        box-shadow: 0px 0px 30px -15px var(--small)
+    }
+    55%{
+        box-shadow: 0px 0px 30px -15px var(--small)
+    }
+    100%{
+        box-shadow: 0px 0px 0px -15px var(--small)
+    }
+}
+
+@keyframes up {
+    0%{
+        opacity: 0%;
+        transform: translateX(50%);
+    }
+    20%{
+        transform: translateX(0%);        opacity: 100%;
+
+    }
+    30%{
+        transform: translateX(0%);        opacity: 100%;
+
+    }
+    100%{
+        transform: translateX(-1000%);
+        opacity: 0%;
+    }
+}
+@keyframes bottom {
+    0%{
+        opacity: 0%;
+        transform: translateX(-50%);
+    }
+    20%{
+        transform: translateX(0%);        opacity: 100%;
+
+    }
+    30%{
+        transform: translateX(0%);        opacity: 100%;
+
+    }
+    100%{
+        transform: translateX(1000%);
+        opacity: 0%;
+    }
+}
+
+@keyframes loading {
+    0%{
+        opacity: 0
+    }
+    100%{
+        opacity: .7
+    }
+}
+
+.supertext{
+    text-transform: uppercase;
+    background-image: url("img/HeroTextClip.png");
+    background-size: auto auto;
+    background-clip: border-box;
+    background-size: auto 100%;
+    color: #fff;
+    background-clip: text;
+    background-position: 100% center;
+    text-fill-color: transparent;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation-delay: .6s;
+    display: inline-block;
+    animation-fill-mode: forwards;
+}
+.animatesuper{
+    animation: textclip 3s;
+    animation-fill-mode: forwards;
+}
+
+@keyframes textclip {
+    0% {
+        background-position: 100% center;
+    }
+    100%{
+        background-position: 150% center;
+    }
+}
+
+.progressionbarwidth a:hover{
+    scale: 115%; transform: translateY(1%);
+}
+
+html,body{
+    margin:0;
+}
+
+.keep{white-space: nowrap}
+.trow{width: 100%; position: relative; display: inline-block}
+.ttable .trow{
+    border-bottom: solid 1px var(--shine);
+}
+
+.ttable .trow:last-child{
+    border-bottom: 0;
+}
+
+.trow div:first-child{
+    border-right: 1px solid var(--shine);
+}
+
+.trow div:last-child{
+    border-left: 1px solid var(--shine);
+}
+.tcell:first-child{width: calc(40% - 40px); float: left; padding: 20px 20px 20px 20px; text-align: center}
+.tcell{min-height: 63px;width: calc(29.5% - 40px); float: left; padding: 20px 20px 20px 20px; text-align: center}
+.fa-hourglass{ scale: 80%}
+.br2{content: ''; height: 25px; display: inline-block}
+
+.cta{pointer-events: none; scale: 110%}
+.cta span{scale: 120%;pointer-events: all; cursor: pointer; transition: .2s; display: inline-block; white-space: nowrap}
+.cta span:first-child{transition: .3s; scale: 120%}
+.cta span span{scale: unset}
+.cta span span:hover{scale: unset}
+.cta span:first-child:hover{scale: 130%}
+.cta span:hover{scale: 140%}
+
+.cta2 span{pointer-events: all; cursor: pointer; transition: .2s; display: inline-block; white-space: nowrap}
+.cta2 span:hover{scale: 115%; z-index: 99}
+
+
+@media screen and (max-width: 1000px) {
+    footer{margin-bottom: 15%}
+    #anim2{width: 40% !important; margin-left: 5% !important}
+    #anim1{scale: 155%;margin-bottom: 25% !important}
+    .phonehid{visibility: hidden}
+    .bg{ width: 250% !important; left: -75% !important}
+    .c1{width: 90% !important; margin-left: 2.5% !important}
+    .c2{width: 95% !important; margin-left: 2.5% !important; scale: 110%; margin-top: -10%!important;}
+    .to95{width: 85% !important; margin-left: 0% !important; margin-top: -5% !important}
+    .c3{position: relative!important;}
+    .tofitcontent{height: fit-content!important; padding-bottom: 30% !important}
+    .line1{width: 80% !important; margin-top: 27% !important}
+    .cta{margin-top: 13% !important; scale: 135%}
+    .cta span{margin-right: 3%!important;}
+    .cta span:last-child{margin-right: 0 !important;}
+    .fa-whatsapp, .fa-instagram{scale: 120%}
+    .prop1{left: unset!important; right: -8% !important; top: -1%!important; width: 37% !important}
+    .line2{width: 80% !important}
+    .text1{scale: 110%; line-height: 150% !important; margin-bottom: 20% !important}
+    .fa-sack-dollar{margin-top: 3% !important}
+    .tcell{min-height: 250px;width: calc(34.70% - 36px); float: left; padding: 18px 18px 18px 18px;}
+    .tcell:first-child{width: calc(30% - 36px) !important; float: left; padding: 18px 18px 18px 18px;}
+    .ttable{width: 100% !important; margin-left: 0% !important}
+    .firsttc{min-height: 37px !important}
+    .line3{width: 80% !important ;margin-top: 18% !important;margin-bottom: 10%}
+    .dashboardimage{width: 110% !important; margin-left: -4% !important; margin-top: 15% !important}
+    .dashtext{margin-top: 0% !important; width: 90% !important; margin-left: 5% !important}
+    .line4{width: 80% !important ;margin-top: 18% !important;}
+    .c5{display: inline-block!important; margin-top: -10% !important}
+    .image2{width: 70% !important; float: unset!important; margin-left: 15% !important}
+    .c4{width: 90% !important; text-align: center!important; margin-left: 5% !important;margin-top: 5% !important}
+    .cta2 span{margin-top: 5% !important; font-size: 100% !important}
+    .c7{margin-top: 40% !important}
+    .c8{transform:translateY(50%)!important; transition: 1s!important;}
+    .tofit1{padding-bottom: 50% !important}
+    .cta span:first-child{margin-right: 0!important; margin-bottom: 2% !important}
+    .prefooter{margin-left: 9% !important}
+    .jv0{margin-left: 3%!important; margin-top: 2.5% !important}
+    .text11{line-height: 15px!important;}
+
+    body,html{width: 100vw !important; overflow-x: hidden !important}
+
+}
+
+.TempBlur{filter: blur(4px); opacity: .33}
+.PropBlur{filter: blur(5px)}
+img{pointer-events: none}
+
+@media screen and (min-width: 1400px){
+
+    p{font-size: 145%}
+    #anim1{scale: 160%}
+    .c2{margin-top: 2%}
+    .cta{scale: 120%}
+    #t1, #t2, #t3, #t4{font-size: 150% !important; padding: 12px 24px 12px 24px !important}
+    #prop1{scale: 120%}
+    .text11{scale: 140%}
+    .tcell{font-size: 110% !important}
+    .text2{scale: 120%}
+    .c4{font-size: 130%}
+    .cta2{font-size: 120%; margin-top: 3% !important}
+    .c7{scale: 125%}
+}
+
+.hidden{transform: translateY(15vh);
+    opacity: 0;}
+.show{transform: translateY(0%) translateX(0%)!important; opacity: 100% !important}
+
+.fancy2{padding: 8px 37px 8px 37px!important; font-size: 80% !important}
+
+.fancy {
+    --offset: 3px;
+    position: relative;
+    background-color: var(--bg);
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Conic gradient */
+.fancy::before {
+    content: '';
+    background: conic-gradient(transparent 270deg, var(--shinespace), transparent);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    aspect-ratio: 1;
+    width: 100%;
+    animation: rotate 2s linear infinite;
+}
+
+/* Overlay */
+.fancy::after {
+    content: '';
+    background: inherit;
+    border-radius: inherit;
+    position: absolute;
+    inset: var(--offset);
+    height: calc(100% - 2 * var(--offset));
+    width: calc(100% - 2 * var(--offset));
+}
+
+@keyframes rotate {
+    from {
+        transform: translate(-50%, -50%) scale(1.4) rotate(0turn);
+    }
+
+    to {
+        transform: translate(-50%, -50%) scale(1.4) rotate(1turn);
+    }
+}
+
+.fromup{
+    scale: 180%; transform: translateY(-100%); opacity: 0;
+}
+.fromdown{
+    scale: 180%; transform: translateY(100%); opacity: 0;
+}
+
+.calendly-overlay .calendly-popup {height: 100vh !important;}
+
+
+@media (max-width: 1000px) {
+    .fancy2 {
+        font-size: 75% !important;
+        padding: 10px 25px 6px 25px !important;
+    }
+}
