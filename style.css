@@ -229,8 +229,8 @@ html,body{
 .trow div:last-child{
     border-left: 1px solid var(--shine);
 }
-.tcell:first-child{width: calc(40% - 40px); float: left; padding: 20px 20px 20px 20px; text-align: center}
-.tcell{min-height: 63px;width: calc(29.5% - 40px); float: left; padding: 20px 20px 20px 20px; text-align: center}
+.tcell:first-child{width: calc(41%); float: left; padding: 20px 20px 20px 20px; text-align: center}
+.tcell{min-height: 63px;width: calc(48.5%); float: left; padding: 20px 20px 20px 20px; text-align: center}
 .fa-hourglass{ scale: 80%}
 .br2{content: ''; height: 25px; display: inline-block}
 
@@ -247,6 +247,7 @@ html,body{
 
 
 @media screen and (max-width: 1000px) {
+    .sdd{height: 115svh !important}
     footer{margin-bottom: 15%}
     #anim2{width: 40% !important; margin-left: 5% !important}
     #anim1{scale: 155%;margin-bottom: 25% !important}
@@ -266,8 +267,8 @@ html,body{
     .line2{width: 80% !important}
     .text1{scale: 110%; line-height: 150% !important; margin-bottom: 20% !important}
     .fa-sack-dollar{margin-top: 3% !important}
-    .tcell{min-height: 250px;width: calc(34.70% - 36px); float: left; padding: 18px 18px 18px 18px;}
-    .tcell:first-child{width: calc(30% - 36px) !important; float: left; padding: 18px 18px 18px 18px;}
+    .tcell{min-height: 250px;width: calc(44.70% - 36px); float: left; padding: 18px 18px 18px 18px;}
+    .tcell:first-child{width: calc(50% - 26px) !important; float: left; padding: 18px 18px 18px 18px;}
     .ttable{width: 100% !important; margin-left: 0% !important}
     .firsttc{min-height: 37px !important}
     .line3{width: 80% !important ;margin-top: 18% !important;margin-bottom: 10%}
