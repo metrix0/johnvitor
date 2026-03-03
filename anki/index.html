@@ -92,6 +92,9 @@
             <input id="newDeckName" placeholder="New deck name…" />
             <button class="btn-primary" id="createDeckBtn"><i class="fa-solid fa-plus"></i> Create</button>
 
+            <button class="btn-ghost" id="notesBtn" title="Go to notes">
+                <i class="fa-solid fa-note-sticky"></i> Notes
+            </button>
 
             <button class="btn-ghost" id="goDashBtn" title="Go to dashboard">
                 <i class="fa-solid fa-table-columns"></i> Dashboard
@@ -475,6 +478,10 @@
 
     document.getElementById("goDashBtn").addEventListener("click", ()=>{
         window.location.href = "./dashboard";
+    });
+
+    document.getElementById("notesBtn").addEventListener("click", ()=>{
+        window.location.href = "notes/index.html";
     });
 
     /** ---------------------------

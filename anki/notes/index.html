@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Anki – Notes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root{
+            --bg:#0b0c10; --card:#11131a; --muted:#a7adbb; --text:#eef0f6;
+            --accent:#7c5cff; --danger:#ff4d4d; --ok:#21c27a; --line:#232633;
+        }
+        *{box-sizing:border-box}
+        body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+        .wrap{max-width:1200px;margin:0 auto;padding:22px}
+
+        .topbar{
+            display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+            padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,0.03)
+        }
+        .left,.right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+        .badge{font-size:12px;color:var(--muted)}
+
+        button,input{
+            border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);
+            padding:10px 12px;font-size:14px;outline:none
+        }
+        button{cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+        button:hover{transform:translateY(-1px)}
+        .btn-primary{background:linear-gradient(135deg,var(--accent),#3dd6ff);border:none}
+        .btn-ghost{background:transparent}
+        .btn-danger{border-color:rgba(255,77,77,.35);color:#ffd2d2}
+        .btn-ok{border-color:rgba(33,194,122,.35);color:#d3ffe9}
+
+        .layout{
+            margin-top:16px;
+            display:grid;
+            grid-template-columns:340px 1fr;
+            gap:14px;
+        }
+        @media (max-width: 900px){
+            .layout{grid-template-columns:1fr}
+        }
+
+        .panel{
+            border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,0.02);overflow:hidden
+        }
+        .panel h2{
+            margin:0;padding:12px 14px;font-size:13px;text-transform:uppercase;letter-spacing:.09em;
+            background:rgba(255,255,255,0.03);color:var(--muted)
+        }
+
+        /* Categories */
+        .catTop{
+            display:flex;gap:10px;padding:12px;border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap
+        }
+        .catTop input{flex:1;min-width:160px}
+        .catList{padding:10px;max-height:62vh;overflow:auto}
+        .catItem{
+            border:1px solid var(--line);border-radius:14px;background:rgba(17,19,26,.75);
+            padding:10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;
+            cursor:pointer
+        }
+        .catItem:last-child{margin-bottom:0}
+        .catItem.active{border-color:rgba(124,92,255,.55)}
+        .catName{font-weight:700}
+        .catMeta{color:var(--muted);font-size:12px;margin-top:3px}
+        .catBtns{display:flex;gap:8px;flex-wrap:wrap}
+        .iconBtn{padding:9px 10px}
+
+        /* Editor */
+        .editorWrap{padding:12px}
+        .editorHeader{
+            display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px
+        }
+        .titleInput{min-width:240px}
+        .editor{
+            width:100%;
+            min-height:60vh;
+            resize:vertical;
+            border-radius:14px;
+            border:1px solid var(--line);
+            background:rgba(17,19,26,.75);
+            color:var(--text);
+            padding:14px;
+            font-size:15px;
+            line-height:1.5;
+            outline:none;
+            white-space:pre-wrap;
+        }
+        .muted{color:var(--muted)}
+        .empty{padding:14px;color:var(--muted)}
+        .toast{
+            position:fixed;right:18px;bottom:18px;max-width:360px;
+            background:rgba(17,19,26,.92);border:1px solid var(--line);border-radius:14px;
+            padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35);display:none
+        }
+        .toast strong{display:block;margin-bottom:4px}
+        .pill{
+            font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);width:fit-content
+        }
+    </style>
+</head>
+
+<body>
+<div class="wrap">
+
+    <div class="topbar">
+        <div class="left">
+            <strong style="font-size:16px">Notes</strong>
+            <span class="badge" id="statusBadge">Not connected</span>
+            <span class="pill" id="saveState">Idle</span>
+        </div>
+        <div class="right">
+            <button class="btn-ghost" id="goEditorBtn"><i class="fa-solid fa-layer-group"></i> Deck Editor</button>
+            <button class="btn-ghost" id="goDashBtn"><i class="fa-solid fa-table-columns"></i> Dashboard</button>
+            <button class="btn-ghost" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        </div>
+    </div>
+
+    <div class="layout">
+        <!-- Categories -->
+        <div class="panel">
+            <h2>Categories</h2>
+            <div class="catTop">
+                <input id="newCatName" placeholder="New category…" />
+                <button class="btn-primary" id="addCatBtn"><i class="fa-solid fa-plus"></i> Add</button>
+            </div>
+            <div class="catList" id="catList"></div>
+        </div>
+
+        <!-- Editor -->
+        <div class="panel">
+            <h2>Notes</h2>
+            <div class="editorWrap">
+                <div class="editorHeader">
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                        <input class="titleInput" id="catTitle" placeholder="Category title…" />
+                        <span class="muted" id="updatedLabel">—</span>
+                    </div>
+
+                    <div style="display:flex;gap:10px;flex-wrap:wrap">
+                        <button class="btn-ok" id="saveBtn"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                    </div>
+                </div>
+
+                <textarea class="editor" id="notesEditor" placeholder="Write anything here…"></textarea>
+                <div class="muted" style="margin-top:8px;font-size:13px">
+                    Auto-save after you stop typing for ~800ms.
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    /* ===============================
+       JSONBIN CONFIG (HARDCODED)
+       =============================== */
+    const BIN_ID = "69a23a35d0ea881f40e076a1";
+    const API_KEY = "$2a$10$pb.AtTxlxRYS6pkVFag6xeON96aqdCGaUhdoyXLKA..Cpwp6WgWMa";
+    function getBinId(){ return BIN_ID; }
+    function getApiKey(){ return API_KEY; }
+
+    function escapeHtml(s){
+        return String(s ?? "").replace(/[&<>"']/g, m => ({
+            "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+        }[m]));
+    }
+
+    function toast(title, msg){
+        const el = document.getElementById("toast");
+        el.innerHTML = `<strong>${escapeHtml(title)}</strong><div class="muted">${escapeHtml(msg)}</div>`;
+        el.style.display = "block";
+        clearTimeout(toast._t);
+        toast._t = setTimeout(()=> el.style.display="none", 3200);
+    }
+
+    async function jsonbinFetch(method, path, body){
+        const binId = getBinId();
+        const key = getApiKey();
+        if(!binId || !key) throw new Error("Missing JSONBin settings");
+
+        const url = `https://api.jsonbin.io/v3/b/${binId}${path || ""}`;
+        const res = await fetch(url, {
+            method,
+            headers: {
+                "Content-Type":"application/json",
+                "X-Master-Key": key
+            },
+            body: body ? JSON.stringify(body) : undefined
+        });
+
+        if(!res.ok){
+            const txt = await res.text().catch(()=> "");
+            throw new Error(`JSONBin error ${res.status}: ${txt.slice(0,200)}`);
+        }
+        return res.json();
+    }
+
+    async function loadDb(){
+        const data = await jsonbinFetch("GET", "/latest");
+        const record = data?.record;
+        if(!record || typeof record !== "object") return { decks: [], notes: { categories: [] } };
+
+        if(!Array.isArray(record.decks)) record.decks = [];
+        if(!record.notes || typeof record.notes !== "object") record.notes = { categories: [] };
+        if(!Array.isArray(record.notes.categories)) record.notes.categories = [];
+
+        return record;
+    }
+
+    async function saveDb(db){
+        await jsonbinFetch("PUT", "", db);
+    }
+
+    function setStatusConnected(ok){
+        const badge = document.getElementById("statusBadge");
+        if(ok){
+            badge.textContent = "Connected";
+            badge.style.color = "var(--ok)";
+        }else{
+            badge.textContent = "Not connected";
+            badge.style.color = "var(--muted)";
+        }
+    }
+
+    function setSaveState(state){
+        const el = document.getElementById("saveState");
+        el.textContent = state;
+        if(state === "Saved") el.style.color = "var(--ok)";
+        else if(state === "Saving…") el.style.color = "#ded7ff";
+        else el.style.color = "var(--muted)";
+    }
+
+    function uid(){
+        return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
+    }
+
+    function fmtLocalDateTime(iso){
+        try{
+            const d = new Date(iso);
+            const dd = String(d.getDate()).padStart(2,"0");
+            const mm = String(d.getMonth()+1).padStart(2,"0");
+            const yy = d.getFullYear();
+            const hh = String(d.getHours()).padStart(2,"0");
+            const mi = String(d.getMinutes()).padStart(2,"0");
+            return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+        }catch{ return "—"; }
+    }
+
+    // ===============================
+    // State
+    // ===============================
+    let DB = { decks: [], notes: { categories: [] } };
+    let activeCatId = null;
+    let autosaveTimer = null;
+    let dirty = false;
+
+    const catListEl = document.getElementById("catList");
+    const newCatNameEl = document.getElementById("newCatName");
+    const catTitleEl = document.getElementById("catTitle");
+    const notesEditorEl = document.getElementById("notesEditor");
+    const updatedLabelEl = document.getElementById("updatedLabel");
+
+    function getCategory(id){
+        return (DB.notes.categories || []).find(c => c.id === id) || null;
+    }
+
+    function ensureOneCategory(){
+        if((DB.notes.categories || []).length === 0){
+            const c = {
+                id: uid(),
+                name: "General",
+                content: "",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            DB.notes.categories.push(c);
+            activeCatId = c.id;
+        } else if(!activeCatId || !getCategory(activeCatId)){
+            activeCatId = DB.notes.categories[0].id;
+        }
+    }
+
+    function renderCategories(){
+        const cats = (DB.notes.categories || []).slice().sort((a,b)=> (a.name||"").localeCompare(b.name||""));
+        if(cats.length === 0){
+            catListEl.innerHTML = `<div class="empty">No categories yet.</div>`;
+            return;
+        }
+
+        catListEl.innerHTML = cats.map(c=>{
+            const isActive = c.id === activeCatId;
+            const updated = c.updatedAt ? fmtLocalDateTime(c.updatedAt) : "—";
+            return `
+        <div class="catItem ${isActive ? "active" : ""}" data-id="${escapeHtml(c.id)}">
+          <div style="min-width:0">
+            <div class="catName">${escapeHtml(c.name || "(Untitled)")}</div>
+            <div class="catMeta">Updated: ${escapeHtml(updated)}</div>
+          </div>
+          <div class="catBtns" onclick="event.stopPropagation()">
+            <button class="btn-ghost iconBtn" title="Rename" data-action="rename" data-id="${escapeHtml(c.id)}">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn-danger iconBtn" title="Delete" data-action="delete" data-id="${escapeHtml(c.id)}">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+        }).join("");
+
+        // click select
+        document.querySelectorAll(".catItem").forEach(item=>{
+            item.addEventListener("click", ()=>{
+                const id = item.getAttribute("data-id");
+                switchCategory(id);
+            });
+        });
+
+        // rename
+        document.querySelectorAll("[data-action='rename']").forEach(btn=>{
+            btn.addEventListener("click", async ()=>{
+                const id = btn.getAttribute("data-id");
+                const cat = getCategory(id);
+                if(!cat) return;
+                const name = prompt("Rename category:", cat.name || "");
+                if(name === null) return;
+                const trimmed = name.trim();
+                if(!trimmed) return toast("Name required", "Category name can't be empty.");
+                cat.name = trimmed;
+                cat.updatedAt = new Date().toISOString();
+                await persist("Saved", true);
+                renderCategories();
+                if(activeCatId === id) syncEditorFromActive();
+            });
+        });
+
+        // delete
+        document.querySelectorAll("[data-action='delete']").forEach(btn=>{
+            btn.addEventListener("click", async ()=>{
+                const id = btn.getAttribute("data-id");
+                const cat = getCategory(id);
+                if(!cat) return;
+                const ok = confirm(`Delete category "${cat.name || "(Untitled)"}"?\n\nThis cannot be undone.`);
+                if(!ok) return;
+
+                DB.notes.categories = (DB.notes.categories || []).filter(c => c.id !== id);
+                if(activeCatId === id) activeCatId = (DB.notes.categories[0]?.id || null);
+
+                ensureOneCategory();
+                syncEditorFromActive();
+                renderCategories();
+                await persist("Deleted", true);
+            });
+        });
+    }
+
+    function syncEditorFromActive(){
+        const cat = getCategory(activeCatId);
+        if(!cat){
+            catTitleEl.value = "";
+            notesEditorEl.value = "";
+            updatedLabelEl.textContent = "—";
+            return;
+        }
+        catTitleEl.value = cat.name || "";
+        notesEditorEl.value = cat.content || "";
+        updatedLabelEl.textContent = cat.updatedAt ? `Updated: ${fmtLocalDateTime(cat.updatedAt)}` : "—";
+        dirty = false;
+        setSaveState("Idle");
+    }
+
+    function switchCategory(id){
+        if(id === activeCatId) return;
+        if(dirty){
+            const ok = confirm("You have unsaved changes. Switch category anyway?");
+            if(!ok) return;
+        }
+        activeCatId = id;
+        syncEditorFromActive();
+        renderCategories();
+    }
+
+    async function persist(okLabel="Saved", silent=false){
+        setSaveState("Saving…");
+        try{
+            await saveDb(DB);
+            setSaveState("Saved");
+            dirty = false;
+            if(!silent) toast(okLabel, "Changes saved to JSONBin.");
+            // update label:
+            const cat = getCategory(activeCatId);
+            if(cat) updatedLabelEl.textContent = `Updated: ${fmtLocalDateTime(cat.updatedAt)}`;
+        }catch(err){
+            setSaveState("Idle");
+            toast("Save failed", err.message || String(err));
+        }
+    }
+
+    function scheduleAutosave(){
+        clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(async ()=>{
+            if(!dirty) return;
+            const cat = getCategory(activeCatId);
+            if(!cat) return;
+            cat.updatedAt = new Date().toISOString();
+            await persist("Saved", true);
+        }, 800);
+    }
+
+    // ===============================
+    // Events
+    // ===============================
+    document.getElementById("addCatBtn").addEventListener("click", async ()=>{
+        const name = newCatNameEl.value.trim();
+        if(!name) return toast("Name required", "Type a category name.");
+        const c = {
+            id: uid(),
+            name,
+            content: "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        DB.notes.categories.push(c);
+        newCatNameEl.value = "";
+        activeCatId = c.id;
+        renderCategories();
+        syncEditorFromActive();
+        await persist("Created", true);
+        toast("Category created", `"${name}" created.`);
+    });
+
+    newCatNameEl.addEventListener("keydown", (e)=>{
+        if(e.key === "Enter"){
+            e.preventDefault();
+            document.getElementById("addCatBtn").click();
+        }
+    });
+
+    // title edit (renames category)
+    catTitleEl.addEventListener("input", ()=>{
+        const cat = getCategory(activeCatId);
+        if(!cat) return;
+        cat.name = catTitleEl.value;
+        cat.updatedAt = new Date().toISOString();
+        dirty = true;
+        setSaveState("Unsaved");
+        renderCategories(); // keep sidebar live-updated
+        scheduleAutosave();
+    });
+
+    // notes edit
+    notesEditorEl.addEventListener("input", ()=>{
+        const cat = getCategory(activeCatId);
+        if(!cat) return;
+        cat.content = notesEditorEl.value;
+        cat.updatedAt = new Date().toISOString();
+        dirty = true;
+        setSaveState("Unsaved");
+        scheduleAutosave();
+    });
+
+    document.getElementById("saveBtn").addEventListener("click", async ()=>{
+        const cat = getCategory(activeCatId);
+        if(!cat) return;
+        cat.updatedAt = new Date().toISOString();
+        await persist("Saved", false);
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", ()=> boot(true));
+
+    document.getElementById("goEditorBtn").addEventListener("click", ()=>{
+        // adjust path if your structure differs
+        window.location.href = "../";
+    });
+    document.getElementById("goDashBtn").addEventListener("click", ()=>{
+        window.location.href = "../dashboard/index.html";
+    });
+
+    // Warn on tab close if unsaved
+    window.addEventListener("beforeunload", (e)=>{
+        if(!dirty) return;
+        e.preventDefault();
+        e.returnValue = "";
+    });
+
+    // ===============================
+    // Boot
+    // ===============================
+    async function boot(showToast=false){
+        const has = !!getBinId() && !!getApiKey();
+        setStatusConnected(has);
+
+        if(!has){
+            DB = { decks: [], notes: { categories: [] } };
+            catListEl.innerHTML = `<div class="empty">Missing BIN_ID / API_KEY.</div>`;
+            return;
+        }
+
+        try{
+            DB = await loadDb();
+
+            // If notes missing, create it without breaking decks
+            if(!DB.notes || typeof DB.notes !== "object") DB.notes = { categories: [] };
+            if(!Array.isArray(DB.notes.categories)) DB.notes.categories = [];
+
+            ensureOneCategory();
+            renderCategories();
+            syncEditorFromActive();
+
+            setStatusConnected(true);
+            if(showToast) toast("Loaded", "Notes loaded from JSONBin.");
+        }catch(err){
+            setStatusConnected(false);
+            toast("Connection failed", err.message || String(err));
+        }
+    }
+
+    boot();
+</script>
+</body>
+</html>

@@ -97,6 +97,7 @@
             <span class="badge" id="statusBadge">Not connected</span>
         </div>
         <div class="right">
+            <button class="btn-ghost" id="notesBtn"><i class="fa-solid fa-note-sticky"></i> Notes</button>
             <button class="btn-primary" id="newDeckBtn"><i class="fa-solid fa-plus"></i> New deck</button>
             <button class="btn-ghost" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
         </div>
@@ -557,6 +558,10 @@
 
     document.getElementById("newDeckBtn").addEventListener("click", ()=>{
         window.location.href = "../";
+    });
+
+    document.getElementById("notesBtn").addEventListener("click", ()=>{
+        window.location.href = "../notes/index.html";
     });
 
     document.getElementById("refreshBtn").addEventListener("click", ()=> boot(true));
