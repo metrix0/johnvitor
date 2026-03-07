@@ -3,598 +3,68 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Anki – Dashboard</title>
+    <title>Anki – Notes</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <style>
-        :root{
-            --bg:#0b0c10; --card:#11131a; --muted:#a7adbb; --text:#eef0f6;
-            --accent:#7c5cff; --danger:#ff4d4d; --ok:#21c27a; --line:#232633;
-        }
-        *{box-sizing:border-box}
-        body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
-        .wrap{max-width:1200px;margin:0 auto;padding:22px}
-        .topbar{
-            display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;
-            padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,0.03)
-        }
-        .left,.right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-        .badge{font-size:12px;color:var(--muted)}
-        button,input{
-            border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);
-            padding:10px 12px;font-size:14px;outline:none
-        }
-        button{cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:8px}
-        button:hover{transform:translateY(-1px)}
-        .btn-primary{background:linear-gradient(135deg,var(--accent),#3dd6ff);border:none}
-        .btn-ghost{background:transparent}
-        .btn-danger{border-color:rgba(255,77,77,.35);color:#ffd2d2}
-        .btn-ok{border-color:rgba(33,194,122,.35);color:#d3ffe9}
-
-        .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
-        @media (max-width: 900px){ .cols{grid-template-columns:1fr} }
-
-        .panel{
-            border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,0.02);overflow:hidden
-        }
-        .panel h2{
-            margin:0;padding:12px 14px;font-size:13px;text-transform:uppercase;letter-spacing:.09em;
-            background:rgba(255,255,255,0.03);color:var(--muted)
-        }
-        .list{padding:10px}
-        .deck{
-            border:1px solid var(--line);border-radius:14px;background:rgba(17,19,26,.75);
-            padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start
-        }
-        .deck:last-child{margin-bottom:0}
-        .deck .meta{display:flex;flex-direction:column;gap:6px}
-        .deck .name{font-weight:700}
-        .deck .sub{color:var(--muted);font-size:13px}
-        .pill{
-            font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);width:fit-content
-        }
-        .pill.due{border-color:rgba(124,92,255,.45);color:#ded7ff}
-        .pill.done{border-color:rgba(33,194,122,.45);color:#d3ffe9}
-        .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-        .actions button{padding:9px 10px}
-        .muted{color:var(--muted)}
-        .empty{padding:14px;color:var(--muted)}
-        .toast{
-            position:fixed;right:18px;bottom:18px;max-width:360px;
-            background:rgba(17,19,26,.92);border:1px solid var(--line);border-radius:14px;
-            padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35);display:none
-        }
-        .toast strong{display:block;margin-bottom:4px}
-
-        /* Review overlay */
-        .reviewOverlay{
-            position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:18px
-        }
-        .reviewCard{
-            width:min(860px,100%);background:var(--card);border:1px solid var(--line);
-            border-radius:18px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.45)
-        }
-        .reviewTop{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
-        .reviewTitle{font-weight:800}
-        .progress{color:var(--muted);font-size:13px}
-        .cardFace{
-            margin-top:12px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,0.03);
-            padding:18px;min-height:220px;display:flex;align-items:center;justify-content:center;text-align:center;
-            font-size:20px;line-height:1.35;white-space:pre-wrap
-        }
-        .reviewActions{
-            margin-top:12px;display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;align-items:center
-        }
-        .keyhint{color:var(--muted);font-size:13px}
-    </style>
+    <link rel="stylesheet" href="../app.css">
 </head>
-
-<body>
+<body data-page="notes">
 <div class="wrap">
+
     <div class="topbar">
         <div class="left">
-            <strong style="font-size:16px">Anki Dashboard</strong>
+            <strong style="font-size:16px">Notes</strong>
             <span class="badge" id="statusBadge">Not connected</span>
+            <span class="pill" id="saveState">Idle</span>
         </div>
         <div class="right">
-            <button class="btn-ghost" id="notesBtn"><i class="fa-solid fa-note-sticky"></i> Notes</button>
-            <button class="btn-primary" id="newDeckBtn"><i class="fa-solid fa-plus"></i> New deck</button>
+            <a class="btn-ghost nav-link" href="../index.html">
+                <i class="fa-solid fa-layer-group"></i> Deck Editor
+            </a>
+
+            <a class="btn-ghost nav-link" href="../notes/index.html">
+                <i class="fa-solid fa-table-columns"></i> Dashboard
+            </a>
+
             <button class="btn-ghost" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
         </div>
     </div>
 
-    <div class="cols">
+    <div class="layout">
         <div class="panel">
-            <h2>To Review</h2>
-            <div class="list" id="toReviewList"></div>
+            <h2>Categories</h2>
+            <div class="catTop">
+                <input id="newCatName" placeholder="New category…" />
+                <button class="btn-primary" id="addCatBtn"><i class="fa-solid fa-plus"></i> Add</button>
+            </div>
+            <div class="catList" id="catList"></div>
         </div>
 
         <div class="panel">
-            <h2>Reviewed</h2>
-            <div class="list" id="reviewedList"></div>
+            <h2>Notes</h2>
+            <div class="editorWrap">
+                <div class="editorHeader">
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                        <input class="titleInput" id="catTitle" placeholder="Category title…" />
+                        <span class="muted" id="updatedLabel">—</span>
+                    </div>
+
+                    <div style="display:flex;gap:10px;flex-wrap:wrap">
+                        <button class="btn-ok" id="saveBtn"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                    </div>
+                </div>
+
+                <textarea class="editor" id="notesEditor" placeholder="Write anything here…"></textarea>
+                <div class="muted" style="margin-top:8px;font-size:13px">
+                    Auto-save after you stop typing for ~800ms.
+                </div>
+            </div>
         </div>
     </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
 
-<!-- Review Mode -->
-<div class="reviewOverlay" id="reviewOverlay" aria-hidden="true">
-    <div class="reviewCard">
-        <div class="reviewTop">
-            <div>
-                <div class="reviewTitle" id="reviewDeckTitle">Deck</div>
-                <div class="progress" id="reviewProgress">0/0</div>
-            </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-                <span class="pill due" id="reviewPill">Review #</span>
-                <button class="btn-ghost" id="exitReviewBtn"><i class="fa-solid fa-xmark"></i> Exit</button>
-            </div>
-        </div>
-
-        <div class="cardFace" id="cardFace">Front</div>
-
-        <div class="reviewActions">
-            <div class="keyhint" id="keyHint">
-                <b>Space</b>: flip • <b>→</b> or <b>2</b>: Good (next) • <b>←</b> or <b>1</b>: Again (repeat later)
-            </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-                <button class="btn-danger" id="againBtn"><i class="fa-solid fa-rotate-left"></i> Again</button>
-                <button class="btn-ok" id="goodBtn"><i class="fa-solid fa-check"></i> Good</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Settings (simple prompt-based) -->
-<script>
-    const BIN_ID = "69a23a35d0ea881f40e076a1";
-    const API_KEY = "$2a$10$pb.AtTxlxRYS6pkVFag6xeON96aqdCGaUhdoyXLKA..Cpwp6WgWMa";
-
-    function getBinId(){ return BIN_ID; }
-    function getApiKey(){ return API_KEY; }
-
-    function escapeHtml(s){
-        return String(s ?? "").replace(/[&<>"']/g, m => ({
-            "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-        }[m]));
-    }
-
-    function toast(title, msg){
-        const el = document.getElementById("toast");
-        el.innerHTML = `<strong>${escapeHtml(title)}</strong><div class="muted">${escapeHtml(msg)}</div>`;
-        el.style.display = "block";
-        clearTimeout(toast._t);
-        toast._t = setTimeout(()=> el.style.display="none", 3200);
-    }
-
-    async function jsonbinFetch(method, path, body){
-        const binId = getBinId();
-        const key = getApiKey();
-        if(!binId || !key) throw new Error("Missing JSONBin settings");
-
-        const url = `https://api.jsonbin.io/v3/b/${binId}${path || ""}`;
-        const res = await fetch(url, {
-            method,
-            headers: {
-                "Content-Type":"application/json",
-                "X-Master-Key": key
-            },
-            body: body ? JSON.stringify(body) : undefined
-        });
-
-        if(!res.ok){
-            const txt = await res.text().catch(()=> "");
-            throw new Error(`JSONBin error ${res.status}: ${txt.slice(0,200)}`);
-        }
-        return res.json();
-    }
-
-    async function loadDb(){
-        const data = await jsonbinFetch("GET", "/latest");
-        const record = data?.record;
-        if(!record || typeof record !== "object") return { decks: [] };
-        if(!Array.isArray(record.decks)) record.decks = [];
-        return record;
-    }
-
-    async function saveDb(db){
-        await jsonbinFetch("PUT", "", db);
-    }
-
-    function setStatusConnected(ok){
-        const badge = document.getElementById("statusBadge");
-        if(ok){
-            badge.textContent = "Connected";
-            badge.style.color = "var(--ok)";
-        }else{
-            badge.textContent = "Not connected";
-            badge.style.color = "var(--muted)";
-        }
-    }
-
-    /** ---------------------------
-     *  Review scheduling: 1, 3, 7, 14, 28 days after creation
-     *  - deck.completedReviews = [1,3,...]
-     *  - due = smallest interval where today >= createdAt+interval AND not completed
-     * -------------------------- */
-    const INTERVALS = [1,3,7,14,28];
-
-    function startOfLocalDay(d){
-        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    }
-    function addDays(date, days){
-        const d = new Date(date);
-        d.setDate(d.getDate() + days);
-        return d;
-    }
-    function fmtLocalDate(iso){
-        try{
-            const d = new Date(iso);
-            const dd = String(d.getDate()).padStart(2,"0");
-            const mm = String(d.getMonth()+1).padStart(2,"0");
-            const yy = d.getFullYear();
-            return `${dd}/${mm}/${yy}`;
-        }catch{ return iso; }
-    }
-
-    function dueInfo(deck){
-        const created = new Date(deck.createdAt);
-        const today = startOfLocalDay(new Date());
-        const completed = new Set(deck.completedReviews || []);
-        for(const n of INTERVALS){
-            const dueDate = startOfLocalDay(addDays(created, n));
-            if(today >= dueDate && !completed.has(n)){
-                return { due:true, reviewNumber:n, dueDate };
-            }
-        }
-        return { due:false, reviewNumber:null, dueDate:null };
-    }
-
-    function isFullyReviewed(deck){
-        const completed = new Set(deck.completedReviews || []);
-        return INTERVALS.every(n => completed.has(n));
-    }
-
-    /** ---------------------------
-     *  UI render
-     * -------------------------- */
-    let DB = { decks: [] };
-
-    function deckCardHtml(deck, mode){
-        const info = dueInfo(deck);
-        const cardCount = Array.isArray(deck.cards) ? deck.cards.filter(c => (c.front||"").trim() || (c.back||"").trim()).length : 0;
-
-        const pill = info.due
-            ? `<span class="pill due">Review #${info.reviewNumber} • due ${fmtLocalDate(info.dueDate.toISOString())}</span>`
-            : `<span class="pill ${isFullyReviewed(deck) ? "done" : ""}">${isFullyReviewed(deck) ? "All reviews done" : "Not due yet"}</span>`;
-
-        return `
-    <div class="deck">
-      <div class="meta">
-        <div class="name">${escapeHtml(deck.name || "(Untitled)")}</div>
-        <div class="sub">
-          Created: ${escapeHtml(fmtLocalDate(deck.createdAt))} • Cards: ${cardCount}
-        </div>
-        ${pill}
-      </div>
-        <div class="actions">
-          ${info.due ? `<button class="btn-ok" data-action="review" data-id="${escapeHtml(deck.id)}"><i class="fa-solid fa-play"></i> Review</button>` : ``}
-          <button class="btn-ghost" data-action="edit" data-id="${escapeHtml(deck.id)}"><i class="fa-solid fa-pen"></i> Edit</button>
-          <button class="btn-danger" data-action="delete" data-id="${escapeHtml(deck.id)}"><i class="fa-solid fa-trash"></i></button>
-        </div>
-    </div>
-  `;
-    }
-
-    function renderLists(){
-        const toEl = document.getElementById("toReviewList");
-        const doneEl = document.getElementById("reviewedList");
-
-        const decks = (DB.decks || []).slice().sort((a,b)=> (a.name||"").localeCompare(b.name||""));
-
-        const toReview = [];
-        const reviewed = [];
-
-        for(const d of decks){
-            const info = dueInfo(d);
-            if(info.due) toReview.push(d);
-            else reviewed.push(d);
-        }
-
-        if(toReview.length === 0){
-            toEl.innerHTML = `<div class="empty">Nothing due today.</div>`;
-        }else{
-            // sort by due date oldest first (earlier intervals first)
-            toReview.sort((a,b)=> dueInfo(a).reviewNumber - dueInfo(b).reviewNumber);
-            toEl.innerHTML = toReview.map(d=>deckCardHtml(d,"to")).join("");
-        }
-
-        if(reviewed.length === 0){
-            doneEl.innerHTML = `<div class="empty">No decks here yet.</div>`;
-        }else{
-            doneEl.innerHTML = reviewed.map(d=>deckCardHtml(d,"done")).join("");
-        }
-
-        // wire buttons
-        document.querySelectorAll("[data-action='edit']").forEach(btn=>{
-            btn.addEventListener("click", ()=>{
-                const id = btn.getAttribute("data-id");
-                window.location.href = `../?deckId=${encodeURIComponent(id)}`;
-            });
-        });
-
-        document.querySelectorAll("[data-action='review']").forEach(btn=>{
-            btn.addEventListener("click", ()=>{
-                const id = btn.getAttribute("data-id");
-                startReview(id);
-            });
-        });
-
-        document.querySelectorAll("[data-action='delete']").forEach(btn=>{
-            btn.addEventListener("click", async ()=>{
-                const id = btn.getAttribute("data-id");
-                const deck = getDeck(id);
-                if(!deck) return toast("Not found", "Deck not found.");
-
-                const ok = confirm(`Delete deck "${deck.name || "(Untitled)"}"?\n\nThis cannot be undone.`);
-                if(!ok) return;
-
-                // prevent deleting while in review mode for same deck
-                if (overlay.style.display === "flex" && review.deckId === id) {
-                    closeOverlay();
-                }
-
-                DB.decks = (DB.decks || []).filter(d => d.id !== id);
-
-                try{
-                    await saveDb(DB);
-                    toast("Deleted", "Deck removed.");
-                    renderLists();
-                }catch(err){
-                    toast("Delete failed", err.message || String(err));
-                }
-            });
-        });
-    }
-
-    /** ---------------------------
-     *  Review mode (Anki-ish)
-     *  - Space flips
-     *  - Again: puts card back later in queue
-     *  - Good: advances
-     *  - End: mark the deck's current due reviewNumber as completed and save
-     * -------------------------- */
-    const overlay = document.getElementById("reviewOverlay");
-    const cardFace = document.getElementById("cardFace");
-    const reviewDeckTitle = document.getElementById("reviewDeckTitle");
-    const reviewProgress = document.getElementById("reviewProgress");
-    const reviewPill = document.getElementById("reviewPill");
-
-    let review = {
-        deckId:null,
-        deck:null,
-        reviewNumber:null,
-        queue:[],
-        againPile:[],
-        i:0,
-        showingBack:false
-    };
-
-    function openOverlay(){
-        overlay.style.display = "flex";
-        overlay.setAttribute("aria-hidden","false");
-    }
-    function closeOverlay(){
-        overlay.style.display = "none";
-        overlay.setAttribute("aria-hidden","true");
-    }
-
-    function shuffle(arr){
-        for(let i=arr.length-1;i>0;i--){
-            const j = Math.floor(Math.random()*(i+1));
-            [arr[i],arr[j]] = [arr[j],arr[i]];
-        }
-        return arr;
-    }
-
-    function getDeck(id){
-        return (DB.decks || []).find(d=>d.id===id) || null;
-    }
-
-    function cleanCards(cards){
-        return (cards || [])
-            .map(c=>({front:String(c?.front||""), back:String(c?.back||"")}))
-            .filter(c => c.front.trim() || c.back.trim());
-    }
-
-    function setFace(){
-        const total = review.queue.length + review.againPile.length;
-        const done = review.i; // how many consumed from queue (not counting againPile which comes later)
-        reviewProgress.textContent = `${Math.min(done+1, total)}/${Math.max(total,1)} • Space to flip`;
-
-        const current = review.queue[review.i] || null;
-        if(!current){
-            cardFace.textContent = "Done!";
-            reviewProgress.textContent = "Finished";
-            return;
-        }
-
-        const text = review.showingBack ? (current.back || "(empty)") : (current.front || "(empty)");
-        cardFace.textContent = text;
-    }
-
-    function nextCard(){
-        review.showingBack = false;
-
-        // if finished main queue but have again cards, recycle them
-        if(review.i >= review.queue.length){
-            if(review.againPile.length){
-                review.queue = shuffle(review.againPile);
-                review.againPile = [];
-                review.i = 0;
-                setFace();
-                return;
-            }
-            finishDeckReview();
-            return;
-        }
-
-        setFace();
-    }
-
-    function startReview(deckId){
-        const deck = getDeck(deckId);
-        if(!deck){
-            toast("Missing deck", "Deck not found.");
-            return;
-        }
-        const info = dueInfo(deck);
-        if(!info.due){
-            toast("Not due", "This deck is not due today.");
-            return;
-        }
-
-        const cards = cleanCards(deck.cards);
-        if(cards.length === 0){
-            toast("No cards", "This deck has no cards to review.");
-            return;
-        }
-
-        review.deckId = deckId;
-        review.deck = deck;
-        review.reviewNumber = info.reviewNumber;
-        review.queue = shuffle(cards.slice());
-        review.againPile = [];
-        review.i = 0;
-        review.showingBack = false;
-
-        reviewDeckTitle.textContent = deck.name || "(Untitled)";
-        reviewPill.textContent = `Review #${info.reviewNumber}`;
-        setFace();
-        openOverlay();
-    }
-
-    function finishDeckReview(){
-        // Mark reviewNumber as completed, save DB
-        const deck = getDeck(review.deckId);
-        if(!deck){
-            toast("Error", "Deck disappeared.");
-            closeOverlay();
-            return;
-        }
-
-        const n = review.reviewNumber;
-        deck.completedReviews = Array.isArray(deck.completedReviews) ? deck.completedReviews : [];
-        if(!deck.completedReviews.includes(n)) deck.completedReviews.push(n);
-        deck.completedReviews.sort((a,b)=>a-b);
-
-        // persist
-        saveDb(DB)
-            .then(()=>{
-                toast("Saved", `Completed review #${n} for "${deck.name}".`);
-                closeOverlay();
-                renderLists();
-            })
-            .catch(err=>{
-                toast("Save failed", err.message || String(err));
-                closeOverlay();
-                renderLists();
-            });
-    }
-
-    /** Review controls */
-    document.getElementById("exitReviewBtn").addEventListener("click", ()=>{
-        closeOverlay();
-    });
-
-    document.getElementById("goodBtn").addEventListener("click", ()=>{
-        // move forward
-        review.i++;
-        nextCard();
-    });
-
-    document.getElementById("againBtn").addEventListener("click", ()=>{
-        // push current into again pile, then move on
-        const current = review.queue[review.i];
-        if(current) review.againPile.push(current);
-        review.i++;
-        nextCard();
-    });
-
-    cardFace.addEventListener("click", ()=>{
-        review.showingBack = !review.showingBack;
-        setFace();
-    });
-
-    document.addEventListener("keydown", (e)=>{
-        if(overlay.style.display !== "flex") return;
-
-        if(e.key === "Escape"){
-            closeOverlay();
-            return;
-        }
-        if(e.key === " "){
-            e.preventDefault();
-            review.showingBack = !review.showingBack;
-            setFace();
-            return;
-        }
-        if(e.key === "ArrowRight" || e.key === "2"){
-            e.preventDefault();
-            document.getElementById("goodBtn").click();
-            return;
-        }
-        if(e.key === "ArrowLeft" || e.key === "1"){
-            e.preventDefault();
-            document.getElementById("againBtn").click();
-            return;
-        }
-    });
-
-    /** ---------------------------
-     *  Settings and boot
-     * -------------------------- */
-
-    document.getElementById("newDeckBtn").addEventListener("click", ()=>{
-        window.location.href = "../";
-    });
-
-    document.getElementById("notesBtn").addEventListener("click", ()=>{
-        window.location.href = "../notes/index.html";
-    });
-
-    document.getElementById("refreshBtn").addEventListener("click", ()=> boot(true));
-
-    async function boot(showToast=false){
-        const has = !!getBinId() && !!getApiKey();
-        setStatusConnected(has);
-
-        if(!has){
-            DB = { decks: [] };
-            renderLists();
-            if(showToast) toast("Not connected", "Click Settings and paste JSONBin Bin ID + X-Master-Key.");
-            return;
-        }
-
-        try{
-            DB = await loadDb();
-            if(!DB || typeof DB !== "object" || !Array.isArray(DB.decks)){
-                DB = { decks: [] };
-                await saveDb(DB);
-            }
-            setStatusConnected(true);
-            renderLists();
-            if(showToast) toast("Loaded", "Decks loaded from JSONBin.");
-        }catch(err){
-            setStatusConnected(false);
-            DB = { decks: [] };
-            renderLists();
-            toast("Connection failed", err.message || String(err));
-        }
-    }
-
-    boot();
-</script>
+<script src="../app.js"></script>
 </body>
 </html>
