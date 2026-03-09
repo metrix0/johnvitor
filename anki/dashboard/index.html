@@ -3,64 +3,72 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Anki – Notes</title>
+    <title>Anki – Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../app.css">
 </head>
-<body data-page="notes">
+<body data-page="dashboard">
 <div class="wrap">
-
     <div class="topbar">
         <div class="left">
-            <strong style="font-size:16px">Notes</strong>
+            <strong style="font-size:16px">Anki Dashboard</strong>
             <span class="badge" id="statusBadge">Not connected</span>
-            <span class="pill" id="saveState">Idle</span>
         </div>
         <div class="right">
-            <a class="btn-ghost nav-link" href="../index.html">
-                <i class="fa-solid fa-layer-group"></i> Deck Editor
+            <a class="btn-ghost nav-link" href="../dashboard/index.html">
+                <i class="fa-solid fa-note-sticky"></i> Notes
             </a>
 
-            <a class="btn-ghost nav-link" href="../notes/index.html">
-                <i class="fa-solid fa-table-columns"></i> Dashboard
+            <a class="btn-primary nav-link" href="../index.html">
+                <i class="fa-solid fa-plus"></i> New deck
             </a>
 
-            <button class="btn-ghost" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            <button class="btn-ghost" id="refreshBtn">
+                <i class="fa-solid fa-rotate"></i> Refresh
+            </button>
         </div>
     </div>
 
-    <div class="layout">
+    <div class="cols">
         <div class="panel">
-            <h2>Categories</h2>
-            <div class="catTop">
-                <input id="newCatName" placeholder="New category…" />
-                <button class="btn-primary" id="addCatBtn"><i class="fa-solid fa-plus"></i> Add</button>
-            </div>
-            <div class="catList" id="catList"></div>
+            <h2>To Review</h2>
+            <div class="list" id="toReviewList"></div>
         </div>
 
         <div class="panel">
-            <h2>Notes</h2>
-            <div class="editorWrap">
-                <div class="editorHeader">
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                        <input class="titleInput" id="catTitle" placeholder="Category title…" />
-                        <span class="muted" id="updatedLabel">—</span>
-                    </div>
+            <h2>Reviewed</h2>
+            <div class="list" id="reviewedList"></div>
+        </div>
+    </div>
+</div>
 
-                    <div style="display:flex;gap:10px;flex-wrap:wrap">
-                        <button class="btn-ok" id="saveBtn"><i class="fa-solid fa-floppy-disk"></i> Save</button>
-                    </div>
-                </div>
+<div class="toast" id="toast"></div>
 
-                <textarea class="editor" id="notesEditor" placeholder="Write anything here…"></textarea>
-                <div class="muted" style="margin-top:8px;font-size:13px">
-                    Auto-save after you stop typing for ~800ms.
-                </div>
+<div class="reviewOverlay" id="reviewOverlay" aria-hidden="true">
+    <div class="reviewCard">
+        <div class="reviewTop">
+            <div>
+                <div class="reviewTitle" id="reviewDeckTitle">Deck</div>
+                <div class="progress" id="reviewProgress">0/0</div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <span class="pill due" id="reviewPill">Review #</span>
+                <button class="btn-ghost" id="exitReviewBtn"><i class="fa-solid fa-xmark"></i> Exit</button>
+            </div>
+        </div>
+
+        <div class="cardFace" id="cardFace">Front</div>
+
+        <div class="reviewActions">
+            <div class="keyhint" id="keyHint">
+                <b>Space</b>: flip • <b>→</b> or <b>2</b>: Good (next) • <b>←</b> or <b>1</b>: Again (repeat later)
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn-danger" id="againBtn"><i class="fa-solid fa-rotate-left"></i> Again</button>
+                <button class="btn-ok" id="goodBtn"><i class="fa-solid fa-check"></i> Good</button>
             </div>
         </div>
     </div>
-
 </div>
 
 <div class="toast" id="toast"></div>
