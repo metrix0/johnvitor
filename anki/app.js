@@ -319,7 +319,7 @@ function initEditorPage(){
         }
 
         // Shift+Enter = new card row
-        if(isInput && e.key === "Enter" && e.shiftKey){
+        if(isInput && e.key === "Enter" && !e.shiftKey){
             e.preventDefault();
             const rowIndex = Number(active.dataset.row);
             addRow(rowIndex);
@@ -575,7 +575,7 @@ function initNotesPage(){
     });
 
     newCatNameEl.addEventListener("keydown", (e)=>{
-        if(e.key === "Enter"){
+        if(e.key === "Enter" && e.shiftKey){
             e.preventDefault();
             document.getElementById("addCatBtn").click();
         }
