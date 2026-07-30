@@ -5,9 +5,9 @@
 //     return check;
 // }
 function Welcome(){
-    var userLang = navigator.language || navigator.userLanguage;
-    if(userLang.toLowerCase() === 'pt-br'){if(window.location.pathname.includes('en')){window.location='./'}}
-    else if(!window.location.pathname.includes('en')){window.location='en'}
+    // var userLang = navigator.language || navigator.userLanguage;
+    // if(userLang.toLowerCase() === 'pt-br'){if(window.location.pathname.includes('en')){window.location='./'}}
+    // else if(!window.location.pathname.includes('en')){window.location='en'}
     let time = 1
     // if (mobilecheck() === true){time = 1}
     setTimeout(function (){
