@@ -4,6 +4,11 @@ const API_KEY = "$2a$10$pb.AtTxlxRYS6pkVFag6xeON96aqdCGaUhdoyXLKA..Cpwp6WgWMa";
 const APP_PASSWORD = API_KEY.slice(-3);
 const ACCESS_KEY = "ANKI_APP_ACCESS_UNTIL";
 const FIELD_IDS = ["msg1", "msg2", "msg3", "msg4", "msg5"];
+const AUTOSAVE_DELAY = 500;
+
+let autosaveTimer = null;
+let saveInFlight = false;
+let saveQueued = false;
 
 function hasValidAccess(){
     const until = Number(localStorage.getItem(ACCESS_KEY) || "0");
@@ -94,15 +99,31 @@ async function load(){
         const record = await loadLatestRecord();
         writeFields(normalizeFields(record.msg));
         setConnected(true);
+        setSaveStatus("Saved");
     }catch(error){
         setConnected(false);
         toast("Connection failed", error.message || String(error));
     }
 }
 
-async function save(){
+function scheduleAutoSave(){
+    clearTimeout(autosaveTimer);
+    setSaveStatus("Unsaved");
+    autosaveTimer = setTimeout(() => save(false), AUTOSAVE_DELAY);
+}
+
+async function save(showSuccessToast = true){
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+
+    if(saveInFlight){
+        saveQueued = true;
+        return;
+    }
+
     const topButton = document.getElementById("saveBtn");
     const bottomButton = document.getElementById("saveBtnBottom");
+    saveInFlight = true;
     topButton.disabled = true;
     bottomButton.disabled = true;
     setSaveStatus("Saving...");
@@ -116,23 +137,35 @@ async function save(){
         await jsonbinFetch("PUT", "", latest);
         setConnected(true);
         setSaveStatus("Saved");
-        toast("Saved", "All five fields were saved to JSONBin.");
+        if(showSuccessToast){
+            toast("Saved", "All five fields were saved to JSONBin.");
+        }
     }catch(error){
         setConnected(false);
         setSaveStatus("Save failed");
         toast("Save failed", error.message || String(error));
     }finally{
+        saveInFlight = false;
         topButton.disabled = false;
         bottomButton.disabled = false;
+
+        if(saveQueued){
+            saveQueued = false;
+            save(false);
+        }
     }
 }
 
-document.getElementById("saveBtn").addEventListener("click", save);
-document.getElementById("saveBtnBottom").addEventListener("click", save);
+FIELD_IDS.forEach(id => {
+    document.getElementById(id).addEventListener("input", scheduleAutoSave);
+});
+
+document.getElementById("saveBtn").addEventListener("click", () => save(true));
+document.getElementById("saveBtnBottom").addEventListener("click", () => save(true));
 document.addEventListener("keydown", event => {
     if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s"){
         event.preventDefault();
-        save();
+        save(true);
     }
 });
 
