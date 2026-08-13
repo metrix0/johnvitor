@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Engravida</title>
+    <link rel="stylesheet" href="../anki/app.css">
+    <link rel="stylesheet" href="../notion/app.css">
+</head>
+<body data-page="engravida" data-title="Engravida">
+<div class="wrap notion-wrap">
+    <div class="topbar">
+        <div class="left">
+            <strong style="font-size:16px">Engravida</strong>
+            <span class="badge" id="statusBadge">Not connected</span>
+        </div>
+        <div class="right">
+            <span class="badge" id="saveStatus">Loading...</span>
+            <span class="notion-toolbar-hint"><strong>Ctrl + S</strong> saves to Notion</span>
+        </div>
+    </div>
+
+    <main class="notion-content" id="notionContent" aria-busy="true"></main>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="../notion/app.js"></script>
+</body>
+</html>
