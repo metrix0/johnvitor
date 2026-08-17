@@ -101,6 +101,7 @@ const EDITABLE_TYPES = new Set([
 
 async function saveChanges(pageId, payload) {
     const changes = Array.isArray(payload.changes) ? payload.changes : [];
+    const deletes = Array.isArray(payload.deletes) ? payload.deletes : [];
 
     for (const change of changes) {
         if (!change || !change.id || !EDITABLE_TYPES.has(change.type)) continue;
@@ -113,6 +114,13 @@ async function saveChanges(pageId, payload) {
         await notionFetch(`/blocks/${encodeURIComponent(change.id)}`, {
             method: "PATCH",
             body: JSON.stringify({ [change.type]: blockValue })
+        });
+    }
+
+    for (const blockId of deletes) {
+        if (!blockId || typeof blockId !== "string") continue;
+        await notionFetch(`/blocks/${encodeURIComponent(blockId)}`, {
+            method: "DELETE"
         });
     }
 
