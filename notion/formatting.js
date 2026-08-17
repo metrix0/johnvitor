@@ -1,9 +1,6 @@
 const formattingDirtyBlockIds = new Set();
 let formattingRange = null;
 let formattingEditables = [];
-let dragSelectionAnchor = null;
-let dragSelectionStartPoint = null;
-let dragSelectionActive = false;
 
 const formattingToolbar = document.createElement("div");
 formattingToolbar.className = "notion-format-toolbar";
@@ -23,42 +20,45 @@ function closestEditableForNode(node) {
     return element?.closest?.('[data-editable="true"]') || null;
 }
 
-function caretPointFromClient(x, y) {
-    if (document.caretPositionFromPoint) {
-        const position = document.caretPositionFromPoint(x, y);
-        if (position) return { node: position.offsetNode, offset: position.offset };
-    }
-
-    if (document.caretRangeFromPoint) {
-        const range = document.caretRangeFromPoint(x, y);
-        if (range) return { node: range.startContainer, offset: range.startOffset };
-    }
-
-    return null;
-}
-
-function pointInsideEditable(point) {
-    return point && closestEditableForNode(point.node);
-}
-
-function rangeFromPoints(a, b) {
-    if (!a || !b) return null;
-
-    try {
-        const anchor = document.createRange();
-        anchor.setStart(a.node, a.offset);
-        anchor.collapse(true);
-
-        const result = document.createRange();
-        const comparison = anchor.comparePoint(b.node, b.offset);
-        if (comparison >= 0) {
-            result.setStart(a.node, a.offset);
-            result.setEnd(b.node, b.offset);
-        } else {
-            result.setStart(b.node, b.offset);
-            result.setEnd(a.node, a.offset);
+function selectedEditablesForRange(range) {
+    if (!range || range.collapsed) return [];
+    return Array.from(document.querySelectorAll('[data-editable="true"]')).filter(editable => {
+        try {
+            return range.intersectsNode(editable);
+        } catch {
+            return false;
         }
-        return result;
+    });
+}
+
+function currentFormattingSelection() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
+
+    const range = selection.getRangeAt(0);
+    const startEditable = closestEditableForNode(range.startContainer);
+    const endEditable = closestEditableForNode(range.endContainer);
+    if (!startEditable || !endEditable) return null;
+
+    const editables = selectedEditablesForRange(range);
+    if (!editables.length) return null;
+    return { range, editables };
+}
+
+function subRangeForEditable(fullRange, editable) {
+    if (!fullRange || !editable) return null;
+    try {
+        const range = document.createRange();
+        range.selectNodeContents(editable);
+
+        if (editable.contains(fullRange.startContainer)) {
+            range.setStart(fullRange.startContainer, fullRange.startOffset);
+        }
+        if (editable.contains(fullRange.endContainer)) {
+            range.setEnd(fullRange.endContainer, fullRange.endOffset);
+        }
+
+        return range.collapsed ? null : range;
     } catch {
         return null;
     }
@@ -72,53 +72,26 @@ function setDocumentSelection(range) {
     selection.addRange(range);
 }
 
-function selectedEditablesForRange(range) {
-    if (!range || range.collapsed) return [];
-
-    return Array.from(document.querySelectorAll('[data-editable="true"]')).filter(editable => {
-        try {
-            return range.intersectsNode(editable);
-        } catch {
-            return false;
-        }
-    });
-}
-
-function validFormattingSelection(selection) {
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
-
-    const range = selection.getRangeAt(0);
-    const startEditable = closestEditableForNode(range.startContainer);
-    const endEditable = closestEditableForNode(range.endContainer);
-    if (!startEditable || !endEditable) return null;
-
-    const editables = selectedEditablesForRange(range);
-    if (!editables.length) return null;
-
-    return { range, editables };
-}
-
 function updateFormattingToolbar() {
-    const selection = window.getSelection();
-    const valid = validFormattingSelection(selection);
-    if (!valid) {
+    const current = currentFormattingSelection();
+    if (!current) {
         formattingToolbar.hidden = true;
         formattingRange = null;
         formattingEditables = [];
         return;
     }
 
-    const range = valid.range.cloneRange();
-    const rect = range.getBoundingClientRect();
+    formattingRange = current.range.cloneRange();
+    formattingEditables = current.editables;
+
+    const rects = Array.from(formattingRange.getClientRects());
+    const rect = rects[0] || formattingRange.getBoundingClientRect();
     if (!rect || (!rect.width && !rect.height)) {
         formattingToolbar.hidden = true;
         return;
     }
 
-    formattingRange = range;
-    formattingEditables = valid.editables;
     formattingToolbar.hidden = false;
-
     const toolbarRect = formattingToolbar.getBoundingClientRect();
     const left = Math.max(8, Math.min(
         window.innerWidth - toolbarRect.width - 8,
@@ -128,49 +101,6 @@ function updateFormattingToolbar() {
 
     formattingToolbar.style.left = `${left}px`;
     formattingToolbar.style.top = `${top}px`;
-
-    formattingToolbar.querySelectorAll("[data-format]").forEach(button => {
-        const format = button.dataset.format;
-        let active = false;
-        if (format === "code") {
-            active = formattingEditables.every(editable => {
-                const selected = subRangeForEditable(range, editable);
-                if (!selected) return false;
-                const common = selected.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
-                    ? selected.commonAncestorContainer
-                    : selected.commonAncestorContainer.parentElement;
-                return Boolean(common?.closest?.("code"));
-            });
-        } else {
-            try {
-                active = document.queryCommandState(format);
-            } catch {
-                active = false;
-            }
-        }
-        button.classList.toggle("active", active);
-    });
-}
-
-function subRangeForEditable(fullRange, editable) {
-    if (!fullRange || !editable) return null;
-
-    try {
-        const range = document.createRange();
-        range.selectNodeContents(editable);
-
-        if (editable.contains(fullRange.startContainer)) {
-            range.setStart(fullRange.startContainer, fullRange.startOffset);
-        }
-        if (editable.contains(fullRange.endContainer)) {
-            range.setEnd(fullRange.endContainer, fullRange.endOffset);
-        }
-
-        if (range.collapsed) return null;
-        return range;
-    } catch {
-        return null;
-    }
 }
 
 function markFormattingDirty(editable) {
@@ -179,7 +109,7 @@ function markFormattingDirty(editable) {
     markDirty();
 }
 
-function toggleInlineCodeForRange(range, editable) {
+function toggleInlineCode(range, editable) {
     const common = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
         ? range.commonAncestorContainer
         : range.commonAncestorContainer.parentElement;
@@ -205,34 +135,34 @@ function toggleInlineCodeForRange(range, editable) {
 function applyFormattingAcrossSelection(format) {
     if (!formattingRange || !formattingEditables.length) return;
 
-    const ranges = formattingEditables
+    const pieces = formattingEditables
         .map(editable => ({ editable, range: subRangeForEditable(formattingRange, editable) }))
-        .filter(item => item.range);
+        .filter(piece => piece.range);
 
-    for (const { editable, range } of ranges) {
+    for (const { editable, range } of pieces) {
         setDocumentSelection(range);
         if (format === "code") {
-            toggleInlineCodeForRange(range, editable);
+            toggleInlineCode(range, editable);
         } else {
             document.execCommand(format, false, null);
         }
         editable.normalize();
         markFormattingDirty(editable);
     }
+
+    formattingToolbar.hidden = true;
+    formattingRange = null;
+    formattingEditables = [];
 }
 
 formattingToolbar.addEventListener("mousedown", event => {
-    const button = event.target.closest("button[data-format]");
-    if (!button) return;
-    event.preventDefault();
+    if (event.target.closest("button[data-format]")) event.preventDefault();
 });
 
 formattingToolbar.addEventListener("click", event => {
     const button = event.target.closest("button[data-format]");
-    if (!button || !formattingRange || !formattingEditables.length) return;
-
+    if (!button) return;
     applyFormattingAcrossSelection(button.dataset.format);
-    formattingToolbar.hidden = true;
 });
 
 function sameAnnotations(a, b) {
@@ -354,50 +284,6 @@ acceptSavedState = function() {
     acceptSavedStateBeforeFormatting();
     formattingDirtyBlockIds.clear();
 };
-
-document.addEventListener("mousedown", event => {
-    if (event.button !== 0 || event.target.closest(".notion-format-toolbar")) return;
-
-    const point = caretPointFromClient(event.clientX, event.clientY);
-    if (!pointInsideEditable(point)) {
-        dragSelectionAnchor = null;
-        dragSelectionStartPoint = null;
-        dragSelectionActive = false;
-        return;
-    }
-
-    dragSelectionAnchor = point;
-    dragSelectionStartPoint = { x: event.clientX, y: event.clientY };
-    dragSelectionActive = false;
-});
-
-document.addEventListener("mousemove", event => {
-    if (!dragSelectionAnchor || !(event.buttons & 1)) return;
-
-    if (!dragSelectionActive) {
-        const dx = event.clientX - dragSelectionStartPoint.x;
-        const dy = event.clientY - dragSelectionStartPoint.y;
-        if (Math.hypot(dx, dy) < 3) return;
-        dragSelectionActive = true;
-    }
-
-    const point = caretPointFromClient(event.clientX, event.clientY);
-    if (!pointInsideEditable(point)) return;
-
-    const range = rangeFromPoints(dragSelectionAnchor, point);
-    if (!range) return;
-
-    event.preventDefault();
-    setDocumentSelection(range);
-    requestAnimationFrame(updateFormattingToolbar);
-});
-
-document.addEventListener("mouseup", () => {
-    dragSelectionAnchor = null;
-    dragSelectionStartPoint = null;
-    dragSelectionActive = false;
-    requestAnimationFrame(updateFormattingToolbar);
-});
 
 document.addEventListener("selectionchange", () => {
     requestAnimationFrame(updateFormattingToolbar);
