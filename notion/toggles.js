@@ -1,4 +1,5 @@
 const deletedNotionBlockIds = new Set();
+let selectedNotionImageWrapper = null;
 
 function directChildByClass(wrapper, className) {
     return Array.from(wrapper.children).find(child => child.classList?.contains(className)) || null;
@@ -59,6 +60,47 @@ function bindNotionToggles(root = document) {
     });
 }
 
+function clearSelectedNotionImage() {
+    if (!selectedNotionImageWrapper) return;
+    const image = selectedNotionImageWrapper.querySelector(".notion-image");
+    if (image) {
+        image.style.outline = "";
+        image.style.outlineOffset = "";
+    }
+    selectedNotionImageWrapper.removeAttribute("data-image-selected");
+    selectedNotionImageWrapper = null;
+}
+
+function selectNotionImage(wrapper) {
+    if (selectedNotionImageWrapper === wrapper) return;
+    clearSelectedNotionImage();
+    selectedNotionImageWrapper = wrapper;
+    wrapper.dataset.imageSelected = "true";
+    wrapper.tabIndex = -1;
+    const image = wrapper.querySelector(".notion-image");
+    if (image) {
+        image.style.outline = "2px solid var(--accent)";
+        image.style.outlineOffset = "3px";
+    }
+    wrapper.focus({ preventScroll: true });
+}
+
+function bindNotionImages(root = document) {
+    root.querySelectorAll(".block-image").forEach(wrapper => {
+        if (wrapper.dataset.imageDeleteBound === "true") return;
+        const image = wrapper.querySelector(".notion-image");
+        if (!image) return;
+
+        wrapper.dataset.imageDeleteBound = "true";
+        image.style.cursor = "pointer";
+        image.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            selectNotionImage(wrapper);
+        });
+    });
+}
+
 function focusNearestEditable(wrapper) {
     const editables = Array.from(document.querySelectorAll('[data-editable="true"]'));
     const index = editables.findIndex(element => element.closest(".notion-block") === wrapper);
@@ -75,7 +117,30 @@ function focusNearestEditable(wrapper) {
     selection.addRange(range);
 }
 
+function markBlockDeleted(wrapper, blockId) {
+    if (!wrapper || !blockId) return false;
+    deletedNotionBlockIds.add(blockId);
+    wrapper.remove();
+    markDirty();
+    return true;
+}
+
+document.addEventListener("click", event => {
+    if (selectedNotionImageWrapper && !selectedNotionImageWrapper.contains(event.target)) {
+        clearSelectedNotionImage();
+    }
+});
+
 document.addEventListener("keydown", event => {
+    if ((event.key === "Backspace" || event.key === "Delete") && selectedNotionImageWrapper) {
+        const wrapper = selectedNotionImageWrapper;
+        const blockId = wrapper.dataset.blockId;
+        event.preventDefault();
+        clearSelectedNotionImage();
+        markBlockDeleted(wrapper, blockId);
+        return;
+    }
+
     if (event.key !== "Backspace") return;
 
     const editable = event.target.closest?.('[data-editable="true"]');
@@ -88,9 +153,7 @@ document.addEventListener("keydown", event => {
 
     event.preventDefault();
     focusNearestEditable(wrapper);
-    deletedNotionBlockIds.add(blockId);
-    wrapper.remove();
-    markDirty();
+    markBlockDeleted(wrapper, blockId);
 });
 
 const originalCollectChanges = collectChanges;
@@ -132,9 +195,13 @@ save = async function() {
 };
 
 bindNotionToggles();
+bindNotionImages();
 
 const notionContent = document.getElementById("notionContent");
 if (notionContent) {
-    const observer = new MutationObserver(() => bindNotionToggles(notionContent));
+    const observer = new MutationObserver(() => {
+        bindNotionToggles(notionContent);
+        bindNotionImages(notionContent);
+    });
     observer.observe(notionContent, { childList: true, subtree: true });
 }
