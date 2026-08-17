@@ -81,6 +81,34 @@
 .notion-table td{border:1px solid var(--line);padding:9px 10px;vertical-align:top}
 .read-only-block{padding:5px 0}
 .block-divider hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.notion-format-toolbar{
+    position:fixed;
+    z-index:10000;
+    display:flex;
+    align-items:center;
+    gap:2px;
+    padding:4px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:#191b22;
+    box-shadow:0 8px 28px rgba(0,0,0,.35);
+}
+.notion-format-toolbar[hidden]{display:none}
+.notion-format-toolbar button{
+    width:30px;
+    height:30px;
+    display:grid;
+    place-items:center;
+    border:0;
+    border-radius:5px;
+    background:transparent;
+    color:inherit;
+    cursor:pointer;
+    font-size:14px;
+}
+.notion-format-toolbar button:hover,
+.notion-format-toolbar button.active{background:rgba(255,255,255,.1)}
+.notion-format-toolbar code{font-size:11px}
 @media (max-width:700px){
     .notion-content{padding:24px 18px 40px}
     .page-title{font-size:32px}
