@@ -8,6 +8,7 @@
     background:rgba(255,255,255,.02);
     padding:34px 42px 60px;
 }
+.notion-content:focus{outline:none}
 .page-title{
     margin:0 0 28px;
     font-size:40px;
