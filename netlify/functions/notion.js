@@ -84,6 +84,40 @@ function richTextFromPlainText(value) {
     return parts;
 }
 
+function sanitizeRichText(items, fallbackText) {
+    if (!Array.isArray(items)) return richTextFromPlainText(fallbackText);
+
+    const output = [];
+    for (const item of items) {
+        if (!item || item.type !== "text") continue;
+        const content = String(item.text?.content ?? "");
+        if (!content) continue;
+
+        const href = typeof item.text?.link?.url === "string" ? item.text.link.url : null;
+        const annotations = item.annotations || {};
+
+        for (let start = 0; start < content.length; start += 2000) {
+            output.push({
+                type: "text",
+                text: {
+                    content: content.slice(start, start + 2000),
+                    ...(href ? { link: { url: href } } : {})
+                },
+                annotations: {
+                    bold: Boolean(annotations.bold),
+                    italic: Boolean(annotations.italic),
+                    strikethrough: Boolean(annotations.strikethrough),
+                    underline: Boolean(annotations.underline),
+                    code: Boolean(annotations.code),
+                    color: "default"
+                }
+            });
+        }
+    }
+
+    return output;
+}
+
 const EDITABLE_TYPES = new Set([
     "paragraph",
     "heading_1",
@@ -106,7 +140,9 @@ async function saveChanges(pageId, payload) {
     for (const change of changes) {
         if (!change || !change.id || !EDITABLE_TYPES.has(change.type)) continue;
 
-        const blockValue = { rich_text: richTextFromPlainText(change.text) };
+        const blockValue = {
+            rich_text: sanitizeRichText(change.rich_text, change.text)
+        };
         if (change.type === "to_do" && typeof change.checked === "boolean") {
             blockValue.checked = change.checked;
         }
