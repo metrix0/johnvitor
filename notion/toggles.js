@@ -30,6 +30,7 @@ function bindNotionToggles(root = document) {
         }
 
         wrapper.dataset.toggleBound = "true";
+        marker.setAttribute("contenteditable", "false");
         marker.setAttribute("role", "button");
         marker.setAttribute("tabindex", "0");
         marker.setAttribute("aria-expanded", "false");
@@ -77,6 +78,7 @@ function selectNotionImage(wrapper) {
     selectedNotionImageWrapper = wrapper;
     wrapper.dataset.imageSelected = "true";
     wrapper.tabIndex = -1;
+    wrapper.setAttribute("contenteditable", "false");
     const image = wrapper.querySelector(".notion-image");
     if (image) {
         image.style.outline = "2px solid var(--accent)";
@@ -92,6 +94,8 @@ function bindNotionImages(root = document) {
         if (!image) return;
 
         wrapper.dataset.imageDeleteBound = "true";
+        wrapper.setAttribute("contenteditable", "false");
+        image.setAttribute("contenteditable", "false");
         image.style.cursor = "pointer";
         image.addEventListener("click", event => {
             event.preventDefault();
@@ -101,13 +105,23 @@ function bindNotionImages(root = document) {
     });
 }
 
+function editableAtCaret() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return null;
+    const node = selection.focusNode || selection.anchorNode;
+    const element = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+    return element?.closest?.('[data-editable="true"]') || null;
+}
+
 function focusNearestEditable(wrapper) {
     const editables = Array.from(document.querySelectorAll('[data-editable="true"]'));
     const index = editables.findIndex(element => element.closest(".notion-block") === wrapper);
     const next = editables[index - 1] || editables[index + 1];
     if (!next) return;
 
-    next.focus();
+    const editorRoot = document.getElementById("notionContent");
+    editorRoot?.focus({ preventScroll: true });
+
     const selection = window.getSelection();
     if (!selection) return;
     const range = document.createRange();
@@ -143,7 +157,7 @@ document.addEventListener("keydown", event => {
 
     if (event.key !== "Backspace") return;
 
-    const editable = event.target.closest?.('[data-editable="true"]');
+    const editable = editableAtCaret();
     if (!editable) return;
     if (editable.innerText.replace(/[\r\n]/g, "") !== "") return;
 
