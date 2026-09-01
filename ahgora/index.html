@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ahgora</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsencrypt@3.3.2/bin/jsencrypt.min.js"></script>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#0f1115;color:#f5f7fb;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:32px 18px 60px}h1{font-size:28px;margin:0 0 6px}p{color:#aeb6c4;margin:0 0 24px}.card{background:#171a21;border:1px solid #2a303b;border-radius:16px;padding:18px;margin-bottom:16px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:650px){.grid{grid-template-columns:1fr}}label{display:block;font-size:13px;color:#aeb6c4;margin-bottom:6px}input,textarea{width:100%;border:1px solid #343b47;background:#101319;color:#fff;border-radius:10px;padding:11px 12px;font:inherit;outline:none}textarea{min-height:140px;resize:vertical}.full{grid-column:1/-1}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.check{display:flex;gap:9px;align-items:center;color:#d8deea;font-size:14px;margin:4px 0 14px}.check input{width:auto}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}.btn.secondary{background:#282e39;color:#fff}.btn.primary{background:#fff;color:#111}.btn:disabled{opacity:.45;cursor:not-allowed}pre{white-space:pre-wrap;word-break:break-word;background:#0b0d11;border:1px solid #292f39;border-radius:10px;padding:13px;min-height:80px;color:#dce3ef}.small{font-size:12px;color:#8d97a7;margin-top:8px}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Ahgora</h1>
+    <p>Teste manual do mesmo POST que depois será automatizado.</p>
+
+    <section class="card">
+      <div class="grid">
+        <div><label>Matrícula</label><input id="account" value="96"></div>
+        <div><label>Identity</label><input id="identity" value="6c41cd1f9f6a06d7d77f203b598f0339"></div>
+        <div class="full"><label>Request URL</label><input id="url" placeholder="Cole a URL exata capturada no DevTools"></div>
+        <div><label>Content-Type</label><input id="contentType" value="application/x-www-form-urlencoded; charset=UTF-8"></div>
+        <div><label>Senha</label><input id="password" type="password" autocomplete="current-password" placeholder="Senha do Ahgora"></div>
+        <div class="full"><label>Chave pública RSA (PEM)</label><textarea id="publicKey" placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"></textarea></div>
+      </div>
+      <div class="small">A senha não é salva. A página usa RSA PKCS#1 v1.5 (JSEncrypt), igual ao fluxo comum do Batida Online; só envie depois de confirmarmos isso no código atual.</div>
+    </section>
+
+    <section class="card">
+      <label class="check"><input id="legit" type="checkbox"> Confirmo que este é um horário legítimo para registrar meu ponto agora.</label>
+      <div class="row">
+        <button class="btn secondary" id="prepare">Preparar sem enviar</button>
+        <button class="btn primary" id="send" disabled>Registrar ponto</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <label>Resultado</label>
+      <pre id="output">Nenhuma requisição enviada.</pre>
+    </section>
+  </main>
+
+<script>
+const $=id=>document.getElementById(id);
+$('legit').addEventListener('change',()=>{$('send').disabled=!$('legit').checked});
+
+function build(){
+  const url=$('url').value.trim();
+  const account=$('account').value.trim();
+  const identity=$('identity').value.trim();
+  const password=$('password').value;
+  const publicKey=$('publicKey').value.trim();
+  const contentType=$('contentType').value.trim();
+  if(!url||!account||!identity||!password||!publicKey||!contentType) throw new Error('Preencha todos os campos.');
+  if(!/^https:\/\//i.test(url)) throw new Error('A Request URL precisa ser HTTPS.');
+  const rsa=new JSEncrypt();
+  rsa.setPublicKey(publicKey);
+  const encrypted=rsa.encrypt(password);
+  if(!encrypted) throw new Error('Não foi possível criptografar a senha com essa chave RSA.');
+  const body=new URLSearchParams({account,password:encrypted,identity,origin:'pw2',app_version:'2.0',key:'',enc:'true'});
+  return {url,contentType,body,encrypted};
+}
+
+$('prepare').addEventListener('click',()=>{
+  try{
+    const r=build();
+    $('output').textContent=JSON.stringify({requestSent:false,method:'POST',url:r.url,contentType:r.contentType,account:$('account').value.trim(),identity:$('identity').value.trim(),origin:'pw2',app_version:'2.0',enc:true,passwordCiphertextLength:r.encrypted.length},null,2);
+  }catch(e){$('output').textContent='ERRO: '+e.message}
+});
+
+$('send').addEventListener('click',async()=>{
+  if(!$('legit').checked) return;
+  if(!confirm('Registrar exatamente UM ponto agora?')) return;
+  $('send').disabled=true;
+  $('prepare').disabled=true;
+  $('output').textContent='Enviando uma única requisição...';
+  try{
+    const r=build();
+    const res=await fetch(r.url,{method:'POST',headers:{'Content-Type':r.contentType,'Accept':'application/json, text/plain, */*'},body:r.body,credentials:'include'});
+    const text=await res.text();
+    let data; try{data=JSON.parse(text)}catch{data=text}
+    $('output').textContent=JSON.stringify({httpStatus:res.status,httpOk:res.ok,response:data},null,2);
+  }catch(e){
+    $('output').textContent='RESULTADO INCERTO — NÃO TENTE DE NOVO.\n\nO navegador não conseguiu ler a resposta. A requisição pode ter chegado ao Ahgora (por exemplo, bloqueio de CORS). Verifique primeiro no Ahgora/DevTools antes de qualquer nova tentativa.\n\n'+e.message;
+  }
+});
+</script>
+</body>
+</html>
