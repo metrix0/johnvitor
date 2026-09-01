@@ -160,6 +160,16 @@ FIELD_IDS.forEach(id => {
     document.getElementById(id).addEventListener("input", scheduleAutoSave);
 });
 
+document.querySelectorAll(".copy-btn").forEach(button => {
+    button.addEventListener("click", async () => {
+        const field = document.getElementById(button.dataset.target);
+        await navigator.clipboard.writeText(field.value);
+        const icon = button.querySelector("i");
+        icon.className = "fa-solid fa-check";
+        setTimeout(() => icon.className = "fa-regular fa-copy", 900);
+    });
+});
+
 document.getElementById("saveBtn").addEventListener("click", () => save(true));
 document.getElementById("saveBtnBottom").addEventListener("click", () => save(true));
 document.addEventListener("keydown", event => {
