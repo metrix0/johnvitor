@@ -2,7 +2,6 @@ const SERPAPI_URL = 'https://serpapi.com/search.json';
 const MIN_REVIEWS = 15;
 const MAX_LIMIT = 20;
 const MAX_SEARCH_ROUNDS = 7;
-const MAX_RANDOM_PAGE = 8;
 
 const KEYWORDS = [
     'hamburgueria',
@@ -111,14 +110,6 @@ function shuffle(items) {
     return copy;
 }
 
-function randomPoint(city) {
-    const [, , lat, lng] = city;
-    return {
-        lat: Number((lat + ((Math.random() - 0.5) * 0.12)).toFixed(6)),
-        lng: Number((lng + ((Math.random() - 0.5) * 0.12)).toFixed(6))
-    };
-}
-
 function normalizePhone(value) {
     const raw = String(value || '').trim();
     if (!raw) return '';
@@ -154,22 +145,21 @@ async function serpJson(params) {
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) throw new Error(data.error || `SerpAPI HTTP ${res.status}.`);
-    if (data.error) throw new Error(data.error);
+    if (data.error) {
+        if (/google hasn't returned any results/i.test(data.error)) return {};
+        throw new Error(data.error);
+    }
     return data;
 }
 
-async function fetchMapResults(city, keyword) {
-    const [name, state] = city;
-    const point = randomPoint(city);
-    const page = Math.floor(Math.random() * (MAX_RANDOM_PAGE + 1));
+async function fetchMapResults(city, keyword, page = 0) {
+    const [name, state, lat, lng] = city;
 
     const data = await serpJson({
         engine: 'google_maps',
-        type: 'search',
         q: keyword,
-        hl: 'pt-br',
-        gl: 'br',
-        ll: `@${point.lat},${point.lng},13z`,
+        hl: 'en',
+        ll: `@${lat},${lng},13z`,
         start: String(page * 20)
     });
 
@@ -207,7 +197,7 @@ exports.handler = async function(event) {
         for (let round = 0; round < MAX_SEARCH_ROUNDS && leads.length < limit; round += 1) {
             const city = randomItem(CITIES);
             const keyword = randomItem(KEYWORDS);
-            const batch = await fetchMapResults(city, keyword);
+            const batch = await fetchMapResults(city, keyword, 0);
             searches.push({ city: batch.city, state: batch.state, keyword, page: batch.page });
 
             const candidates = shuffle(batch.results)
