@@ -1,10 +1,8 @@
 # Ahgora punch automation
 
-Direct HTTP implementation for the current My Ahgora / Batida Online flow. It is intentionally fail-closed and does **not** punch unless run with `--execute` inside an allowed local time window.
+Direct HTTP implementation for My Ahgora / Batida Online. It is intentionally fail-closed and sends **no request** unless explicitly run with `--execute` after all captured transport/RSA details are marked confirmed.
 
-## Known captured request
-
-Successful web punch fields:
+## Captured successful request fields
 
 ```text
 account=96
@@ -16,55 +14,63 @@ key=
 enc=true
 ```
 
-The exact current Request URL and current RSA public-key source still need to be copied from DevTools. Do not assume the old `https://www.ahgora.com.br/batidaonline/verifyIdentification` URL is still the production endpoint.
+The exact current Request URL, Content-Type, required headers, public-key source and RSA scheme must come from the successful DevTools request/current collector code. The old `https://www.ahgora.com.br/batidaonline/verifyIdentification` endpoint is historical evidence only and is not hard-coded.
+
+## Safety model
+
+A real punch is treated as non-retryable:
+
+- normal invocation is preflight-only and never sends HTTP;
+- `--execute` requires `AHGORA_CAPTURE_CONFIRMED=true` and `AHGORA_RSA_CONFIRMED=true`;
+- endpoint must be HTTPS, method must be captured as POST, and Content-Type must be explicitly configured;
+- RSA public key is parsed and SHA-256 fingerprinted; execution is blocked if the configured fingerprint does not exactly match;
+- execution is blocked outside explicit local punch windows;
+- an atomic date+window lock is created **before** the HTTP request;
+- if the request times out or the response cannot be validated, the lock remains and prevents an automatic retry;
+- success requires `result === true`, NSR, and valid returned date/time;
+- passwords and ciphertext are never logged.
+
+This means an ambiguous network failure can leave a punch in `uncertain_or_failed`; that is deliberate, because blindly retrying could create a duplicate.
 
 ## Setup
 
-Use Node.js 20+ and define the variables from `.env.example` in Windows environment variables or another local secret mechanism. Do not commit the password or private session material.
+Use Node.js 20+. Put secrets/config in Windows environment variables or another local secret store; do not commit them. See `.env.example`.
 
-Required before any execution:
+Before enabling execution, copy from Chrome DevTools for the request whose Response contains `"result": true`:
 
-- `AHGORA_PUNCH_URL`: exact URL from DevTools.
-- `AHGORA_PUBLIC_KEY_PEM`: current public key used by the web collector.
-- `AHGORA_PASSWORD`: account password.
-- `AHGORA_ALLOWED_WINDOWS`: explicit permitted local punch windows.
+1. Request URL
+2. Request Method
+3. `Content-Type`
+4. any session/auth-specific request headers that are actually required
+5. Initiator/call stack or source function that creates the encrypted `password`
+6. the public key/key endpoint and exact RSA padding scheme used by that code
 
-`AHGORA_RSA_PADDING` currently defaults to `pkcs1`, matching the common browser/JSEncrypt RSA mode, but this is provisional until the collector JavaScript is captured and verified. Set `oaep` only if DevTools/source inspection proves OAEP is used.
+Then populate the corresponding variables. `AHGORA_PUBLIC_KEY_SHA256` should be the SHA-256 fingerprint printed by a successful preflight after the current public key has been captured and independently checked.
 
-## Safe verification
-
-A dry run performs local config, time-window and RSA encryption checks but sends no request:
+## Preflight — no HTTP request
 
 ```powershell
 node src/punch.js
 ```
 
-A real request requires both a matching allowed window and the explicit execution flag:
+Preflight validates configuration, parses the RSA key, verifies its fingerprint, and performs the password encryption locally. It prints `requestSent: false`.
+
+## Real execution
+
+Only at a legitimate punch time, after capture/RSA verification:
 
 ```powershell
 node src/punch.js --execute
 ```
 
-Do not use `--execute` until the current endpoint, content type, RSA key source/padding and a legitimate punch time have been verified.
-
-## Idempotency behavior
-
-Before sending, the script atomically creates one lock file per local date + configured time window. If a request times out, errors, returns malformed JSON, or has an unvalidated response, the lock remains in `uncertain_or_failed` state. Automatic retries are therefore blocked until the situation is manually inspected. A validated success requires `result === true`, an NSR, and valid returned day/time.
-
-Successful and uncertain attempts are appended to `punches.ndjson`. Passwords/ciphertext are never logged.
-
 ## `batidas_dia` normalization
 
-Ahgora may return times in both `HHMM` and `HHMMSS`. The captured `1245` and `124500` both normalize to `12:45:00`, so they are treated as one logical time, not automatically as duplicate punches.
+Ahgora can return `HHMM` and `HHMMSS`. The captured values `1245` and `124500` both normalize to `12:45:00`; the client deduplicates them as one logical time rather than assuming they are two punches.
 
-## Next capture needed
+## Tests
 
-In Chrome DevTools, open Network, select the request whose Response contains `"result": true`, then copy:
+```powershell
+npm test
+```
 
-1. Request URL
-2. Request Method
-3. `Content-Type`
-4. Request headers if any appear authentication/session-specific
-5. The JavaScript call stack / Initiator for the request, or the script/function that creates the encrypted `password`
-
-From that initiator we can identify the public-key source and exact RSA scheme, then remove the provisional encryption assumption and validate the direct request.
+The current unit tests verify mixed `HHMM`/`HHMMSS` normalization without contacting Ahgora.

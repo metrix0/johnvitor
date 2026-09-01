@@ -1,11 +1,18 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 function required(name) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env: ${name}`);
   return value;
+}
+
+function requireTrue(name) {
+  if (String(process.env[name] || '').toLowerCase() !== 'true') {
+    throw new Error(`Execution blocked: ${name}=true is required after DevTools verification`);
+  }
 }
 
 function localParts(date = new Date(), timeZone = process.env.AHGORA_TIMEZONE || 'America/Sao_Paulo') {
@@ -62,21 +69,36 @@ function currentWindow(now) {
   return null;
 }
 
-function encryptPassword(password, pem) {
-  const paddingName = (process.env.AHGORA_RSA_PADDING || 'pkcs1').toLowerCase();
+function getPublicKey(pem) {
+  try {
+    return crypto.createPublicKey(pem);
+  } catch (error) {
+    throw new Error(`Invalid AHGORA_PUBLIC_KEY_PEM: ${error.message}`);
+  }
+}
+
+function publicKeyFingerprint(key) {
+  const der = key.export({ type: 'spki', format: 'der' });
+  return crypto.createHash('sha256').update(der).digest('hex');
+}
+
+function encryptPassword(password, key) {
+  const paddingName = required('AHGORA_RSA_PADDING').toLowerCase();
+  if (!['pkcs1', 'oaep'].includes(paddingName)) {
+    throw new Error('AHGORA_RSA_PADDING must be pkcs1 or oaep');
+  }
   const padding = paddingName === 'oaep'
     ? crypto.constants.RSA_PKCS1_OAEP_PADDING
     : crypto.constants.RSA_PKCS1_PADDING;
-  const options = { key: pem, padding };
-  if (paddingName === 'oaep') options.oaepHash = process.env.AHGORA_RSA_OAEP_HASH || 'sha1';
+  const options = { key, padding };
+  if (paddingName === 'oaep') options.oaepHash = required('AHGORA_RSA_OAEP_HASH');
   return crypto.publicEncrypt(options, Buffer.from(password, 'utf8')).toString('base64');
 }
 
 function lockPath(date, window) {
   const dir = process.env.AHGORA_LOCK_DIR || '.locks';
   fs.mkdirSync(dir, { recursive: true });
-  const safeWindow = window.replace(/[^0-9-]/g, '_');
-  return path.join(dir, `${date}_${safeWindow}.json`);
+  return path.join(dir, `${date}_${window.replace(/[^0-9-]/g, '_')}.json`);
 }
 
 function acquireLock(file, data) {
@@ -85,9 +107,7 @@ function acquireLock(file, data) {
     fs.writeFileSync(fd, JSON.stringify(data, null, 2));
     fs.closeSync(fd);
   } catch (err) {
-    if (err?.code === 'EEXIST') {
-      throw new Error(`Punch blocked: idempotency lock already exists at ${file}`);
-    }
+    if (err?.code === 'EEXIST') throw new Error(`Punch blocked: idempotency lock already exists at ${file}`);
     throw err;
   }
 }
@@ -101,11 +121,32 @@ function appendLog(entry) {
   fs.appendFileSync(file, `${JSON.stringify(entry)}\n`);
 }
 
+function parseExtraHeaders() {
+  const raw = process.env.AHGORA_EXTRA_HEADERS_JSON;
+  if (!raw) return {};
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch { throw new Error('AHGORA_EXTRA_HEADERS_JSON must be valid JSON'); }
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error('AHGORA_EXTRA_HEADERS_JSON must be a JSON object');
+  return Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, String(v)]));
+}
+
+function validateCapturedTransport(url, method, contentType) {
+  if (!/^https:\/\//i.test(url)) throw new Error('AHGORA_PUNCH_URL must be HTTPS');
+  if (method !== 'POST') throw new Error(`Execution blocked: expected captured POST method, got ${method}`);
+  if (!/^application\/x-www-form-urlencoded(?:;|$)/i.test(contentType)) {
+    throw new Error(`Execution blocked: unsupported/unverified content type: ${contentType}`);
+  }
+}
+
 function validateResponse(body) {
   if (!body || body.result !== true) throw new Error(`Ahgora did not confirm success: ${JSON.stringify(body)}`);
   if (!body.NSR) throw new Error('Ahgora success response missing NSR');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(body.day || ''))) throw new Error('Ahgora success response missing/invalid day');
   if (!normalizePunchTime(body.time)) throw new Error('Ahgora success response missing/invalid time');
+  const expectedEmployee = process.env.AHGORA_EMPLOYEE_ID;
+  if (expectedEmployee && body.employee?._id && body.employee._id !== expectedEmployee) {
+    throw new Error(`Ahgora returned unexpected employee id: ${body.employee._id}`);
+  }
   return {
     nsr: body.NSR,
     day: body.day,
@@ -118,16 +159,22 @@ async function main() {
   const execute = process.argv.includes('--execute');
   const now = new Date();
   const local = localParts(now);
-  const window = currentWindow(now);
-  if (!window) throw new Error('Punch blocked: current local time is outside AHGORA_ALLOWED_WINDOWS');
 
   const url = required('AHGORA_PUNCH_URL');
-  if (!/^https:\/\//i.test(url)) throw new Error('AHGORA_PUNCH_URL must be HTTPS');
+  const method = required('AHGORA_REQUEST_METHOD').toUpperCase();
+  const contentType = required('AHGORA_CONTENT_TYPE');
+  validateCapturedTransport(url, method, contentType);
 
   const account = required('AHGORA_ACCOUNT');
   const password = required('AHGORA_PASSWORD');
   const identity = required('AHGORA_IDENTITY');
-  const publicKey = required('AHGORA_PUBLIC_KEY_PEM').replace(/\\n/g, '\n');
+  const publicKeyPem = required('AHGORA_PUBLIC_KEY_PEM').replace(/\\n/g, '\n');
+  const publicKey = getPublicKey(publicKeyPem);
+  const fingerprint = publicKeyFingerprint(publicKey);
+  const expectedFingerprint = required('AHGORA_PUBLIC_KEY_SHA256').toLowerCase();
+  if (fingerprint !== expectedFingerprint) {
+    throw new Error(`Execution blocked: RSA public-key fingerprint mismatch (${fingerprint})`);
+  }
   const encryptedPassword = encryptPassword(password, publicKey);
 
   const form = new URLSearchParams({
@@ -142,21 +189,27 @@ async function main() {
 
   if (!execute) {
     console.log(JSON.stringify({
-      dryRun: true,
+      preflight: true,
+      requestSent: false,
       url,
-      method: 'POST',
-      contentType: 'application/x-www-form-urlencoded',
+      method,
+      contentType,
       account,
       identity,
-      origin: form.get('origin'),
-      app_version: form.get('app_version'),
-      enc: true,
+      publicKeySha256: fingerprint,
+      rsaPadding: process.env.AHGORA_RSA_PADDING,
+      rsaOaepHash: process.env.AHGORA_RSA_PADDING === 'oaep' ? process.env.AHGORA_RSA_OAEP_HASH : null,
       passwordCiphertextLength: encryptedPassword.length,
       localDate: local.date,
-      matchedWindow: window,
     }, null, 2));
     return;
   }
+
+  requireTrue('AHGORA_CAPTURE_CONFIRMED');
+  requireTrue('AHGORA_RSA_CONFIRMED');
+
+  const window = currentWindow(now);
+  if (!window) throw new Error('Punch blocked: current local time is outside AHGORA_ALLOWED_WINDOWS');
 
   const lock = lockPath(local.date, window);
   const lockData = { state: 'pending', createdAt: now.toISOString(), localDate: local.date, window };
@@ -164,10 +217,11 @@ async function main() {
 
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method,
       headers: {
-        'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'content-type': contentType,
         'accept': 'application/json, text/plain, */*',
+        ...parseExtraHeaders(),
       },
       body: form,
       redirect: 'manual',
@@ -189,7 +243,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${path.resolve(process.argv[1])}`).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch(error => {
     console.error(error.message);
     process.exitCode = 1;
