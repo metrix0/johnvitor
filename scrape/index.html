@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>iMenu Lead Scraper</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../anki/app.css">
+    <style>
+        .wrap.scrape-wrap{max-width:1400px}
+        .scrape-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+        .scrape-controls input{min-width:170px;width:210px}
+        .summary{margin-top:14px;display:grid;grid-template-columns:180px 1fr;gap:12px}
+        .stat{border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.02);padding:14px}
+        .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+        .stat-value{font-size:24px;font-weight:800;margin-top:4px}
+        .stat-value.small{font-size:14px;font-weight:600;line-height:1.35;word-break:break-word}
+        .results{margin-top:14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.02);overflow:hidden}
+        .results-head{padding:12px 14px;background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+        .result-actions{display:flex;gap:8px;flex-wrap:wrap}
+        .table-wrap{overflow:auto;max-height:70vh}
+        table{width:100%;border-collapse:collapse;min-width:920px}
+        th,td{padding:11px 12px;border-top:1px solid var(--line);text-align:left;font-size:13px;vertical-align:top}
+        th{position:sticky;top:0;background:#11131a;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em;z-index:1}
+        td.phone{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}
+        td .sub{font-size:11px;color:var(--muted);margin-top:3px}
+        td.links{white-space:nowrap}
+        td a{color:#bdb2ff;text-decoration:none}
+        td a:hover{text-decoration:underline}
+        button:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+        .scrape-note{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.4}
+        @media (max-width:700px){
+            .summary{grid-template-columns:1fr}
+            .scrape-controls{width:100%}
+            .scrape-controls input{width:100%;min-width:0;flex:1}
+        }
+    </style>
+</head>
+<body>
+<div class="wrap scrape-wrap">
+    <div class="topbar">
+        <div class="left">
+            <strong style="font-size:16px">iMenu Lead Scraper</strong>
+            <span class="badge" id="statusBadge">Ready</span>
+        </div>
+        <div class="right scrape-controls">
+            <input id="amountInput" value="50" placeholder="50 or MAX" autocomplete="off" />
+            <button class="btn-primary" id="scrapeBtn"><i class="fa-solid fa-magnifying-glass"></i> Scrape</button>
+        </div>
+    </div>
+
+    <div class="scrape-note">Enter how many new business phone numbers you want. Use <strong>MAX</strong> to keep scraping random Brazilian cities and food categories until you press Stop. Previously found businesses are skipped locally.</div>
+
+    <div class="summary">
+        <div class="stat">
+            <div class="stat-label">Found this run</div>
+            <div class="stat-value" id="countValue">0</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Current random search</div>
+            <div class="stat-value small" id="queryValue">—</div>
+        </div>
+    </div>
+
+    <div class="results">
+        <div class="results-head">
+            <strong>Businesses</strong>
+            <div class="result-actions">
+                <button class="btn-ghost" id="clearHistoryBtn"><i class="fa-solid fa-rotate-left"></i> Clear history</button>
+                <button class="btn-ghost" id="copyBtn" disabled><i class="fa-regular fa-copy"></i> Copy numbers</button>
+                <button class="btn-ok" id="downloadBtn" disabled><i class="fa-solid fa-download"></i> CSV</button>
+            </div>
+        </div>
+        <div class="empty" id="emptyState">No leads yet.</div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Business</th>
+                        <th>Phone</th>
+                        <th>Type</th>
+                        <th>Reviews</th>
+                        <th>Rating</th>
+                        <th>Links</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="./app.js"></script>
+</body>
+</html>

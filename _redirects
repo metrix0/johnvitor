@@ -1,1 +1,2 @@
 /api/notion /.netlify/functions/notion 200
+/api/scrape /.netlify/functions/scrape 200
