@@ -4,8 +4,8 @@ function pickOffsetMinutes() {
   const r = Math.random() * 100;
   if (r < 7.5) return -2;
   if (r < 22.5) return -1;
-  if (r < 44.5) return 0;
-  if (r < 89.5) return 1;
+  if (r < 52.5) return 0;
+  if (r < 87) return 1;
   if (r < 97) return 2;
   if (r < 98.5) return 3;
   return 4;
