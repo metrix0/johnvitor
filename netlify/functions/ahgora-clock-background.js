@@ -2,13 +2,13 @@ const SITE_URL = 'https://johnvitor.com';
 
 function pickOffsetMinutes() {
   const r = Math.random() * 100;
-  if (r < 5) return -3;
-  if (r < 15) return -1.5;
-  if (r < 63) return 0;
-  if (r < 93) return 1.5;
-  if (r < 98) return 3;
-  if (r < 99) return 4.5;
-  return 6;
+  if (r < 7.5) return -2;
+  if (r < 22.5) return -1;
+  if (r < 44.5) return 0;
+  if (r < 89.5) return 1;
+  if (r < 97) return 2;
+  if (r < 98.5) return 3;
+  return 4;
 }
 
 function sleep(ms) {
@@ -20,7 +20,7 @@ exports.handler = async function(event) {
     const body = event.body ? JSON.parse(event.body) : {};
     const slot = body.slot || 'unknown';
     const offsetMinutes = pickOffsetMinutes();
-    const delayMinutes = offsetMinutes + 3;
+    const delayMinutes = offsetMinutes + 2;
 
     console.log(`Ahgora ${slot}: offset ${offsetMinutes >= 0 ? '+' : ''}${offsetMinutes} min; waiting ${delayMinutes} min.`);
 
