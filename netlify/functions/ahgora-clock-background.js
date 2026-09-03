@@ -1,4 +1,53 @@
 const SITE_URL = 'https://johnvitor.com';
+const TIME_ZONE = 'America/Sao_Paulo';
+
+const NATIONAL_HOLIDAYS = new Set([
+  '01-01', // Confraternização Universal
+  '04-21', // Tiradentes
+  '05-01', // Dia do Trabalho
+  '09-07', // Independência do Brasil
+  '10-12', // Nossa Senhora Aparecida
+  '11-02', // Finados
+  '11-15', // Proclamação da República
+  '11-20', // Dia Nacional de Zumbi e da Consciência Negra
+  '12-25'  // Natal
+]);
+
+function getSaoPauloDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short'
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return {
+    isoDate: `${values.year}-${values.month}-${values.day}`,
+    monthDay: `${values.month}-${values.day}`,
+    weekday: values.weekday
+  };
+}
+
+function getExtraNonWorkDates() {
+  return new Set(
+    (process.env.AHGORA_EXTRA_NONWORK_DATES || '')
+      .split(',')
+      .map(value => value.trim())
+      .filter(Boolean)
+  );
+}
+
+function getNonWorkReason(date = new Date()) {
+  const { isoDate, monthDay, weekday } = getSaoPauloDateParts(date);
+
+  if (weekday === 'Sat' || weekday === 'Sun') return `weekend (${weekday})`;
+  if (NATIONAL_HOLIDAYS.has(monthDay)) return `Brazil national holiday (${monthDay})`;
+  if (getExtraNonWorkDates().has(isoDate)) return `extra non-work date (${isoDate})`;
+
+  return null;
+}
 
 function pickOffsetMinutes() {
   const r = Math.random() * 100;
@@ -19,6 +68,13 @@ exports.handler = async function(event) {
   try {
     const body = event.body ? JSON.parse(event.body) : {};
     const slot = body.slot || 'unknown';
+
+    const nonWorkReason = getNonWorkReason();
+    if (nonWorkReason) {
+      console.log(`Ahgora ${slot}: skipped — ${nonWorkReason}.`);
+      return;
+    }
+
     const offsetMinutes = pickOffsetMinutes();
     const delayMinutes = offsetMinutes + 2;
 
