@@ -79,7 +79,7 @@ async function sendFailureAlert(slot, reason) {
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Title': '⚠️ Ahgora: batida falhou',
+        'Title': 'Ahgora: batida falhou',
         'Priority': '5',
         'Tags': 'warning,rotating_light',
         'Click': `${SITE_URL}/ahgora`
