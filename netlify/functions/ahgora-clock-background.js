@@ -1,6 +1,6 @@
 const SITE_URL = 'https://johnvitor.com';
 const TIME_ZONE = 'America/Sao_Paulo';
-const PUSHOVER_URL = 'https://api.pushover.net/1/messages.json';
+const DEFAULT_NTFY_SERVER = 'https://ntfy.sh';
 
 const NATIONAL_HOLIDAYS = new Set([
   '01-01', // Confraternização Universal
@@ -66,42 +66,35 @@ function sleep(ms) {
 }
 
 async function sendFailureAlert(slot, reason) {
-  const user = process.env.PUSHOVER_USER_KEY;
-  const token = process.env.PUSHOVER_APP_TOKEN;
+  const topic = process.env.NTFY_TOPIC;
+  const server = (process.env.NTFY_SERVER || DEFAULT_NTFY_SERVER).replace(/\/$/, '');
 
-  if (!user || !token) {
-    console.error(`Ahgora ${slot}: Pushover not configured; alert not sent.`);
+  if (!topic) {
+    console.error(`Ahgora ${slot}: ntfy not configured; alert not sent.`);
     return;
   }
 
   try {
-    const body = new URLSearchParams({
-      token,
-      user,
-      title: '⚠️ Ahgora: batida falhou',
-      message: `Batida das ${slot} falhou: ${reason}`,
-      priority: '2',
-      retry: '60',
-      expire: '1800',
-      url: `${SITE_URL}/ahgora`,
-      url_title: 'Abrir Ahgora'
-    });
-
-    const response = await fetch(PUSHOVER_URL, {
+    const response = await fetch(`${server}/${encodeURIComponent(topic)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString()
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Title': '⚠️ Ahgora: batida falhou',
+        'Priority': '5',
+        'Tags': 'warning,rotating_light',
+        'Click': `${SITE_URL}/ahgora`
+      },
+      body: `Batida das ${slot} falhou: ${reason}`
     });
 
-    const data = await response.json().catch(() => null);
-    if (!response.ok || data?.status !== 1) {
-      console.error(`Ahgora ${slot}: Pushover alert failed: ${data?.errors?.join(', ') || `HTTP ${response.status}`}`);
+    if (!response.ok) {
+      console.error(`Ahgora ${slot}: ntfy alert failed: HTTP ${response.status}`);
       return;
     }
 
-    console.log(`Ahgora ${slot}: Pushover emergency alert sent.`);
+    console.log(`Ahgora ${slot}: ntfy urgent alert sent.`);
   } catch (error) {
-    console.error(`Ahgora ${slot}: Pushover alert error: ${error?.message || String(error)}`);
+    console.error(`Ahgora ${slot}: ntfy alert error: ${error?.message || String(error)}`);
   }
 }
 
