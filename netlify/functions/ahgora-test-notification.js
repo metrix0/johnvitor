@@ -29,7 +29,7 @@ exports.handler = async function(event) {
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Title': 'Ahgora: teste de falha',
+        'Title': 'ALARM TRIGGER - Ahgora: teste de falha',
         'Priority': '5',
         'Tags': 'warning,rotating_light',
         'Click': `${SITE_URL}/ahgora`
