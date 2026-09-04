@@ -1,5 +1,6 @@
 const SITE_URL = 'https://johnvitor.com';
 const TIME_ZONE = 'America/Sao_Paulo';
+const PUSHOVER_URL = 'https://api.pushover.net/1/messages.json';
 
 const NATIONAL_HOLIDAYS = new Set([
   '01-01', // Confraternização Universal
@@ -64,10 +65,52 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function sendFailureAlert(slot, reason) {
+  const user = process.env.PUSHOVER_USER_KEY;
+  const token = process.env.PUSHOVER_APP_TOKEN;
+
+  if (!user || !token) {
+    console.error(`Ahgora ${slot}: Pushover not configured; alert not sent.`);
+    return;
+  }
+
+  try {
+    const body = new URLSearchParams({
+      token,
+      user,
+      title: '⚠️ Ahgora: batida falhou',
+      message: `Batida das ${slot} falhou: ${reason}`,
+      priority: '2',
+      retry: '60',
+      expire: '1800',
+      url: `${SITE_URL}/ahgora`,
+      url_title: 'Abrir Ahgora'
+    });
+
+    const response = await fetch(PUSHOVER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok || data?.status !== 1) {
+      console.error(`Ahgora ${slot}: Pushover alert failed: ${data?.errors?.join(', ') || `HTTP ${response.status}`}`);
+      return;
+    }
+
+    console.log(`Ahgora ${slot}: Pushover emergency alert sent.`);
+  } catch (error) {
+    console.error(`Ahgora ${slot}: Pushover alert error: ${error?.message || String(error)}`);
+  }
+}
+
 exports.handler = async function(event) {
+  let slot = 'unknown';
+
   try {
     const body = event.body ? JSON.parse(event.body) : {};
-    const slot = body.slot || 'unknown';
+    slot = body.slot || 'unknown';
 
     const nonWorkReason = getNonWorkReason();
     if (nonWorkReason) {
@@ -94,7 +137,9 @@ exports.handler = async function(event) {
     try { data = JSON.parse(text); } catch { data = null; }
 
     if (!response.ok || !data?.ok || !data?.punched) {
-      console.error(`Ahgora ${slot}: punch failed: ${data?.error || `HTTP ${response.status}`}`);
+      const reason = data?.error || `HTTP ${response.status}`;
+      console.error(`Ahgora ${slot}: punch failed: ${reason}`);
+      await sendFailureAlert(slot, reason);
       return;
     }
 
@@ -102,6 +147,8 @@ exports.handler = async function(event) {
   } catch (error) {
     // Do not throw: Netlify background functions retry failed invocations,
     // which could create a duplicate punch if the first request actually succeeded.
-    console.error('Ahgora background clock error:', error?.message || String(error));
+    const reason = error?.message || String(error);
+    console.error(`Ahgora ${slot}: background clock error: ${reason}`);
+    await sendFailureAlert(slot, reason);
   }
 };
