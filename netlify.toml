@@ -9,3 +9,6 @@
 
 [functions."ahgora-clock-1515"]
   schedule = "13 18 * * *"
+
+[functions."astrovials-stock"]
+  schedule = "0 * * * *"
