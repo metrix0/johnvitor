@@ -1,0 +1,22 @@
+name: Test AstroVials alarm endpoint
+
+on:
+  push:
+    paths:
+      - .github/workflows/avalarm-test.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger alarm endpoint
+        run: |
+          set -euo pipefail
+          curl -fsS -D /tmp/headers.txt "https://johnvitor.com/avalarm?source=github-action-${GITHUB_RUN_ID}" -o /tmp/body.txt
+          echo "--- HTTP headers ---"
+          cat /tmp/headers.txt
+          echo "--- Response body ---"
+          cat /tmp/body.txt
