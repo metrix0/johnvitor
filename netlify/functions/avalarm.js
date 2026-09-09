@@ -22,7 +22,7 @@ exports.handler = async function(event) {
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Title': 'AstroVials EEn IN STOCK',
+        'Title': 'ALARM TRIGGER - AstroVials EEn IN STOCK',
         'Priority': '5',
         'Tags': 'warning,rotating_light',
         'Click': PRODUCT_URL
