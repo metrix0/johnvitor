@@ -98,6 +98,7 @@ async function createDevice(password) {
   return {
     identity,
     publicKey,
+    employee: Array.isArray(activation?.employee) ? activation.employee[0] : activation?.employee || null,
     createdAt: new Date().toISOString()
   };
 }
@@ -156,12 +157,14 @@ exports.handler = async function(event) {
     const store = getStore(DEVICE_STORE);
 
     let punch;
+    let activeDevice;
     let deviceSession = 'new';
     const cachedDevice = await getCachedDevice(store);
 
     if (cachedDevice) {
       try {
         punch = await punchWithDevice(cachedDevice, password);
+        activeDevice = cachedDevice;
         deviceSession = 'reused';
         console.log(`Ahgora: reused cached device ${cachedDevice.identity}.`);
       } catch (error) {
@@ -173,11 +176,12 @@ exports.handler = async function(event) {
     if (!punch) {
       const newDevice = await createDevice(password);
       punch = await punchWithDevice(newDevice, password);
+      activeDevice = newDevice;
       await saveCachedDevice(store, newDevice);
       console.log(`Ahgora: activated and cached new device ${newDevice.identity}.`);
     }
 
-    const employee = punch?.employee;
+    const employee = punch?.employee || activeDevice?.employee;
 
     return json(200, {
       ok: true,
