@@ -75,24 +75,26 @@ async function ahgoraFetch(path, options = {}, step = path) {
 async function readCachedDevice(store) {
   try {
     const device = await store.get(DEVICE_KEY, { type: 'json', consistency: 'strong' });
-    if (!device) return { device: null, error: null };
+    if (!device) return { device: null, error: null, warning: null };
     if (!device.identity || !device.publicKey) {
       return {
         device: null,
-        error: new AhgoraStepError(
+        error: null,
+        warning: new AhgoraStepError(
           'cache/read',
           'Existe um registro de dispositivo no cache, mas ele não contém identity e publicKey válidos.'
         )
       };
     }
-    return { device, error: null };
+    return { device, error: null, warning: null };
   } catch (error) {
     return {
       device: null,
       error: new AhgoraStepError(
         'cache/read',
         `Não foi possível ler o dispositivo salvo: ${error?.message || String(error)}`
-      )
+      ),
+      warning: null
     };
   }
 }
@@ -104,7 +106,7 @@ async function saveCachedDevice(store, device) {
   } catch (error) {
     return new AhgoraStepError(
       'cache/write',
-      `A batida foi confirmada, mas não foi possível salvar o novo dispositivo: ${error?.message || String(error)}`
+      `O novo dispositivo foi ativado, mas não foi possível salvá-lo no cache: ${error?.message || String(error)}`
     );
   }
 }
@@ -273,15 +275,28 @@ exports.handler = async function(event) {
     });
   }
 
-  connectLambda(event);
-  const store = getStore(DEVICE_STORE);
-  const attempts = [];
+  let store;
+  try {
+    connectLambda(event);
+    store = getStore(DEVICE_STORE);
+  } catch (error) {
+    return failureResponse([failureRecord('cache', new AhgoraStepError(
+      'cache/init',
+      `Não foi possível inicializar o cache do dispositivo: ${error?.message || String(error)}`
+    ))]);
+  }
 
+  const attempts = [];
   const cached = await readCachedDevice(store);
   if (cached.error) {
     attempts.push(failureRecord('cache', cached.error));
     console.error(`Ahgora: ${cached.error.message}`);
     return failureResponse(attempts);
+  }
+
+  if (cached.warning) {
+    attempts.push(failureRecord('cache', cached.warning));
+    console.warn(`Ahgora: ${cached.warning.message}`);
   }
 
   if (cached.device) {
@@ -306,7 +321,7 @@ exports.handler = async function(event) {
     } catch (error) {
       attempts.push(failureRecord('cached_device', error));
       console.warn(`Ahgora: cached device attempt was not confirmed: ${error?.message || String(error)}`);
-      // Keep the cached device until a replacement has both activated and punched successfully.
+      // Keep the cached device unless a replacement is successfully activated.
       // A transient Ahgora/network error must not destroy a device that may still be valid.
     }
   }
@@ -320,20 +335,24 @@ exports.handler = async function(event) {
     return failureResponse(attempts);
   }
 
-  let punch;
-  try {
-    punch = await punchWithDevice(newDevice, password, 'new_device');
-  } catch (error) {
-    attempts.push(failureRecord('new_device', error));
-    console.error(`Ahgora: new device punch was not confirmed: ${error?.message || String(error)}`);
-    return failureResponse(attempts);
-  }
-
+  // Persist a successfully activated device before attempting the punch. If the
+  // punch response is lost or inconclusive, the next run can still reuse this device
+  // instead of activating yet another one.
   const cacheWriteError = await saveCachedDevice(store, newDevice);
   if (cacheWriteError) {
     console.error(`Ahgora: ${cacheWriteError.message}`);
   } else {
     console.log(`Ahgora: activated and cached new device ${newDevice.identity}.`);
+  }
+
+  let punch;
+  try {
+    punch = await punchWithDevice(newDevice, password, 'new_device');
+  } catch (error) {
+    attempts.push(failureRecord('new_device', error));
+    if (cacheWriteError) attempts.push(failureRecord('cache', cacheWriteError));
+    console.error(`Ahgora: new device punch was not confirmed: ${error?.message || String(error)}`);
+    return failureResponse(attempts);
   }
 
   const employee = punch?.employee || newDevice.employee;
