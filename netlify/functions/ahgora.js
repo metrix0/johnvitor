@@ -76,13 +76,13 @@ async function readCachedDevice(store) {
   try {
     const device = await store.get(DEVICE_KEY, { type: 'json' });
     if (!device) return { device: null, error: null, warning: null };
-    if (!device.identity || !device.publicKey) {
+    if (!device.identity) {
       return {
         device: null,
         error: null,
         warning: new AhgoraStepError(
           'cache/read',
-          'Existe um registro de dispositivo no cache, mas ele não contém identity e publicKey válidos.'
+          'Existe um registro de dispositivo no cache, mas ele não contém identity válida.'
         )
       };
     }
@@ -133,6 +133,16 @@ function failureResponse(attempts) {
     attempts,
     checkedAt: new Date().toISOString()
   });
+}
+
+function shouldTryNewDevice(error) {
+  const step = error?.step || '';
+  const identityLevelFailure =
+    step.endsWith('/getDefaultExternalInfo') ||
+    step.endsWith('/getPublicKey');
+
+  return identityLevelFailure && error?.responseReceived === true &&
+    Number.isInteger(error?.httpStatus) && error.httpStatus >= 400 && error.httpStatus < 500;
 }
 
 async function createDevice(password) {
@@ -196,28 +206,51 @@ async function createDevice(password) {
 }
 
 async function punchWithDevice(device, password, phase) {
-  const { identity, publicKey } = device;
+  const { identity } = device;
 
   const externalInfoBody = new URLSearchParams({ identity });
-  await ahgoraFetch('/getDefaultExternalInfo', {
+  const externalInfo = await ahgoraFetch('/getDefaultExternalInfo', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: externalInfoBody.toString()
   }, `${phase}/getDefaultExternalInfo`);
 
+  const token = externalInfo?.token;
+  if (!token) {
+    throw new AhgoraStepError(
+      `${phase}/getDefaultExternalInfo`,
+      'Ahgora respondeu a getDefaultExternalInfo sem retornar token.',
+      { httpStatus: 200, responseReceived: true }
+    );
+  }
+
+  let publicKey = device.publicKey || null;
+  if (!publicKey) {
+    const publicKeyResponse = await ahgoraFetch(
+      `/getPublicKey?identity=${encodeURIComponent(identity)}`,
+      {},
+      `${phase}/getPublicKey`
+    );
+    publicKey = publicKeyResponse?.public_key || null;
+    if (!publicKey) {
+      throw new AhgoraStepError(
+        `${phase}/getPublicKey`,
+        'Ahgora respondeu sem retornar public_key.',
+        { httpStatus: 200, responseReceived: true }
+      );
+    }
+  }
+
   let encryptedPassword;
   try {
     encryptedPassword = crypto.publicEncrypt(
-      {
-        key: publicKey,
-        padding: crypto.constants.RSA_PKCS1_PADDING
-      },
+      { key: publicKey, padding: crypto.constants.RSA_PKCS1_PADDING },
       Buffer.from(password, 'utf8')
     ).toString('base64');
   } catch (error) {
     throw new AhgoraStepError(
       `${phase}/encryptPassword`,
-      `Não foi possível criptografar a senha com a chave pública salva: ${error?.message || String(error)}`
+      `Não foi possível criptografar a senha com a chave pública do dispositivo: ${error?.message || String(error)}`
     );
   }
 
@@ -232,6 +265,7 @@ async function punchWithDevice(device, password, phase) {
 
   const punch = await ahgoraFetch('/verifyIdentification', {
     method: 'POST',
+    headers: { Authorization: token },
     body: form
   }, `${phase}/verifyIdentification`);
 
@@ -239,7 +273,7 @@ async function punchWithDevice(device, password, phase) {
     const upstream =
       (typeof punch?.message === 'string' && punch.message.trim()) ||
       (typeof punch?.error === 'string' && punch.error.trim()) ||
-      null;
+      (typeof punch?.reason === 'string' && punch.reason.trim()) || null;
 
     throw new AhgoraStepError(
       `${phase}/verifyIdentification`,
@@ -249,6 +283,10 @@ async function punchWithDevice(device, password, phase) {
       { httpStatus: 200, responseReceived: true }
     );
   }
+
+  punch._externalEmployee = Array.isArray(externalInfo?.employee)
+    ? externalInfo.employee[0]
+    : externalInfo?.employee || null;
 
   return punch;
 }
@@ -302,7 +340,7 @@ exports.handler = async function(event) {
   if (cached.device) {
     try {
       const punch = await punchWithDevice(cached.device, password, 'cached_device');
-      const employee = punch?.employee || cached.device.employee;
+      const employee = punch?.employee || punch?._externalEmployee || cached.device.employee;
       console.log(`Ahgora: reused cached device ${cached.device.identity}.`);
 
       return json(200, {
@@ -321,8 +359,15 @@ exports.handler = async function(event) {
     } catch (error) {
       attempts.push(failureRecord('cached_device', error));
       console.warn(`Ahgora: cached device attempt was not confirmed: ${error?.message || String(error)}`);
-      // Keep the cached device unless a replacement is successfully activated.
-      // A transient Ahgora/network error must not destroy a device that may still be valid.
+
+      if (!shouldTryNewDevice(error)) {
+        return failureResponse(attempts);
+      }
+
+      // Only a confirmed 4xx rejection at an identity-level endpoint causes a
+      // replacement activation attempt. Network errors, 5xx responses, and
+      // verifyIdentification failures keep the existing device untouched.
+      console.warn('Ahgora: cached device identity was rejected; trying one replacement activation.');
     }
   }
 
@@ -355,7 +400,7 @@ exports.handler = async function(event) {
     return failureResponse(attempts);
   }
 
-  const employee = punch?.employee || newDevice.employee;
+  const employee = punch?.employee || punch?._externalEmployee || newDevice.employee;
   return json(200, {
     ok: true,
     punched: true,
