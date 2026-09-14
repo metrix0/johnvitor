@@ -65,6 +65,40 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function phaseLabel(phase) {
+  if (phase === 'cached_device') return 'dispositivo salvo';
+  if (phase === 'new_device') return 'novo dispositivo';
+  if (phase === 'cache') return 'cache do dispositivo';
+  if (phase === 'configuration') return 'configuração';
+  return phase || 'etapa desconhecida';
+}
+
+function exactFailureText(data, httpStatus, rawText) {
+  if (Array.isArray(data?.attempts) && data.attempts.length) {
+    const statusText = data.punchStatus === 'not_attempted'
+      ? 'A requisição de registro da batida não chegou a ser feita.'
+      : 'O resultado da batida não pôde ser confirmado.';
+
+    const attempts = data.attempts.map(attempt => {
+      const step = attempt?.step || 'etapa não informada';
+      const detail = attempt?.detail || 'sem detalhe informado';
+      return `${phaseLabel(attempt?.phase)} · ${step}: ${detail}`;
+    });
+
+    return `${statusText} ${attempts.join(' | ')}`;
+  }
+
+  if (data?.error) {
+    return `A API /api/ahgora respondeu HTTP ${httpStatus}: ${data.error}`;
+  }
+
+  if (rawText) {
+    return `A API /api/ahgora respondeu HTTP ${httpStatus}: ${rawText.slice(0, 500)}`;
+  }
+
+  return `A API /api/ahgora respondeu HTTP ${httpStatus} sem detalhes.`;
+}
+
 async function sendFailureAlert(slot, reason) {
   const topic = process.env.NTFY_TOPIC;
   const server = (process.env.NTFY_SERVER || DEFAULT_NTFY_SERVER).replace(/\/$/, '');
@@ -79,12 +113,12 @@ async function sendFailureAlert(slot, reason) {
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Title': 'ALARM TRIGGER - Ahgora: batida falhou',
+        'Title': 'ALARM TRIGGER - Ahgora: batida não confirmada',
         'Priority': '5',
         'Tags': 'warning,rotating_light',
         'Click': `${SITE_URL}/ahgora`
       },
-      body: `Batida das ${slot} falhou: ${reason}`
+      body: `Batida das ${slot}: ${reason}`
     });
 
     if (!response.ok) {
@@ -130,8 +164,8 @@ exports.handler = async function(event) {
     try { data = JSON.parse(text); } catch { data = null; }
 
     if (!response.ok || !data?.ok || !data?.punched) {
-      const reason = data?.error || `HTTP ${response.status}`;
-      console.error(`Ahgora ${slot}: punch failed: ${reason}`);
+      const reason = exactFailureText(data, response.status, text);
+      console.error(`Ahgora ${slot}: punch not confirmed: ${reason}`);
       await sendFailureAlert(slot, reason);
       return;
     }
@@ -140,7 +174,7 @@ exports.handler = async function(event) {
   } catch (error) {
     // Do not throw: Netlify background functions retry failed invocations,
     // which could create a duplicate punch if the first request actually succeeded.
-    const reason = error?.message || String(error);
+    const reason = `O processo automático não terminou com uma resposta confirmando a batida: ${error?.message || String(error)}`;
     console.error(`Ahgora ${slot}: background clock error: ${reason}`);
     await sendFailureAlert(slot, reason);
   }
