@@ -74,7 +74,7 @@ async function ahgoraFetch(path, options = {}, step = path) {
 
 async function readCachedDevice(store) {
   try {
-    const device = await store.get(DEVICE_KEY, { type: 'json', consistency: 'strong' });
+    const device = await store.get(DEVICE_KEY, { type: 'json' });
     if (!device) return { device: null, error: null, warning: null };
     if (!device.identity || !device.publicKey) {
       return {
