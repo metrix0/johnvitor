@@ -57,7 +57,7 @@ async function getPreviousState() {
     .filter((entry) => entry && entry.event === 'message');
 
   const latest = messages[messages.length - 1];
-  return latest?.message === 'in_stock' || latest?.message === 'out_of_stock'
+  return ['in_stock', 'out_of_stock', 'unknown'].includes(latest?.message)
     ? latest.message
     : null;
 }
@@ -78,17 +78,17 @@ async function saveState(state) {
   }
 }
 
-async function sendAlarm() {
+async function sendAlarm(state) {
   const response = await fetch(ALERT_TOPIC_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Title': 'ALARM TRIGGER - AstroVials EEn IN STOCK',
+      'Title': 'ALARM TRIGGER - AstroVials EEn NOT OUT OF STOCK',
       'Priority': '5',
       'Tags': 'warning,rotating_light',
       'Click': PRODUCT_URL
     },
-    body: 'TRIGGER ALARM - Estradiol Enanthate is in stock and purchasable now'
+    body: `TRIGGER ALARM - AstroVials is no longer explicitly out of stock (detected: ${state}). Check the product now.`
   });
 
   if (!response.ok) {
@@ -112,16 +112,11 @@ exports.handler = async function() {
 
     const html = await productResponse.text();
     const state = detectStock(html);
-
-    if (state === 'unknown') {
-      return json(502, { ok: false, state, error: 'Could not determine stock status.' });
-    }
-
     const previousState = await getPreviousState();
-    const shouldNotify = state === 'in_stock' && previousState !== 'in_stock';
+    const shouldNotify = state !== 'out_of_stock' && previousState !== state;
 
     if (shouldNotify) {
-      await sendAlarm();
+      await sendAlarm(state);
     }
 
     await saveState(state);
