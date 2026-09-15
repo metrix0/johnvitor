@@ -67,6 +67,7 @@ function sleep(ms) {
 
 function phaseLabel(phase) {
   if (phase === 'cached_device') return 'dispositivo salvo';
+  if (phase === 'browser_device') return 'dispositivo ativo do navegador';
   if (phase === 'new_device') return 'novo dispositivo';
   if (phase === 'cache') return 'cache do dispositivo';
   if (phase === 'configuration') return 'configuração';

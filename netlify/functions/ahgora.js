@@ -6,6 +6,20 @@ const COMPANY = 'a518216';
 const ENROLLMENT = '96';
 const DEVICE_STORE = 'ahgora-device-session';
 const DEVICE_KEY = `${COMPANY}-${ENROLLMENT}`;
+const BROWSER_BOOTSTRAP_DEVICE = {
+  identity: '505a59329e1821e4cb366569582fed91',
+  publicKey: `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7qtdaCKN+fpyaYJC4H6R
+l73pprTBgq1B3c1sgGee+ZzOaIRk2NDcEFSXK0w2+tA6mutbwo+1Ht1wGzSr4785
+J0AQI7gUmSd7ocFzNW45cL5M/MYZIOvDNh6VS/HRVg/z5/jGchFtTloJPolbm85E
+4QocsMDLvQX5e1QeCgNdTBIANJ4S09nX2r1y9YZIJIhz3zxKonSbybqgquxL8W5A
+Zhx0vvD2O6GNV7ixhUwmSW1Jg+KBHz4/dBo2mMSlqgkh+hlpFIpFXz5DkRsKhbSt
+JbqPIunx3PVOyk+GEZ2zumZWfvdicVLI4SQs4X6kpYKmQ20/tQD+zZqBnrRlLs1I
+LwIDAQAB
+-----END PUBLIC KEY-----`,
+  employee: null,
+  source: 'official_browser_har'
+};
 
 class AhgoraStepError extends Error {
   constructor(step, detail, { httpStatus = null, responseReceived = false } = {}) {
@@ -368,6 +382,36 @@ exports.handler = async function(event) {
       // replacement activation attempt. Network errors, 5xx responses, and
       // verifyIdentification failures keep the existing device untouched.
       console.warn('Ahgora: cached device identity was rejected; trying one replacement activation.');
+    }
+  }
+
+  if (!cached.device && BROWSER_BOOTSTRAP_DEVICE.identity) {
+    try {
+      const punch = await punchWithDevice(BROWSER_BOOTSTRAP_DEVICE, password, 'browser_device');
+      const employee = punch?.employee || punch?._externalEmployee || BROWSER_BOOTSTRAP_DEVICE.employee;
+      const cacheWriteError = await saveCachedDevice(store, BROWSER_BOOTSTRAP_DEVICE);
+      if (cacheWriteError) console.error(`Ahgora: ${cacheWriteError.message}`);
+      else console.log(`Ahgora: browser device ${BROWSER_BOOTSTRAP_DEVICE.identity} validated and cached.`);
+
+      return json(200, {
+        ok: true,
+        punched: true,
+        result: true,
+        nsr: punch?.NSR ?? null,
+        day: punch?.day ?? null,
+        time: punch?.time ?? null,
+        punchesToday: punch?.batidas_dia ?? null,
+        enrollment: employee?.enrollment || ENROLLMENT,
+        employeeName: employee?.name || null,
+        deviceSession: cacheWriteError ? 'browser_bootstrap_not_cached' : 'browser_bootstrap_cached',
+        cacheWarning: cacheWriteError?.message || null,
+        checkedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      attempts.push(failureRecord('browser_device', error));
+      console.warn(`Ahgora: browser device attempt was not confirmed: ${error?.message || String(error)}`);
+      if (!shouldTryNewDevice(error)) return failureResponse(attempts);
+      console.warn('Ahgora: browser device identity was rejected; trying one replacement activation.');
     }
   }
 
