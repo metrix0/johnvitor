@@ -11,4 +11,4 @@
   schedule = "13 18 * * *"
 
 [functions."astrovials-stock"]
-  schedule = "0 * * * *"
+  schedule = "* * * * *"
