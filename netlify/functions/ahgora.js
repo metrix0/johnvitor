@@ -2,12 +2,17 @@ const crypto = require('crypto');
 const { connectLambda, getStore } = require('@netlify/blobs');
 
 const BASE = 'https://app.ahgora.com.br/batidaonline';
+const ACTIVATION_BASE = 'https://www.ahgora.com.br/batidaonline';
 const COMPANY = 'a518216';
 const ENROLLMENT = '96';
 const DEVICE_STORE = 'ahgora-device-session';
 const DEVICE_KEY = `${COMPANY}-${ENROLLMENT}`;
-const BROWSER_BOOTSTRAP_DEVICE = {
-  identity: '505a59329e1821e4cb366569582fed91',
+
+// This device was activated successfully through Ahgora's official web flow.
+// The identity/public key are not credentials; the activation key itself is
+// intentionally NOT committed because this repository is public.
+const CURRENT_BOOTSTRAP_DEVICE = {
+  identity: '36dddfe45d75409f061710b7542a08c4',
   publicKey: `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7qtdaCKN+fpyaYJC4H6R
 l73pprTBgq1B3c1sgGee+ZzOaIRk2NDcEFSXK0w2+tA6mutbwo+1Ht1wGzSr4785
@@ -18,6 +23,7 @@ JbqPIunx3PVOyk+GEZ2zumZWfvdicVLI4SQs4X6kpYKmQ20/tQD+zZqBnrRlLs1I
 LwIDAQAB
 -----END PUBLIC KEY-----`,
   employee: null,
+  baseUrl: ACTIVATION_BASE,
   source: 'official_browser_har'
 };
 
@@ -45,15 +51,16 @@ function json(statusCode, body) {
 function responseDetail(data, text) {
   if (typeof data?.message === 'string' && data.message.trim()) return data.message.trim();
   if (typeof data?.error === 'string' && data.error.trim()) return data.error.trim();
+  if (typeof data?.reason === 'string' && data.reason.trim()) return data.reason.trim();
   if (typeof data?.raw === 'string' && data.raw.trim()) return data.raw.trim();
   if (typeof text === 'string' && text.trim()) return text.trim();
   return null;
 }
 
-async function ahgoraFetch(path, options = {}, step = path) {
+async function ahgoraFetch(path, options = {}, step = path, baseUrl = BASE) {
   let res;
   try {
-    res = await fetch(`${BASE}${path}`, {
+    res = await fetch(`${baseUrl}${path}`, {
       ...options,
       headers: {
         Accept: 'application/json, text/plain, */*',
@@ -120,9 +127,25 @@ async function saveCachedDevice(store, device) {
   } catch (error) {
     return new AhgoraStepError(
       'cache/write',
-      `O novo dispositivo foi ativado, mas não foi possível salvá-lo no cache: ${error?.message || String(error)}`
+      `O dispositivo foi ativado, mas não foi possível salvá-lo no cache: ${error?.message || String(error)}`
     );
   }
+}
+
+function normalizeActivationKey(value) {
+  return typeof value === 'string' && /^[0-9a-f]+$/i.test(value.trim())
+    ? value.trim()
+    : null;
+}
+
+function configuredActivationKeys() {
+  const raw = process.env.AHGORA_ACTIVATION_KEYS || '';
+  return [...new Set(
+    raw
+      .split(/[\s,;]+/)
+      .map(normalizeActivationKey)
+      .filter(Boolean)
+  )];
 }
 
 function failureRecord(phase, error) {
@@ -149,14 +172,73 @@ function failureResponse(attempts) {
   });
 }
 
-function shouldTryNewDevice(error) {
+function shouldRecoverDevice(error) {
   const step = error?.step || '';
-  const identityLevelFailure =
-    step.endsWith('/getDefaultExternalInfo') ||
-    step.endsWith('/getPublicKey');
+  const explicitIdentity4xx =
+    (step.endsWith('/getDefaultExternalInfo') || step.endsWith('/getPublicKey')) &&
+    error?.responseReceived === true &&
+    Number.isInteger(error?.httpStatus) &&
+    error.httpStatus >= 400 &&
+    error.httpStatus < 500;
 
-  return identityLevelFailure && error?.responseReceived === true &&
-    Number.isInteger(error?.httpStatus) && error.httpStatus >= 400 && error.httpStatus < 500;
+  const explicitlyInactive =
+    step.endsWith('/verifyIdentification') &&
+    error?.responseReceived === true &&
+    error.httpStatus === 200 &&
+    /\binativo\b/i.test(error?.message || '');
+
+  return explicitIdentity4xx || explicitlyInactive;
+}
+
+function isRejectedActivationKey(error) {
+  return error?.step?.endsWith('/activateFunctionality') &&
+    error?.responseReceived === true &&
+    Number.isInteger(error?.httpStatus) &&
+    error.httpStatus >= 400 &&
+    error.httpStatus < 500;
+}
+
+async function activateWithKey(activationKey, phase, baseUrl = ACTIVATION_BASE) {
+  const activationBody = new URLSearchParams({ key: activationKey });
+  const activation = await ahgoraFetch('/activateFunctionality', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: activationBody.toString()
+  }, `${phase}/activateFunctionality`, baseUrl);
+
+  const identity = activation?.identity;
+  if (!identity) {
+    throw new AhgoraStepError(
+      `${phase}/activateFunctionality`,
+      'Ahgora respondeu à ativação da funcionalidade sem retornar identity.',
+      { httpStatus: 200, responseReceived: true }
+    );
+  }
+
+  const publicKeyResponse = await ahgoraFetch(
+    `/getPublicKey?identity=${encodeURIComponent(identity)}`,
+    {},
+    `${phase}/getPublicKey`,
+    baseUrl
+  );
+  const publicKey = publicKeyResponse?.public_key;
+  if (!publicKey) {
+    throw new AhgoraStepError(
+      `${phase}/getPublicKey`,
+      'Ahgora respondeu sem retornar public_key.',
+      { httpStatus: 200, responseReceived: true }
+    );
+  }
+
+  return {
+    identity,
+    publicKey,
+    activationKey,
+    employee: Array.isArray(activation?.employee) ? activation.employee[0] : activation?.employee || null,
+    baseUrl,
+    source: 'activation_key',
+    createdAt: new Date().toISOString()
+  };
 }
 
 async function createDevice(password) {
@@ -170,9 +252,9 @@ async function createDevice(password) {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: loginBody.toString()
-  }, 'new_device/activateDeviceOnLineByLoginAndPassword');
+  }, 'new_device/activateDeviceOnLineByLoginAndPassword', BASE);
 
-  const activationKey = login?.activationKey || login?.activation_key;
+  const activationKey = normalizeActivationKey(login?.activationKey || login?.activation_key);
   if (!activationKey) {
     throw new AhgoraStepError(
       'new_device/activateDeviceOnLineByLoginAndPassword',
@@ -181,53 +263,21 @@ async function createDevice(password) {
     );
   }
 
-  const activationBody = new URLSearchParams({ key: activationKey });
-  const activation = await ahgoraFetch('/activateFunctionality', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: activationBody.toString()
-  }, 'new_device/activateFunctionality');
-
-  const identity = activation?.identity;
-  if (!identity) {
-    throw new AhgoraStepError(
-      'new_device/activateFunctionality',
-      'Ahgora respondeu à ativação da funcionalidade sem retornar identity.',
-      { httpStatus: 200, responseReceived: true }
-    );
-  }
-
-  const publicKeyResponse = await ahgoraFetch(
-    `/getPublicKey?identity=${encodeURIComponent(identity)}`,
-    {},
-    'new_device/getPublicKey'
-  );
-  const publicKey = publicKeyResponse?.public_key;
-  if (!publicKey) {
-    throw new AhgoraStepError(
-      'new_device/getPublicKey',
-      'Ahgora respondeu sem retornar public_key.',
-      { httpStatus: 200, responseReceived: true }
-    );
-  }
-
-  return {
-    identity,
-    publicKey,
-    employee: Array.isArray(activation?.employee) ? activation.employee[0] : activation?.employee || null,
-    createdAt: new Date().toISOString()
-  };
+  const device = await activateWithKey(activationKey, 'new_device', BASE);
+  device.source = 'generated';
+  return device;
 }
 
 async function punchWithDevice(device, password, phase) {
   const { identity } = device;
+  const baseUrl = device.baseUrl || BASE;
 
   const externalInfoBody = new URLSearchParams({ identity });
   const externalInfo = await ahgoraFetch('/getDefaultExternalInfo', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: externalInfoBody.toString()
-  }, `${phase}/getDefaultExternalInfo`);
+  }, `${phase}/getDefaultExternalInfo`, baseUrl);
 
   const token = externalInfo?.token;
   if (!token) {
@@ -243,7 +293,8 @@ async function punchWithDevice(device, password, phase) {
     const publicKeyResponse = await ahgoraFetch(
       `/getPublicKey?identity=${encodeURIComponent(identity)}`,
       {},
-      `${phase}/getPublicKey`
+      `${phase}/getPublicKey`,
+      baseUrl
     );
     publicKey = publicKeyResponse?.public_key || null;
     if (!publicKey) {
@@ -281,13 +332,10 @@ async function punchWithDevice(device, password, phase) {
     method: 'POST',
     headers: { Authorization: token },
     body: form
-  }, `${phase}/verifyIdentification`);
+  }, `${phase}/verifyIdentification`, baseUrl);
 
   if (punch?.result !== true) {
-    const upstream =
-      (typeof punch?.message === 'string' && punch.message.trim()) ||
-      (typeof punch?.error === 'string' && punch.error.trim()) ||
-      (typeof punch?.reason === 'string' && punch.reason.trim()) || null;
+    const upstream = responseDetail(punch, null);
 
     throw new AhgoraStepError(
       `${phase}/verifyIdentification`,
@@ -303,6 +351,71 @@ async function punchWithDevice(device, password, phase) {
     : externalInfo?.employee || null;
 
   return punch;
+}
+
+function successResponse(punch, device, deviceSession, cacheWarning = null) {
+  const employee = punch?.employee || punch?._externalEmployee || device?.employee;
+  return json(200, {
+    ok: true,
+    punched: true,
+    result: true,
+    nsr: punch?.NSR ?? null,
+    day: punch?.day ?? null,
+    time: punch?.time ?? null,
+    punchesToday: punch?.batidas_dia ?? null,
+    enrollment: employee?.enrollment || ENROLLMENT,
+    employeeName: employee?.name || null,
+    deviceSession,
+    cacheWarning,
+    checkedAt: new Date().toISOString()
+  });
+}
+
+async function activateSaveAndPunch({
+  store,
+  activationKey,
+  password,
+  phase,
+  baseUrl = ACTIVATION_BASE,
+  attempts
+}) {
+  let device;
+  try {
+    device = await activateWithKey(activationKey, phase, baseUrl);
+  } catch (error) {
+    attempts.push(failureRecord(phase, error));
+    return {
+      done: !isRejectedActivationKey(error),
+      response: isRejectedActivationKey(error) ? null : failureResponse(attempts)
+    };
+  }
+
+  const cacheWriteError = await saveCachedDevice(store, device);
+  if (cacheWriteError) console.error(`Ahgora: ${cacheWriteError.message}`);
+
+  try {
+    const punch = await punchWithDevice(device, password, phase);
+    console.log(`Ahgora: activated and cached reusable device ${device.identity}.`);
+    return {
+      done: true,
+      response: successResponse(
+        punch,
+        device,
+        cacheWriteError ? 'activation_key_not_cached' : 'activation_key_cached',
+        cacheWriteError?.message || null
+      )
+    };
+  } catch (error) {
+    attempts.push(failureRecord(phase, error));
+    if (cacheWriteError) attempts.push(failureRecord('cache', cacheWriteError));
+
+    if (shouldRecoverDevice(error)) {
+      console.warn(`Ahgora: activation key produced an inactive/rejected identity; trying the next saved key.`);
+      return { done: false, response: null };
+    }
+
+    return { done: true, response: failureResponse(attempts) };
+  }
 }
 
 exports.handler = async function(event) {
@@ -342,121 +455,84 @@ exports.handler = async function(event) {
   const cached = await readCachedDevice(store);
   if (cached.error) {
     attempts.push(failureRecord('cache', cached.error));
-    console.error(`Ahgora: ${cached.error.message}`);
     return failureResponse(attempts);
   }
-
-  if (cached.warning) {
-    attempts.push(failureRecord('cache', cached.warning));
-    console.warn(`Ahgora: ${cached.warning.message}`);
-  }
+  if (cached.warning) attempts.push(failureRecord('cache', cached.warning));
 
   if (cached.device) {
     try {
       const punch = await punchWithDevice(cached.device, password, 'cached_device');
-      const employee = punch?.employee || punch?._externalEmployee || cached.device.employee;
       console.log(`Ahgora: reused cached device ${cached.device.identity}.`);
-
-      return json(200, {
-        ok: true,
-        punched: true,
-        result: true,
-        nsr: punch?.NSR ?? null,
-        day: punch?.day ?? null,
-        time: punch?.time ?? null,
-        punchesToday: punch?.batidas_dia ?? null,
-        enrollment: employee?.enrollment || ENROLLMENT,
-        employeeName: employee?.name || null,
-        deviceSession: 'reused',
-        checkedAt: new Date().toISOString()
-      });
+      return successResponse(punch, cached.device, 'reused');
     } catch (error) {
       attempts.push(failureRecord('cached_device', error));
-      console.warn(`Ahgora: cached device attempt was not confirmed: ${error?.message || String(error)}`);
-
-      if (!shouldTryNewDevice(error)) {
-        return failureResponse(attempts);
-      }
-
-      // Only a confirmed 4xx rejection at an identity-level endpoint causes a
-      // replacement activation attempt. Network errors, 5xx responses, and
-      // verifyIdentification failures keep the existing device untouched.
-      console.warn('Ahgora: cached device identity was rejected; trying one replacement activation.');
+      console.warn(`Ahgora: cached device was not confirmed: ${error?.message || String(error)}`);
+      if (!shouldRecoverDevice(error)) return failureResponse(attempts);
     }
   }
 
-  if (!cached.device && BROWSER_BOOTSTRAP_DEVICE.identity) {
+  // A freshly activated browser identity from the official Ahgora flow gives us
+  // an immediate reusable device even before the historical keys are configured.
+  if (!cached.device && CURRENT_BOOTSTRAP_DEVICE.identity) {
     try {
-      const punch = await punchWithDevice(BROWSER_BOOTSTRAP_DEVICE, password, 'browser_device');
-      const employee = punch?.employee || punch?._externalEmployee || BROWSER_BOOTSTRAP_DEVICE.employee;
-      const cacheWriteError = await saveCachedDevice(store, BROWSER_BOOTSTRAP_DEVICE);
-      if (cacheWriteError) console.error(`Ahgora: ${cacheWriteError.message}`);
-      else console.log(`Ahgora: browser device ${BROWSER_BOOTSTRAP_DEVICE.identity} validated and cached.`);
-
-      return json(200, {
-        ok: true,
-        punched: true,
-        result: true,
-        nsr: punch?.NSR ?? null,
-        day: punch?.day ?? null,
-        time: punch?.time ?? null,
-        punchesToday: punch?.batidas_dia ?? null,
-        enrollment: employee?.enrollment || ENROLLMENT,
-        employeeName: employee?.name || null,
-        deviceSession: cacheWriteError ? 'browser_bootstrap_not_cached' : 'browser_bootstrap_cached',
-        cacheWarning: cacheWriteError?.message || null,
-        checkedAt: new Date().toISOString()
-      });
+      const punch = await punchWithDevice(CURRENT_BOOTSTRAP_DEVICE, password, 'browser_device');
+      const cacheWriteError = await saveCachedDevice(store, CURRENT_BOOTSTRAP_DEVICE);
+      return successResponse(
+        punch,
+        CURRENT_BOOTSTRAP_DEVICE,
+        cacheWriteError ? 'browser_bootstrap_not_cached' : 'browser_bootstrap_cached',
+        cacheWriteError?.message || null
+      );
     } catch (error) {
       attempts.push(failureRecord('browser_device', error));
-      console.warn(`Ahgora: browser device attempt was not confirmed: ${error?.message || String(error)}`);
-      if (!shouldTryNewDevice(error)) return failureResponse(attempts);
-      console.warn('Ahgora: browser device identity was rejected; trying one replacement activation.');
+      if (!shouldRecoverDevice(error)) return failureResponse(attempts);
     }
   }
 
+  // Reuse the key that created the cached device first, then every historical
+  // key configured in Netlify. Nothing new is generated while an old key works.
+  const candidateKeys = [...new Set([
+    normalizeActivationKey(cached.device?.activationKey),
+    ...configuredActivationKeys()
+  ].filter(Boolean))];
+
+  for (let index = 0; index < candidateKeys.length; index += 1) {
+    const result = await activateSaveAndPunch({
+      store,
+      activationKey: candidateKeys[index],
+      password,
+      phase: `saved_key_${index + 1}`,
+      baseUrl: ACTIVATION_BASE,
+      attempts
+    });
+    if (result.done) return result.response;
+  }
+
+  // Only after every reusable key is unavailable/rejected do we fall back to
+  // the original creation flow. The returned activationKey is persisted with
+  // the device, so future recovery reuses it instead of creating another key.
   let newDevice;
   try {
     newDevice = await createDevice(password);
   } catch (error) {
     attempts.push(failureRecord('new_device', error));
-    console.error(`Ahgora: new device activation failed: ${error?.message || String(error)}`);
     return failureResponse(attempts);
   }
 
-  // Persist a successfully activated device before attempting the punch. If the
-  // punch response is lost or inconclusive, the next run can still reuse this device
-  // instead of activating yet another one.
   const cacheWriteError = await saveCachedDevice(store, newDevice);
-  if (cacheWriteError) {
-    console.error(`Ahgora: ${cacheWriteError.message}`);
-  } else {
-    console.log(`Ahgora: activated and cached new device ${newDevice.identity}.`);
-  }
+  if (cacheWriteError) console.error(`Ahgora: ${cacheWriteError.message}`);
 
-  let punch;
   try {
-    punch = await punchWithDevice(newDevice, password, 'new_device');
+    const punch = await punchWithDevice(newDevice, password, 'new_device');
+    return successResponse(
+      punch,
+      newDevice,
+      cacheWriteError ? 'new_not_cached' : 'new_cached',
+      cacheWriteError?.message || null
+    );
   } catch (error) {
     attempts.push(failureRecord('new_device', error));
     if (cacheWriteError) attempts.push(failureRecord('cache', cacheWriteError));
-    console.error(`Ahgora: new device punch was not confirmed: ${error?.message || String(error)}`);
     return failureResponse(attempts);
   }
-
-  const employee = punch?.employee || punch?._externalEmployee || newDevice.employee;
-  return json(200, {
-    ok: true,
-    punched: true,
-    result: true,
-    nsr: punch?.NSR ?? null,
-    day: punch?.day ?? null,
-    time: punch?.time ?? null,
-    punchesToday: punch?.batidas_dia ?? null,
-    enrollment: employee?.enrollment || ENROLLMENT,
-    employeeName: employee?.name || null,
-    deviceSession: cacheWriteError ? 'new_not_cached' : 'new_cached',
-    cacheWarning: cacheWriteError?.message || null,
-    checkedAt: new Date().toISOString()
-  });
 };
