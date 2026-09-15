@@ -138,14 +138,27 @@ function normalizeActivationKey(value) {
     : null;
 }
 
+const SAVED_ACTIVATION_KEYS = [
+  '6aa2f36e5e491', '6aa0267ab802a', '6a998efa4f653', '6a9ab2c6a71ef',
+  '6aa051207fe0f', '6a9ae07b9fbfc', '6a983d87beaf1', '6aa44567ef7bf',
+  '6aa14a0861e48', '6aa41776312d2', '6a9867a8c9756', '6a9961469f8ca',
+  '6a96f2f609aa9', '6a998bb472703', '6aa1a2a253b21', '6aa2c9f19879c',
+  '6aa2c6334a866', '6aa177be0134e', '6aa29c021b267', '672cd25819261',
+  '6aa41b3549a4b', '6aa7e1c4bdd37', '6aa174786ef1c', '6a9ff900c4a90',
+  '6aa023a99eb80', '6a99b92874f32', '6a9adcf6af1b8', '6a97155d7ac40',
+  '6aa3ed0973486', '6a98399252654', '6a9b0aa9d0488'
+];
+
 function configuredActivationKeys() {
-  const raw = process.env.AHGORA_ACTIVATION_KEYS || '';
-  return [...new Set(
-    raw
-      .split(/[\s,;]+/)
-      .map(normalizeActivationKey)
-      .filter(Boolean)
-  )];
+  const envKeys = (process.env.AHGORA_ACTIVATION_KEYS || '')
+    .split(/[\s,;]+/)
+    .map(normalizeActivationKey)
+    .filter(Boolean);
+
+  return [...new Set([
+    ...SAVED_ACTIVATION_KEYS.map(normalizeActivationKey).filter(Boolean),
+    ...envKeys
+  ])];
 }
 
 function failureRecord(phase, error) {
@@ -191,11 +204,17 @@ function shouldRecoverDevice(error) {
 }
 
 function isRejectedActivationKey(error) {
-  return error?.step?.endsWith('/activateFunctionality') &&
-    error?.responseReceived === true &&
-    Number.isInteger(error?.httpStatus) &&
-    error.httpStatus >= 400 &&
-    error.httpStatus < 500;
+  const step = error?.step || '';
+  const status = error?.httpStatus;
+  const providerRejected = error?.responseReceived === true && (
+    (Number.isInteger(status) && status >= 400 && status < 500) ||
+    status === 200
+  );
+
+  return providerRejected && (
+    step.endsWith('/activateFunctionality') ||
+    step.endsWith('/getPublicKey')
+  );
 }
 
 async function activateWithKey(activationKey, phase, baseUrl = ACTIVATION_BASE) {
@@ -490,7 +509,7 @@ exports.handler = async function(event) {
   }
 
   // Reuse the key that created the cached device first, then every historical
-  // key configured in Netlify. Nothing new is generated while an old key works.
+  // saved historical key. Nothing new is generated while an old key works.
   const candidateKeys = [...new Set([
     normalizeActivationKey(cached.device?.activationKey),
     ...configuredActivationKeys()
