@@ -1,34 +1,18 @@
-const crypto = require('crypto');
-
 const PROJECT_ID = 'prj_6dB0Yk1fQjoWLTSOTPvMjibf9nCw';
 const TEAM_ID = 'team_ChUlkjEHU8gOCEr29E1oj1Wo';
-const PREVIEW_BRANCH = 'preview';
 
 const COMMAND_OFF = 'if [ "$VERCEL_GIT_COMMIT_REF" != "main" ]; then exit 0; else exit 1; fi';
 const COMMAND_ON = 'if [ "$VERCEL_GIT_COMMIT_REF" != "main" ] && [ "$VERCEL_GIT_COMMIT_REF" != "preview" ]; then exit 0; else exit 1; fi';
 
-function json(statusCode, body) {
+function text(statusCode, body) {
   return {
     statusCode,
     headers: {
-      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'no-store'
     },
-    body: JSON.stringify(body)
+    body
   };
-}
-
-function safeEqual(a, b) {
-  const left = Buffer.from(String(a || ''));
-  const right = Buffer.from(String(b || ''));
-  return left.length === right.length && crypto.timingSafeEqual(left, right);
-}
-
-function isAuthorized(event) {
-  const expected = process.env.PREVIEW_DEPLOY_TOGGLE_SECRET || '';
-  const authorization = event.headers?.authorization || event.headers?.Authorization || '';
-  if (!expected || !authorization.startsWith('Bearer ')) return false;
-  return safeEqual(authorization.slice(7), expected);
 }
 
 async function vercelRequest(method, body) {
@@ -47,87 +31,32 @@ async function vercelRequest(method, body) {
     }
   );
 
-  const text = await response.text();
-  let data = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = { raw: text };
-  }
-
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail = data?.error?.message || data?.message || text || `HTTP ${response.status}`;
+    const detail = data?.error?.message || data?.message || `HTTP ${response.status}`;
     throw new Error(`Vercel ${response.status}: ${detail}`);
   }
-
   return data;
 }
 
-function stateFromCommand(command) {
-  if (command === COMMAND_ON) return { recognized: true, enabled: true };
-  if (command === COMMAND_OFF) return { recognized: true, enabled: false };
-  return { recognized: false, enabled: null };
-}
-
 exports.handler = async function(event) {
-  if (!['GET', 'POST'].includes(event.httpMethod)) {
-    return json(405, { ok: false, error: 'Method not allowed.' });
-  }
-
-  if (!isAuthorized(event)) {
-    return json(401, { ok: false, error: 'Unauthorized.' });
-  }
+  if (event.httpMethod !== 'GET') return text(405, 'GET only');
 
   try {
     const project = await vercelRequest('GET');
-    const currentCommand = project?.commandForIgnoringBuildStep ?? null;
-    const currentState = stateFromCommand(currentCommand);
+    const current = project?.commandForIgnoringBuildStep ?? null;
 
-    if (event.httpMethod === 'GET') {
-      return json(200, {
-        ok: true,
-        project: 'imenu',
-        branch: PREVIEW_BRANCH,
-        ...currentState
-      });
+    if (current !== COMMAND_ON && current !== COMMAND_OFF) {
+      return text(409, 'UNKNOWN');
     }
 
-    let requestedEnabled;
-    if (event.body) {
-      try {
-        const parsed = JSON.parse(event.body);
-        if (typeof parsed?.enabled === 'boolean') requestedEnabled = parsed.enabled;
-      } catch {
-        return json(400, { ok: false, error: 'Invalid JSON body.' });
-      }
-    }
-
-    if (requestedEnabled === undefined && !currentState.recognized) {
-      return json(409, {
-        ok: false,
-        error: 'Current Ignored Build Step is not one of the expected toggle states. No change was made.',
-        currentCommand
-      });
-    }
-
-    const nextEnabled = requestedEnabled ?? !currentState.enabled;
-    const nextCommand = nextEnabled ? COMMAND_ON : COMMAND_OFF;
-
+    const enabled = current !== COMMAND_ON;
     await vercelRequest('PATCH', {
-      commandForIgnoringBuildStep: nextCommand
+      commandForIgnoringBuildStep: enabled ? COMMAND_ON : COMMAND_OFF
     });
 
-    return json(200, {
-      ok: true,
-      project: 'imenu',
-      branch: PREVIEW_BRANCH,
-      enabled: nextEnabled,
-      previousEnabled: currentState.enabled
-    });
+    return text(200, enabled ? 'ON' : 'OFF');
   } catch (error) {
-    return json(502, {
-      ok: false,
-      error: error?.message || String(error)
-    });
+    return text(502, error?.message || String(error));
   }
 };
