@@ -20,7 +20,7 @@ exports.handler = async function(event) {
   try {
     connectLambda(event);
     const store = getStore(STORE);
-    const current = await store.get(KEY, { type: 'text' });
+    const current = await store.get(KEY, { type: 'text', consistency: 'strong' });
     const next = current === 'ON' ? 'OFF' : 'ON';
     await store.set(KEY, next);
     return text(200, next);
