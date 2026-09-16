@@ -11,7 +11,7 @@ exports.handler = async function(event) {
   try {
     connectLambda(event);
     const store = getStore(STORE);
-    const current = await store.get(KEY, { type: 'text' });
+    const current = await store.get(KEY, { type: 'text', consistency: 'strong' });
     return {
       statusCode: 200,
       headers: {
