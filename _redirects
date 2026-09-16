@@ -1,4 +1,5 @@
 /api/notion /.netlify/functions/notion 200
 /api/scrape /.netlify/functions/scrape 200
 /api/ahgora /.netlify/functions/ahgora 200
+/api/toggle-preview-deploy /.netlify/functions/toggle-preview-deploy 200
 /avalarm /.netlify/functions/avalarm 200
