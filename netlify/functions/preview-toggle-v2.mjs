@@ -80,9 +80,7 @@ async function findSecondaryProject(token) {
   const uniqueMatches = matches.filter(
     (item, index, all) =>
       index === all.findIndex(
-        (candidate) =>
-          candidate?.project?.id === item?.project?.id &&
-          candidate?.teamId === item?.teamId
+        (candidate) => candidate?.project?.id === item?.project?.id
       )
   );
 
