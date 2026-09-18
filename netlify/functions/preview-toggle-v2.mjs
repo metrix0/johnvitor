@@ -4,7 +4,7 @@ const STORE = 'preview-deploy-toggle-v2';
 const KEY = 'enabled';
 const DEPLOY_HOOK = 'https://api.vercel.com/v1/integrations/deploy/prj_6dB0Yk1fQjoWLTSOTPvMjibf9nCw/QdNyV6TWd0';
 
-const SECONDARY_PROJECT_NAME = 'imenu';
+const SECONDARY_PROJECT_MATCH = 'engravida';
 const SHARED_STATUS_COMMAND = 'if [ "$VERCEL_GIT_COMMIT_REF" = "main" ]; then exit 1; fi; if [ "$VERCEL_GIT_COMMIT_REF" != "preview" ]; then exit 0; fi; if [ "$(curl -fsS --max-time 5 https://johnvitor.com/api/preview-deploy-status)" = "ON" ]; then exit 1; else exit 0; fi';
 
 async function vercelRequest(token, path, options = {}) {
@@ -35,24 +35,27 @@ async function vercelRequest(token, path, options = {}) {
   return data;
 }
 
-async function tryProject(token, teamId = null) {
-  const query = teamId ? `?teamId=${encodeURIComponent(teamId)}` : '';
+function matchingProjects(projects) {
+  return (Array.isArray(projects) ? projects : []).filter((project) =>
+    String(project?.name || '').toLowerCase().includes(SECONDARY_PROJECT_MATCH)
+  );
+}
 
-  try {
-    const project = await vercelRequest(
-      token,
-      `/v9/projects/${encodeURIComponent(SECONDARY_PROJECT_NAME)}${query}`
-    );
-    return { project, teamId };
-  } catch (error) {
-    if (error?.status === 404 || error?.status === 403) return null;
-    throw error;
-  }
+async function listProjects(token, teamId = null) {
+  const params = new URLSearchParams({ limit: '100' });
+  if (teamId) params.set('teamId', teamId);
+
+  const data = await vercelRequest(token, `/v9/projects?${params.toString()}`);
+  return Array.isArray(data?.projects) ? data.projects : [];
 }
 
 async function findSecondaryProject(token) {
-  const direct = await tryProject(token);
-  if (direct) return direct;
+  const matches = [];
+
+  const personalProjects = await listProjects(token);
+  for (const project of matchingProjects(personalProjects)) {
+    matches.push({ project, teamId: null });
+  }
 
   const teamsData = await vercelRequest(token, '/v2/teams?limit=100');
   const teams = Array.isArray(teamsData?.teams) ? teamsData.teams : [];
@@ -61,11 +64,39 @@ async function findSecondaryProject(token) {
     const teamId = team?.id;
     if (!teamId) continue;
 
-    const found = await tryProject(token, teamId);
-    if (found) return found;
+    let projects = [];
+    try {
+      projects = await listProjects(token, teamId);
+    } catch (error) {
+      if (error?.status === 403) continue;
+      throw error;
+    }
+
+    for (const project of matchingProjects(projects)) {
+      matches.push({ project, teamId });
+    }
   }
 
-  throw new Error('Could not find the imenu project with VERCEL_TOKEN_2.');
+  const uniqueMatches = matches.filter(
+    (item, index, all) =>
+      index === all.findIndex(
+        (candidate) =>
+          candidate?.project?.id === item?.project?.id &&
+          candidate?.teamId === item?.teamId
+      )
+  );
+
+  if (uniqueMatches.length === 1) return uniqueMatches[0];
+
+  if (uniqueMatches.length === 0) {
+    throw new Error('Could not find a Vercel project containing "engravida" with VERCEL_TOKEN_2.');
+  }
+
+  throw new Error(
+    `Found multiple Vercel projects containing "engravida": ${uniqueMatches
+      .map(({ project }) => project?.name || project?.id)
+      .join(', ')}`
+  );
 }
 
 async function ensureSecondaryProjectUsesSharedToggle() {
@@ -80,7 +111,7 @@ async function ensureSecondaryProjectUsesSharedToggle() {
 
   await vercelRequest(
     token,
-    `/v9/projects/${encodeURIComponent(project.id || SECONDARY_PROJECT_NAME)}${query}`,
+    `/v9/projects/${encodeURIComponent(project.id)}${query}`,
     {
       method: 'PATCH',
       body: JSON.stringify({
