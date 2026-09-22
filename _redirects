@@ -3,4 +3,5 @@
 /api/ahgora /.netlify/functions/ahgora 200
 /api/toggle-preview-deploy /.netlify/functions/preview-toggle-v2 200
 /api/preview-deploy-status /.netlify/functions/preview-status-v2 200
+/api/merge /.netlify/functions/merge 200
 /avalarm /.netlify/functions/avalarm 200

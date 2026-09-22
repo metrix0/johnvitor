@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Merge</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: #0d0d0d;
+      font-family: Arial, sans-serif;
+    }
+    main {
+      width: min(92vw, 420px);
+      display: grid;
+      gap: 14px;
+    }
+    button {
+      width: 100%;
+      border: 1px solid #2b2b2b;
+      border-radius: 12px;
+      background: #191919;
+      color: #fff;
+      font: inherit;
+      font-weight: 600;
+      font-size: 16px;
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: background .15s ease, transform .15s ease, opacity .15s ease;
+    }
+    button:hover { background: #232323; }
+    button:active { transform: scale(.99); }
+    button:disabled { cursor: default; opacity: .65; }
+  </style>
+</head>
+<body>
+  <main>
+    <button type="button" data-project="imenu">Squash &amp; Merge iMenu</button>
+    <button type="button" data-project="engravida">Squash &amp; Merge Engravida</button>
+  </main>
+
+  <script>
+    const ACCESS_KEY = "ANKI_APP_ACCESS_UNTIL";
+    let mergePassword = "";
+
+    function hasValidAccess() {
+      return Date.now() < Number(localStorage.getItem(ACCESS_KEY) || "0");
+    }
+
+    function grantAccessFor1Day() {
+      localStorage.setItem(ACCESS_KEY, String(Date.now() + 24 * 60 * 60 * 1000));
+    }
+
+    async function getExistingPassword() {
+      const response = await fetch("/msg/app.js", { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not load password configuration.");
+      const source = await response.text();
+      const match = source.match(/const API_KEY = "([^"]+)"/);
+      const expected = match?.[1]?.slice(-3);
+      if (!expected) throw new Error("Could not read password configuration.");
+      return expected;
+    }
+
+    async function requireExistingPassword() {
+      const expected = await getExistingPassword();
+
+      if (!hasValidAccess()) {
+        const typed = prompt("Enter password:");
+        if (typed === null) return null;
+        if (typed.trim() !== expected) {
+          alert("Wrong password.");
+          return null;
+        }
+        grantAccessFor1Day();
+      }
+
+      return expected;
+    }
+
+    async function merge(project, button) {
+      const original = button.textContent;
+      button.disabled = true;
+      button.textContent = "Merging...";
+
+      try {
+        const response = await fetch("/api/merge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ project, password: mergePassword })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Merge failed.");
+        }
+
+        button.textContent = data.merged ? "Merged ✓" : "Already synced ✓";
+      } catch (error) {
+        button.textContent = "Failed";
+        alert(error?.message || String(error));
+      } finally {
+        setTimeout(() => {
+          button.textContent = original;
+          button.disabled = false;
+        }, 2200);
+      }
+    }
+
+    (async () => {
+      try {
+        mergePassword = await requireExistingPassword();
+        if (!mergePassword) return;
+
+        document.body.style.display = "flex";
+
+        document.querySelectorAll("[data-project]").forEach(button => {
+          button.addEventListener("click", () => merge(button.dataset.project, button));
+        });
+      } catch (error) {
+        alert(error?.message || String(error));
+      }
+    })();
+  </script>
+</body>
+</html>
