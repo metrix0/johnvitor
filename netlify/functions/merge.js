@@ -97,14 +97,6 @@ async function getOrCreatePr(repo) {
 }
 
 exports.handler = async function(event) {
-  if (event.httpMethod === "GET" && event.queryStringParameters?.diag === "github-env") {
-    return json(200, {
-      githubEnvKeys: Object.keys(process.env)
-        .filter((key) => /^(GITHUB|GH_)/i.test(key))
-        .sort()
-    });
-  }
-
   if (event.httpMethod !== "POST") {
     return json(405, { ok: false, error: "Method not allowed." });
   }
