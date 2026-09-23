@@ -37,12 +37,30 @@
     button:hover { background: #232323; }
     button:active { transform: scale(.99); }
     button:disabled { cursor: default; opacity: .65; }
+    .project {
+      display: grid;
+      gap: 8px;
+    }
+    .commits {
+      margin: 0;
+      padding-left: 22px;
+      color: #a8a8a8;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .commits:empty { display: none; }
   </style>
 </head>
 <body>
   <main>
-    <button type="button" data-project="imenu">Squash &amp; Merge iMenu</button>
-    <button type="button" data-project="engravida">Squash &amp; Merge Engravida</button>
+    <div class="project">
+      <button type="button" data-project="imenu">Squash &amp; Merge iMenu</button>
+      <ul class="commits" data-commits="imenu"></ul>
+    </div>
+    <div class="project">
+      <button type="button" data-project="engravida">Squash &amp; Merge Engravida</button>
+      <ul class="commits" data-commits="engravida"></ul>
+    </div>
   </main>
 
   <script>
@@ -83,6 +101,37 @@
       return expected;
     }
 
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    async function loadCommits(project) {
+      const list = document.querySelector(`[data-commits="${project}"]`);
+      if (!list) return;
+
+      try {
+        const response = await fetch("/api/merge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ project, password: mergePassword, action: "status" })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.error || "Could not load commits.");
+
+        list.innerHTML = (data.commits || [])
+          .map(name => `<li>${escapeHtml(name)}</li>`)
+          .join("");
+      } catch {
+        list.innerHTML = "";
+      }
+    }
+
     async function merge(project, button) {
       const original = button.textContent;
       button.disabled = true;
@@ -101,6 +150,7 @@
         }
 
         button.textContent = data.merged ? "Merged ✓" : "Already synced ✓";
+        await loadCommits(project);
       } catch (error) {
         button.textContent = "Failed";
         alert(error?.message || String(error));
@@ -121,6 +171,7 @@
 
         document.querySelectorAll("[data-project]").forEach(button => {
           button.addEventListener("click", () => merge(button.dataset.project, button));
+          loadCommits(button.dataset.project);
         });
       } catch (error) {
         alert(error?.message || String(error));

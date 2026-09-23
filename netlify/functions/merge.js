@@ -122,6 +122,17 @@ exports.handler = async function(event) {
     }
 
     const comparison = await github(repo, "/compare/main...preview");
+
+    if (body.action === "status") {
+      return json(200, {
+        ok: true,
+        commits: Array.isArray(comparison.commits)
+          ? comparison.commits.map(commit =>
+              String(commit?.commit?.message || "").split("\n")[0].trim()
+            ).filter(Boolean)
+          : []
+      });
+    }
     const changedFiles = Array.isArray(comparison.files) ? comparison.files.length : null;
 
     if ((comparison.ahead_by || 0) === 0 || changedFiles === 0) {
