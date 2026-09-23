@@ -15,7 +15,7 @@ function json(statusCode, body) {
 }
 
 function githubToken() {
-  return process.env.IMENU_SYNC_TOKEN || "";
+  return process.env.GITHUB_MERGE_TOKEN || "";
 }
 
 async function github(repo, path, options = {}) {
