@@ -1,0 +1,72 @@
+name: iMenu health monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check iMenu and alert after retry
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        shell: bash
+        run: |
+          set -u
+
+          HEALTH_URL="https://www.imenuapp.com.br/api/health"
+          BODY_FILE="${RUNNER_TEMP}/imenu-health-body.txt"
+          LAST_FAILURE=""
+
+          check_health() {
+            local status
+
+            : > "$BODY_FILE"
+            status="$(curl               --silent               --show-error               --location               --max-time 15               --output "$BODY_FILE"               --write-out "%{http_code}"               "$HEALTH_URL")" || {
+                LAST_FAILURE="network/timeout error"
+                return 1
+              }
+
+            if [ "$status" = "404" ]; then
+              echo "iMenu health endpoint is not deployed to production yet; skipping this run."
+              exit 0
+            fi
+
+            if [ "$status" = "200" ] && grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$BODY_FILE"; then
+              echo "iMenu health check passed."
+              return 0
+            fi
+
+            LAST_FAILURE="HTTP $status: $(head -c 300 "$BODY_FILE" | tr '\n' ' ')"
+            return 1
+          }
+
+          if check_health; then
+            exit 0
+          fi
+
+          echo "First health check failed: $LAST_FAILURE"
+          echo "Retrying in 30 seconds..."
+          sleep 30
+
+          if check_health; then
+            echo "Retry succeeded; no alert sent."
+            exit 0
+          fi
+
+          echo "Second health check failed: $LAST_FAILURE"
+
+          if [ -z "${NTFY_TOPIC:-}" ]; then
+            echo "::error::NTFY_TOPIC repository secret is not configured."
+            exit 1
+          fi
+
+          curl             --fail             --silent             --show-error             --max-time 15             --request POST             --header "Title: ALARM TRIGGER - iMenu indisponível"             --header "Priority: 5"             --header "Tags: warning,rotating_light"             --header "Click: https://www.imenuapp.com.br"             --data-binary "O health check do iMenu falhou duas vezes (retry após 30s). Última falha: $LAST_FAILURE"             "https://ntfy.sh/$NTFY_TOPIC"
+
+          exit 1
