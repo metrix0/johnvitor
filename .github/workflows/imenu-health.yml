@@ -34,8 +34,12 @@ jobs:
               }
 
             if [ "$status" = "404" ]; then
-              echo "iMenu health endpoint is not deployed to production yet; skipping this run."
-              exit 0
+              main_route_status="$(curl                 --silent                 --output /dev/null                 --write-out "%{http_code}"                 --max-time 10                 "https://raw.githubusercontent.com/metrix0/imenu/main/app/api/health/route.ts" || true)"
+
+              if [ "$main_route_status" = "404" ]; then
+                echo "iMenu health endpoint is not on main yet; skipping this run."
+                exit 0
+              fi
             fi
 
             if [ "$status" = "200" ] && grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$BODY_FILE"; then
