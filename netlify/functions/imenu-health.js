@@ -1,5 +1,5 @@
 const HEALTH_URL = 'https://www.imenuapp.com.br/api/health';
-const DEFAULT_NTFY_SERVER = 'https://ntfy.sh';
+const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
 const STATE_TOPIC_URL = 'https://ntfy.sh/imenu-health-netlify-state-20261001-jv';
 
 function json(statusCode, body) {
@@ -50,11 +50,7 @@ async function saveState(state) {
 }
 
 async function sendAlarm(details) {
-  const topic = process.env.NTFY_TOPIC;
-  if (!topic) throw new Error('NTFY_TOPIC is not configured');
-
-  const server = (process.env.NTFY_SERVER || DEFAULT_NTFY_SERVER).replace(/\/$/, '');
-  const response = await fetch(`${server}/${topic}`, {
+  const response = await fetch(ALERT_TOPIC_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
