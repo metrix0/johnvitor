@@ -1,6 +1,6 @@
-const PRODUCT_URL = 'https://astrovials.com/product/estradiol-enanthate/';
+const SITE_URL = 'https://astrovials.com/';
 const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
-const STATE_TOPIC_URL = 'https://ntfy.sh/astrovialseen-state-20260909-jv';
+const STATE_TOPIC_URL = 'https://ntfy.sh/astrovialseen-site-state-20261001-jv';
 
 function json(statusCode, body) {
   return {
@@ -13,22 +13,13 @@ function json(statusCode, body) {
   };
 }
 
-function detectStock(html) {
-  const normalized = html.replace(/\s+/g, ' ').toLowerCase();
+function detectSiteState(html) {
+  const hasComingSoonHeading = /<h1\b[^>]*>\s*Coming soon\s*<\/h1>/i.test(html);
+  const hasNotOpenMessage = /<p\b[^>]*>\s*This shop is not open yet\.\s*<\/p>/i.test(html);
 
-  if (normalized.includes('out of stock')) {
-    return 'out_of_stock';
-  }
-
-  if (
-    normalized.includes('availability: in stock') ||
-    normalized.includes('>in stock<') ||
-    normalized.includes('add to cart')
-  ) {
-    return 'in_stock';
-  }
-
-  return 'unknown';
+  return hasComingSoonHeading && hasNotOpenMessage
+    ? 'coming_soon'
+    : 'changed';
 }
 
 async function getPreviousState() {
@@ -57,7 +48,7 @@ async function getPreviousState() {
     .filter((entry) => entry && entry.event === 'message');
 
   const latest = messages[messages.length - 1];
-  return ['in_stock', 'out_of_stock', 'unknown'].includes(latest?.message)
+  return ['coming_soon', 'changed'].includes(latest?.message)
     ? latest.message
     : null;
 }
@@ -67,7 +58,7 @@ async function saveState(state) {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Title': 'AstroVials stock state',
+      'Title': 'AstroVials site state',
       'Priority': '1'
     },
     body: state
@@ -78,17 +69,17 @@ async function saveState(state) {
   }
 }
 
-async function sendAlarm(state) {
+async function sendAlarm() {
   const response = await fetch(ALERT_TOPIC_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Title': 'ALARM TRIGGER - AstroVials EEn NOT OUT OF STOCK',
+      'Title': 'ALARM TRIGGER - AstroVials SITE CHANGED',
       'Priority': '5',
       'Tags': 'warning,rotating_light',
-      'Click': PRODUCT_URL
+      'Click': SITE_URL
     },
-    body: `TRIGGER ALARM - AstroVials is no longer explicitly out of stock (detected: ${state}). Check the product now.`
+    body: 'TRIGGER ALARM - AstroVials no longer shows the current Coming Soon page. Check the site now.'
   });
 
   if (!response.ok) {
@@ -98,25 +89,25 @@ async function sendAlarm(state) {
 
 exports.handler = async function() {
   try {
-    const productResponse = await fetch(`${PRODUCT_URL}?stockcheck=${Date.now()}`, {
+    const siteResponse = await fetch(`${SITE_URL}?sitecheck=${Date.now()}`, {
       headers: {
         'Accept': 'text/html',
         'Cache-Control': 'no-cache',
-        'User-Agent': 'Mozilla/5.0 AstroVialsStockWatcher/1.0'
+        'User-Agent': 'Mozilla/5.0 AstroVialsSiteWatcher/1.0'
       }
     });
 
-    if (!productResponse.ok) {
-      return json(502, { ok: false, error: `AstroVials HTTP ${productResponse.status}` });
+    if (!siteResponse.ok) {
+      return json(502, { ok: false, error: `AstroVials HTTP ${siteResponse.status}` });
     }
 
-    const html = await productResponse.text();
-    const state = detectStock(html);
+    const html = await siteResponse.text();
+    const state = detectSiteState(html);
     const previousState = await getPreviousState();
-    const shouldNotify = state !== 'out_of_stock' && previousState !== state;
+    const shouldNotify = state === 'changed' && previousState === 'coming_soon';
 
     if (shouldNotify) {
-      await sendAlarm(state);
+      await sendAlarm();
     }
 
     await saveState(state);
