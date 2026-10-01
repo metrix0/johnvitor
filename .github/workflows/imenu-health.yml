@@ -13,7 +13,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: imenu-continuous-health-monitor
+  group: imenu-continuous-health-monitor-v2
   cancel-in-progress: true
 
 jobs:
