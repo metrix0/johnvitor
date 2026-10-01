@@ -1,76 +1,97 @@
 name: iMenu health monitor
 
 on:
+  push:
+    paths:
+      - ".github/workflows/imenu-health.yml"
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "23 */6 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: write
+
+concurrency:
+  group: imenu-continuous-health-monitor
+  cancel-in-progress: false
 
 jobs:
   health:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 350
     steps:
-      - name: Check iMenu and alert after retry
+      - name: Check iMenu every five minutes
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         shell: bash
         run: |
-          set -u
+          set +e
 
           HEALTH_URL="https://www.imenuapp.com.br/api/health"
           BODY_FILE="${RUNNER_TEMP}/imenu-health-body.txt"
-          LAST_FAILURE=""
 
           check_health() {
             local status
+            local last_failure=""
 
             : > "$BODY_FILE"
-            status="$(curl               --silent               --show-error               --location               --max-time 15               --output "$BODY_FILE"               --write-out "%{http_code}"               "$HEALTH_URL")" || {
-                LAST_FAILURE="network/timeout error"
-                return 1
-              }
+            status="$(curl --silent --show-error --location --max-time 15 --output "$BODY_FILE" --write-out "%{http_code}" "$HEALTH_URL")"
+            rc=$?
 
-            if [ "$status" = "404" ]; then
-              main_route_status="$(curl                 --silent                 --output /dev/null                 --write-out "%{http_code}"                 --max-time 10                 "https://raw.githubusercontent.com/metrix0/imenu/main/app/api/health/route.ts" || true)"
-
-              if [ "$main_route_status" = "404" ]; then
-                echo "iMenu health endpoint is not on main yet; skipping this run."
-                exit 0
-              fi
+            if [ "$rc" -ne 0 ]; then
+              last_failure="network/timeout error"
+            elif [ "$status" = "200" ] && grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$BODY_FILE"; then
+              echo "iMenu health check passed at $(date -u +%FT%TZ)."
+              return 0
+            else
+              last_failure="HTTP $status: $(head -c 300 "$BODY_FILE" | tr '\n' ' ')"
             fi
 
-            if [ "$status" = "200" ] && grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$BODY_FILE"; then
-              echo "iMenu health check passed."
+            echo "First health check failed: $last_failure"
+            echo "Retrying in 30 seconds..."
+            sleep 30
+
+            : > "$BODY_FILE"
+            status="$(curl --silent --show-error --location --max-time 15 --output "$BODY_FILE" --write-out "%{http_code}" "$HEALTH_URL")"
+            rc=$?
+
+            if [ "$rc" -eq 0 ] && [ "$status" = "200" ] && grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$BODY_FILE"; then
+              echo "Retry succeeded; no alert sent."
               return 0
             fi
 
-            LAST_FAILURE="HTTP $status: $(head -c 300 "$BODY_FILE" | tr '\n' ' ')"
+            if [ "$rc" -ne 0 ]; then
+              last_failure="network/timeout error"
+            else
+              last_failure="HTTP $status: $(head -c 300 "$BODY_FILE" | tr '\n' ' ')"
+            fi
+
+            echo "Second health check failed: $last_failure"
+
+            if [ -z "${NTFY_TOPIC:-}" ]; then
+              echo "::error::NTFY_TOPIC repository secret is not configured."
+              return 1
+            fi
+
+            curl --fail --silent --show-error --max-time 15               --request POST               --header "Title: ALARM TRIGGER - iMenu indisponível"               --header "Priority: 5"               --header "Tags: warning,rotating_light"               --header "Click: https://www.imenuapp.com.br"               --data-binary "GitHub health checker: iMenu falhou duas vezes (retry após 30s). Última falha: $last_failure"               "https://ntfy.sh/$NTFY_TOPIC"
+
             return 1
           }
 
-          if check_health; then
-            exit 0
-          fi
+          for i in $(seq 1 64); do
+            echo "iMenu health cycle $i/64 at $(date -u +%FT%TZ)"
+            check_health || true
 
-          echo "First health check failed: $LAST_FAILURE"
-          echo "Retrying in 30 seconds..."
-          sleep 30
+            if [ "$i" -lt 64 ]; then
+              sleep 300
+            fi
+          done
 
-          if check_health; then
-            echo "Retry succeeded; no alert sent."
-            exit 0
-          fi
-
-          echo "Second health check failed: $LAST_FAILURE"
-
-          if [ -z "${NTFY_TOPIC:-}" ]; then
-            echo "::error::NTFY_TOPIC repository secret is not configured."
-            exit 1
-          fi
-
-          curl             --fail             --silent             --show-error             --max-time 15             --request POST             --header "Title: ALARM TRIGGER - iMenu indisponível"             --header "Priority: 5"             --header "Tags: warning,rotating_light"             --header "Click: https://www.imenuapp.com.br"             --data-binary "O health check do iMenu falhou duas vezes (retry após 30s). Última falha: $LAST_FAILURE"             "https://ntfy.sh/$NTFY_TOPIC"
-
-          exit 1
+      - name: Start next health-monitor run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          curl --fail-with-body --silent --show-error             --request POST             --header "Accept: application/vnd.github+json"             --header "Authorization: Bearer $GH_TOKEN"             --header "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/imenu-health.yml/dispatches"             --data '{"ref":"main"}'
