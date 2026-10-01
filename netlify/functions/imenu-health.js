@@ -1,5 +1,4 @@
 const HEALTH_URL = 'https://www.imenuapp.com.br/api/health';
-const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
 const STATE_TOPIC_URL = 'https://ntfy.sh/imenu-health-netlify-state-20261001-jv';
 
 function json(statusCode, body) {
@@ -49,20 +48,15 @@ async function saveState(state) {
   if (!response.ok) throw new Error(`state write HTTP ${response.status}`);
 }
 
-async function sendAlarm(details) {
-  const response = await fetch(ALERT_TOPIC_URL, {
-    method: 'POST',
+async function sendAlarm() {
+  const response = await fetch('https://johnvitor.com/avalarm?kind=imenu', {
     headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      Title: 'ALARM TRIGGER - iMenu indisponível',
-      Priority: '5',
-      Tags: 'warning,rotating_light',
-      Click: 'https://www.imenuapp.com.br'
-    },
-    body: `Netlify health checker: iMenu falhou em duas verificações consecutivas de 1 minuto. Última falha: ${details}`
+      'Cache-Control': 'no-cache',
+      'User-Agent': 'Mozilla/5.0 iMenuNetlifyHealthWatcher/1.0'
+    }
   });
 
-  if (!response.ok) throw new Error(`ntfy HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`alarm relay HTTP ${response.status}`);
 }
 
 async function checkHealth() {
@@ -106,7 +100,7 @@ exports.handler = async function() {
     }
 
     if (previousState === 'degraded') {
-      await sendAlarm(result.details);
+      await sendAlarm();
       await saveState('unhealthy');
       return json(502, {
         ok: false,
