@@ -79,7 +79,7 @@ async function sendAlarm() {
       'Tags': 'warning,rotating_light',
       'Click': SITE_URL
     },
-    body: 'ALARM TRIGGER - AstroVials no longer shows the current Coming Soon page. Check the site now.'
+    body: 'TRIGGER ALARM - AstroVials no longer shows the current Coming Soon page. Check the site now.'
   });
 
   if (!response.ok) {
