@@ -14,7 +14,7 @@ permissions:
 
 concurrency:
   group: imenu-continuous-health-monitor
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   health:
@@ -22,8 +22,6 @@ jobs:
     timeout-minutes: 350
     steps:
       - name: Check iMenu every five minutes
-        env:
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         shell: bash
         run: |
           set +e
@@ -69,12 +67,9 @@ jobs:
 
             echo "Second health check failed: $last_failure"
 
-            if [ -z "${NTFY_TOPIC:-}" ]; then
-              echo "::error::NTFY_TOPIC repository secret is not configured."
-              return 1
-            fi
-
-            curl --fail --silent --show-error --max-time 15               --request POST               --header "Title: ALARM TRIGGER - iMenu indisponível"               --header "Priority: 5"               --header "Tags: warning,rotating_light"               --header "Click: https://www.imenuapp.com.br"               --data-binary "GitHub health checker: iMenu falhou duas vezes (retry após 30s). Última falha: $last_failure"               "https://ntfy.sh/$NTFY_TOPIC"
+            curl --fail --silent --show-error --max-time 15 \
+              --request POST \
+              "https://johnvitor.com/.netlify/functions/imenu-health-alarm"
 
             return 1
           }
