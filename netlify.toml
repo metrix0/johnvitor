@@ -12,3 +12,6 @@
 
 [functions."astrovials-stock"]
   schedule = "* * * * *"
+
+[functions."imenu-health"]
+  schedule = "* * * * *"
