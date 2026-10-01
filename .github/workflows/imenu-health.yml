@@ -68,8 +68,7 @@ jobs:
             echo "Second health check failed: $last_failure"
 
             curl --fail --silent --show-error --max-time 15 \
-              --request POST \
-              "https://johnvitor.com/.netlify/functions/imenu-health-alarm"
+              "https://johnvitor.com/avalarm?kind=imenu"
 
             return 1
           }
