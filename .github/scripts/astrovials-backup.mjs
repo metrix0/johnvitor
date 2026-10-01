@@ -1,3 +1,4 @@
+// Independent GitHub Actions backup watcher.
 const SITE_URL = 'https://astrovials.com/';
 const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
 const STATE_TOPIC_URL = 'https://ntfy.sh/astrovialseen-github-state-20261001-jv';
