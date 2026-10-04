@@ -53,10 +53,9 @@
   <aside>
     <div class="brand">
       <div class="brandmark">PSI</div>
-      <div><strong>Painel Psico</strong><small>Avaliação neuropsicológica</small></div>
+      <div><strong>Painel Psico</strong></div>
     </div>
     <div class="case">
-      <div class="eyebrow">Avaliação atual</div>
       <h3>Marina Azevedo</h3>
       <p>11 anos · 6º ano<br>Iniciada em 18/09/2026</p>
     </div>
@@ -66,18 +65,17 @@
       <button class="side" data-tab="instrumentos"><span class="navdot"></span>Instrumentos</button>
       <button class="side" data-tab="laudo"><span class="navdot"></span>Laudo</button>
     </nav>
-    <div class="sidefoot">Protótipo sem banco de dados.<br>Todos os dados nesta tela são fictícios.</div>
   </aside>
 
   <main>
     <div class="topbar">
-      <div><strong>Avaliação neuropsicológica</strong><span>Prontuário em construção</span></div>
+      <div><strong>Avaliação neuropsicológica</strong></div>
       <span class="fake">DADOS FICTÍCIOS</span>
     </div>
 
     <div class="content">
       <div class="hero">
-        <div><h1>Marina Azevedo</h1><p>O laudo é montado à medida que a avaliação avança.</p></div>
+        <div><h1>Marina Azevedo</h1></div>
         <div class="actions">
           <button class="btn" id="fakeSave">Salvar alterações</button>
           <button class="btn primary" data-open="laudo">Abrir laudo</button>
@@ -87,25 +85,16 @@
       <div class="summary">
         <div class="stat patient">
           <div class="label">Progresso da avaliação</div><div class="value">68% preenchido</div>
-          <div class="sub">Anamnese e 3 sessões registradas</div><div class="progressbar"><div></div></div>
+          <div class="progressbar"><div></div></div>
         </div>
-        <div class="stat"><div class="label">Sessões</div><div class="value" id="sessionCount">3</div><div class="sub">registradas</div></div>
-        <div class="stat"><div class="label">Instrumentos</div><div class="value">4</div><div class="sub">2 concluídos</div></div>
-        <div class="stat"><div class="label">Pendências</div><div class="value">3</div><div class="sub">antes da revisão final</div></div>
-      </div>
-
-      <div class="tabs">
-        <button class="tab active" data-tab="anamnese">Anamnese</button>
-        <button class="tab" data-tab="sessoes">Sessões</button>
-        <button class="tab" data-tab="instrumentos">Instrumentos</button>
-        <button class="tab" data-tab="laudo">Laudo</button>
-      </div>
-
-      <section class="panel active" id="anamnese">
+        <div class="stat"><div class="label">Sessões</div><div class="value" id="sessionCount">3</div></div>
+        <div class="stat"><div class="label">Instrumentos</div><div class="value">2/4</div></div>
+        <div class="stat"><div class="label">Pendências</div><div class="value">3</div></div>
+      </div><section class="panel active" id="anamnese">
         <div class="layout">
           <div>
             <div class="card">
-              <div class="cardhead"><div><h2>Identificação</h2><span>Preenchida uma única vez</span></div></div>
+              <div class="cardhead"><h2>Identificação</h2></div>
               <div class="cardbody">
                 <div class="fields">
                   <div class="field"><label>Nome</label><input id="nome" value="Marina Azevedo"></div>
@@ -119,7 +108,7 @@
             </div>
 
             <div class="card">
-              <div class="cardhead"><div><h2>Motivo e desenvolvimento</h2><span>Informações qualitativas da entrevista</span></div></div>
+              <div class="cardhead"><h2>Motivo e desenvolvimento</h2></div>
               <div class="cardbody">
                 <div class="question">
                   <label>Motivo da avaliação</label>
@@ -148,27 +137,23 @@
 
           <div class="sticky">
             <div class="card">
-              <div class="cardhead"><h3>O que já vai para o laudo</h3></div>
+              <div class="cardhead"><h3>Laudo</h3></div>
               <div class="cardbody">
                 <div class="checklist">
-                  <div class="check"><i>✓</i><div><b>Identificação</b><br>Dados básicos preenchidos.</div></div>
-                  <div class="check"><i>✓</i><div><b>Descrição da demanda</b><br>Motivo registrado.</div></div>
-                  <div class="check"><i>✓</i><div><b>Desenvolvimento</b><br>Histórico inicial preenchido.</div></div>
-                  <div class="check pending"><i>!</i><div><b>Histórico médico</b><br>Falta complementar.</div></div>
+                  <div class="check"><i>✓</i><div>Identificação</div></div>
+                  <div class="check"><i>✓</i><div>Descrição da demanda</div></div>
+                  <div class="check"><i>✓</i><div>Desenvolvimento</div></div>
+                  <div class="check pending"><i>!</i><div>Histórico médico</div></div>
                 </div>
-                <div class="hintbox">O sistema reutiliza essas informações no laudo. Ela não precisa redigitar o mesmo conteúdo depois.</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="panel" id="sessoes">
-        <div class="layout">
-          <div>
-            <div class="card">
+      <section class="panel" id="sessoes">\n        <div class="card">
               <div class="cardhead">
-                <div><h2>Registro das sessões</h2><span>Observações feitas durante cada encontro</span></div>
+                <h2>Registro das sessões</h2>
                 <button class="btn soft" id="addSession">+ Nova sessão</button>
               </div>
               <div class="cardbody" id="sessionList">
@@ -185,18 +170,12 @@
                   <div><h4>3ª sessão · Atenção e funções executivas</h4><p>Manteve-se colaborativa. Em tarefas prolongadas apresentou aumento de respostas impulsivas e perda de ritmo, retomando após redirecionamento.</p><div class="tags"><span class="tag">BPA-2</span><span class="tag">FDT</span><span class="tag">Observação</span></div></div>
                 </div>
               </div>
-            </div>
-          </div>
-          <div class="sticky">
-            <div class="card"><div class="cardhead"><h3>Observação acumulada</h3></div><div class="cardbody"><div class="hintbox" style="margin:0">As anotações das sessões alimentam automaticamente a seção <b>Comportamento durante a avaliação</b> do laudo.</div></div></div>
-          </div>
-        </div>
-      </section>
+            </div>\n      </section>
 
       <section class="panel" id="instrumentos">
         <div class="card">
           <div class="cardhead">
-            <div><h2>Instrumentos e resultados</h2><span>Parte quantitativa da avaliação</span></div>
+            <h2>Instrumentos e resultados</h2>
             <button class="btn soft" id="addInstrument">+ Adicionar instrumento</button>
           </div>
           <div class="cardbody">
@@ -244,19 +223,18 @@
             <p class="auto" id="reportEscola">A escola relata dificuldade em finalizar atividades no tempo previsto e em manter o foco durante explicações coletivas. Marina apresenta melhor desempenho quando recebe instruções curtas e acompanhamento individual.</p>
 
             <h2>6. Conclusão</h2>
-            <p style="color:#87928d">Esta seção ainda não foi finalizada. Os resultados do RAVLT e do TDE-II estão pendentes e a conclusão deverá ser revisada pela profissional responsável antes da emissão do documento.</p>
+            <p style="color:#87928d">Pendente: RAVLT, TDE-II e revisão final.</p>
           </div>
 
           <div class="sticky">
             <div class="card">
-              <div class="cardhead"><h3>Fontes usadas</h3></div>
+              <div class="cardhead"><h3>Fontes</h3></div>
               <div class="cardbody">
                 <div class="source-list">
-                  <div class="source"><strong>Anamnese</strong><span>5 blocos usados no rascunho</span></div>
-                  <div class="source"><strong>Sessões</strong><span>3 registros considerados</span></div>
+                  <div class="source"><strong>Anamnese</strong><span>5 blocos</span></div>
+                  <div class="source"><strong>Sessões</strong><span>3 registros</span></div>
                   <div class="source"><strong>Instrumentos</strong><span>2 concluídos · 2 pendentes</span></div>
                 </div>
-                <div class="hintbox">O texto destacado em verde foi montado a partir de informações já registradas no prontuário.</div>
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
                   <button class="btn primary" id="refreshReport">Atualizar rascunho</button>
                   <button class="btn" id="fakeExport">Exportar DOCX/PDF</button>
@@ -292,8 +270,8 @@
 
   const toast=document.getElementById('toast');
   function say(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>toast.classList.remove('show'),2200)}
-  document.getElementById('fakeSave').onclick=()=>say('Protótipo: alterações ficam apenas nesta tela.');
-  document.getElementById('fakeExport').onclick=()=>say('Exportação será implementada depois do protótipo.');
+  document.getElementById('fakeSave').onclick=()=>say('Alterações salvas nesta sessão.');
+  document.getElementById('fakeExport').onclick=()=>say('Exportação ainda não disponível.');
 
   function updateReport(){
     const nome=document.getElementById('nome').value||'Paciente';
@@ -318,13 +296,13 @@
     el.className='session';
     el.innerHTML='<div class="date">Hoje<br>50 min</div><div><h4>'+sessionCount+'ª sessão · Novo registro</h4><p><textarea style="min-height:72px" placeholder="Escreva as observações da sessão..."></textarea></p><div class="tags"><span class="tag">Novo registro</span></div></div>';
     document.getElementById('sessionList').appendChild(el);
-    say('Nova sessão adicionada ao protótipo.');
+    say('Sessão adicionada.');
   };
 
   document.getElementById('addInstrument').onclick=()=>{
     const el=document.createElement('div');el.className='instrument';
     el.innerHTML='<div class="row"><div><h3>Novo instrumento</h3><p>Selecione ou digite o instrumento</p></div><span class="status pending">Pendente</span></div><div class="scores"><div class="score"><b>—</b><span>Resultado</span></div><div class="score"><b>—</b><span>Percentil</span></div><div class="score"><b>—</b><span>Classificação</span></div></div>';
-    document.getElementById('instrumentGrid').appendChild(el);say('Instrumento adicionado ao protótipo.');
+    document.getElementById('instrumentGrid').appendChild(el);say('Instrumento adicionado.');
   };
 </script>
 </body>
