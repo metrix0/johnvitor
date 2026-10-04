@@ -44,62 +44,96 @@
     .report-wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:17px}.paper{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:42px 52px;min-height:760px}.paper h1{text-align:center;font-family:"DM Serif Display",serif;font-weight:400;font-size:23px;margin:0 0 30px}.paper h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin:26px 0 8px}.paper p{font-family:Georgia,serif;font-size:12px;line-height:1.75;text-align:justify;color:#26302b}.auto{background:#f5faf7;border-left:3px solid #8db6a5;padding:8px 11px;border-radius:6px}.paper .meta{font-family:Inter,sans-serif;font-size:10px;line-height:1.7;text-align:left;color:#48564f}
     .source-list{display:flex;flex-direction:column;gap:8px}.source{padding:10px;border:1px solid var(--line);border-radius:10px}.source strong{display:block;font-size:11px}.source span{font-size:9px;color:var(--muted)}
     .toast{position:fixed;right:18px;bottom:18px;background:#173d31;color:#fff;border-radius:12px;padding:11px 14px;font-size:11px;box-shadow:0 12px 36px rgba(0,0,0,.18);opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s;z-index:99}.toast.show{opacity:1;transform:translateY(0)}
+    .mobile-menu-btn,.mobile-backdrop{display:none}
     @media(max-width:960px){
-      .app{grid-template-columns:1fr}
+      html,body{max-width:100%;overflow-x:hidden}
+      body.menu-open{overflow:hidden}
+      .app{display:block;min-width:0;max-width:100%}
+      main{min-width:0;max-width:100%;width:100%}
+      .content{max-width:100%;min-width:0}
+
       aside{
-        position:sticky;top:0;z-index:50;height:auto;
-        padding:10px 14px;gap:12px;flex-direction:row;align-items:center
+        position:fixed;left:0;top:0;bottom:0;z-index:70;
+        width:min(280px,84vw);height:100vh;
+        padding:20px 16px;gap:20px;
+        transform:translateX(-105%);
+        transition:transform .22s ease;
+        box-shadow:18px 0 50px rgba(0,0,0,.18)
       }
-      .case,.sidefoot{display:none}
-      .brand{padding:0;flex:0 0 auto}
-      .brandmark{width:34px;height:34px;border-radius:10px;font-size:12px}
-      .brand strong{font-size:13px;white-space:nowrap}
-      nav{
-        min-width:0;flex:1;flex-direction:row;gap:4px;overflow-x:auto;
-        scrollbar-width:none;-webkit-overflow-scrolling:touch
-      }
-      nav::-webkit-scrollbar{display:none}
+      aside.open{transform:translateX(0)}
+      .case{display:block}
+      .sidefoot{display:none}
+      .brand{padding:0 7px}
+      .brandmark{width:38px;height:38px;border-radius:12px;font-size:14px}
+      .brand strong{display:block;font-size:15px}
+      nav{display:flex;flex-direction:column;gap:5px;overflow:visible}
       nav button{
-        flex:0 0 auto;padding:9px 10px;border-radius:9px;font-size:12px;white-space:nowrap
+        width:100%;flex:none;
+        padding:11px 12px;border-radius:11px;
+        font-size:13px;white-space:normal
       }
-      .navdot{width:6px;height:6px}
-      .topbar{position:relative;top:auto;height:56px;padding:0 20px}
+      .navdot{display:block}
+
+      .mobile-backdrop{
+        display:block;position:fixed;inset:0;z-index:60;
+        background:rgba(8,24,18,.38);
+        opacity:0;pointer-events:none;transition:opacity .2s ease
+      }
+      .mobile-backdrop.show{opacity:1;pointer-events:auto}
+
+      .topbar{
+        position:sticky;top:0;z-index:40;
+        height:58px;padding:0 16px;
+        display:grid;grid-template-columns:auto 1fr auto;
+        gap:10px;align-items:center
+      }
+      .mobile-menu-btn{
+        display:grid;place-items:center;
+        width:36px;height:36px;padding:0;
+        border:1px solid var(--line);border-radius:10px;
+        background:#fff;color:var(--text);
+        font-size:18px;line-height:1
+      }
+      .topbar-title{min-width:0}
+      .topbar-title strong{
+        display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+      }
+
       .content{padding:24px 20px}
       .hero{margin-bottom:18px}
       .hero h1{font-size:30px}
       .summary{grid-template-columns:1.4fr 1fr 1fr 1fr;gap:9px}
-      .stat{padding:13px 14px;border-radius:13px}
-      .layout,.report-wrap{grid-template-columns:1fr}
+      .stat{padding:13px 14px;border-radius:13px;min-width:0}
+      .layout,.report-wrap{grid-template-columns:minmax(0,1fr)}
       .sticky{position:static}
-      .instrument-grid{grid-template-columns:1fr}
+      .instrument-grid{grid-template-columns:minmax(0,1fr)}
+      .card,.instrument,.paper{min-width:0;max-width:100%}
       .paper{min-height:0}
+      input,textarea,select{max-width:100%;min-width:0}
     }
     @media(max-width:640px){
-      aside{padding:8px 10px;gap:8px}
-      .brand strong{display:none}
-      .brand{gap:0}
-      nav button{padding:9px 10px;font-size:11px}
-      .topbar{height:52px;padding:0 14px}
+      .topbar{height:54px;padding:0 12px;gap:8px}
       .topbar strong{font-size:12px}
-      .fake{font-size:9px!important;padding:6px 8px}
+      .fake{font-size:9px!important;padding:6px 7px;white-space:nowrap}
       .content{padding:18px 12px 28px}
       .hero{align-items:stretch;flex-direction:column;gap:12px;margin-bottom:16px}
       .hero h1{font-size:28px;margin:0}
-      .actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
-      .actions .btn{justify-content:center;width:100%;padding:10px 8px}
-      .summary{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+      .actions{width:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+      .actions .btn{justify-content:center;width:100%;padding:10px 8px;min-width:0}
+      .summary{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:14px}
       .stat.patient{grid-column:1/-1}
       .stat{padding:12px;border-radius:12px}
       .stat .label{font-size:9px}
       .stat .value{font-size:17px;margin-top:5px}
       .stat.patient .value{font-size:15px}
       .progressbar{margin-top:9px}
+
       .card{border-radius:13px}
       .card+.card{margin-top:10px}
       .cardhead{padding:13px 14px;gap:10px;flex-wrap:wrap}
       .cardhead h2,.cardhead h3{font-size:13px}
       .cardbody{padding:14px}
-      .fields{grid-template-columns:1fr;gap:11px}
+      .fields{grid-template-columns:minmax(0,1fr);gap:11px}
       .field.full{grid-column:auto}
       .field label{font-size:10px}
       input,textarea,select{font-size:13px;padding:10px}
@@ -107,38 +141,42 @@
       .question{padding:12px 0}
       .question label{font-size:11px}
       .question small{font-size:9px;line-height:1.4}
-      .session{grid-template-columns:1fr;gap:7px;padding:14px 0}
+
+      .session{grid-template-columns:minmax(0,1fr);gap:7px;padding:14px 0}
+      .session>div{min-width:0}
       .date{display:flex;gap:6px;align-items:center}
       .date br{display:none}
-      .session h4{font-size:12px;line-height:1.35}
-      .session p{font-size:11px;line-height:1.5}
-      .tags{gap:5px}
+      .session h4{font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+      .session p{font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+      .tags{gap:5px;min-width:0}
       .tag{font-size:9px;padding:4px 6px}
+
       .instrument{padding:12px}
       .instrument-grid{gap:9px}
+      .instrument .row{min-width:0}
+      .instrument .row>div{min-width:0}
       .instrument h3{font-size:12px}
       .instrument p{margin:3px 0 9px}
+      .status{flex:0 0 auto}
       .scores{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-      .score{padding:8px 6px}
+      .score{padding:8px 6px;min-width:0}
       .score b{font-size:11px}
-      .score span{font-size:8px;line-height:1.25;display:block;margin-top:2px}
-      .paper{
-        padding:24px 16px;border-radius:13px;box-shadow:none
-      }
+      .score span{font-size:8px;line-height:1.25;display:block;margin-top:2px;overflow-wrap:anywhere}
+
+      .paper{padding:24px 16px;border-radius:13px;box-shadow:none;width:100%}
       .paper h1{font-size:21px;margin-bottom:23px}
       .paper h2{font-size:10px;margin:22px 0 7px;line-height:1.35}
-      .paper p{font-size:12px;line-height:1.65;text-align:left}
-      .paper .meta{font-size:9px;line-height:1.65}
+      .paper p{font-size:12px;line-height:1.65;text-align:left;overflow-wrap:anywhere}
+      .paper .meta{font-size:9px;line-height:1.65;overflow-wrap:anywhere}
       .auto{padding:8px 9px}
       .source{padding:9px}
       .toast{left:12px;right:12px;bottom:12px;max-width:none;text-align:center}
     }
     @media(max-width:390px){
-      aside{padding-left:8px;padding-right:8px}
-      nav button{padding-left:8px;padding-right:8px}
-      .navdot{display:none}
-      .topbar strong{max-width:175px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .content{padding-left:10px;padding-right:10px}
+      .topbar{padding-left:10px;padding-right:10px}
+      .topbar-title strong{font-size:11px}
+      .fake{font-size:8px!important;padding:5px 6px}
     }
   </style>
 </head>
@@ -161,9 +199,12 @@
     </nav>
   </aside>
 
+  <div class="mobile-backdrop" id="mobileBackdrop"></div>
+
   <main>
     <div class="topbar">
-      <div><strong>Avaliação neuropsicológica</strong></div>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu">☰</button>
+      <div class="topbar-title"><strong>Avaliação neuropsicológica</strong></div>
       <span class="fake">DADOS FICTÍCIOS</span>
     </div>
 
@@ -355,10 +396,28 @@
 </div>
 <div class="toast" id="toast"></div>
 <script>
+  const sidebar=document.querySelector('aside');
+  const mobileBackdrop=document.getElementById('mobileBackdrop');
+  const mobileMenuBtn=document.getElementById('mobileMenuBtn');
+
+  function closeMobileMenu(){
+    sidebar.classList.remove('open');
+    mobileBackdrop.classList.remove('show');
+    document.body.classList.remove('menu-open');
+  }
+  function openMobileMenu(){
+    sidebar.classList.add('open');
+    mobileBackdrop.classList.add('show');
+    document.body.classList.add('menu-open');
+  }
+  mobileMenuBtn.addEventListener('click',()=>sidebar.classList.contains('open') ? closeMobileMenu() : openMobileMenu());
+  mobileBackdrop.addEventListener('click',closeMobileMenu);
+
   const tabs=[...document.querySelectorAll('[data-tab]')];
   function openTab(name){
     document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===name));
     document.querySelectorAll('.tab,.side').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+    closeMobileMenu();
     window.scrollTo({top:0,behavior:'smooth'});
   }
   tabs.forEach(b=>b.addEventListener('click',()=>openTab(b.dataset.tab)));
