@@ -44,7 +44,7 @@
     .report-wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:17px}.paper{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:42px 52px;min-height:760px}.paper h1{text-align:center;font-family:"DM Serif Display",serif;font-weight:400;font-size:23px;margin:0 0 30px}.paper h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin:26px 0 8px}.paper p{font-family:Georgia,serif;font-size:12px;line-height:1.75;text-align:justify;color:#26302b}.auto{background:#f5faf7;border-left:3px solid #8db6a5;padding:8px 11px;border-radius:6px}.paper .meta{font-family:Inter,sans-serif;font-size:10px;line-height:1.7;text-align:left;color:#48564f}
     .source-list{display:flex;flex-direction:column;gap:8px}.source{padding:10px;border:1px solid var(--line);border-radius:10px}.source strong{display:block;font-size:11px}.source span{font-size:9px;color:var(--muted)}
     .toast{position:fixed;right:18px;bottom:18px;background:#173d31;color:#fff;border-radius:12px;padding:11px 14px;font-size:11px;box-shadow:0 12px 36px rgba(0,0,0,.18);opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s;z-index:99}.toast.show{opacity:1;transform:translateY(0)}
-    .mobile-menu-btn,.mobile-backdrop{display:none}
+    .mobile-menu-btn,.mobile-backdrop,.mobile-close-btn{display:none}
     @media(max-width:960px){
       html,body{max-width:100%;overflow-x:hidden}
       body.menu-open{overflow:hidden}
@@ -61,6 +61,14 @@
         box-shadow:18px 0 50px rgba(0,0,0,.18)
       }
       aside.open{transform:translateX(0)}
+      .mobile-close-btn{
+        display:grid;place-items:center;
+        position:absolute;top:12px;right:12px;
+        width:34px;height:34px;padding:0;
+        border:0;border-radius:9px;
+        background:rgba(255,255,255,.09);color:#fff;
+        font-size:23px;line-height:1
+      }
       .case{display:block}
       .sidefoot{display:none}
       .brand{padding:0 7px}
@@ -182,7 +190,8 @@
 </head>
 <body>
 <div class="app">
-  <aside>
+  <aside id="mobileSidebar">
+    <button class="mobile-close-btn" type="button" aria-label="Fechar menu" onclick="closeMobileMenu()">×</button>
     <div class="brand">
       <div class="brandmark">PSI</div>
       <div><strong>Painel Psico</strong></div>
@@ -199,11 +208,11 @@
     </nav>
   </aside>
 
-  <div class="mobile-backdrop" id="mobileBackdrop"></div>
+  <div class="mobile-backdrop" id="mobileBackdrop" onclick="closeMobileMenu()"></div>
 
   <main>
     <div class="topbar">
-      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu">☰</button>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Abrir menu" onclick="toggleMobileMenu()">☰</button>
       <div class="topbar-title"><strong>Avaliação neuropsicológica</strong></div>
       <span class="fake">DADOS FICTÍCIOS</span>
     </div>
@@ -396,22 +405,29 @@
 </div>
 <div class="toast" id="toast"></div>
 <script>
-  const sidebar=document.querySelector('aside');
-  const mobileBackdrop=document.getElementById('mobileBackdrop');
-  const mobileMenuBtn=document.getElementById('mobileMenuBtn');
-
+  function getMobileMenuParts(){
+    return {
+      sidebar: document.getElementById('mobileSidebar'),
+      backdrop: document.getElementById('mobileBackdrop')
+    };
+  }
   function closeMobileMenu(){
-    sidebar.classList.remove('open');
-    mobileBackdrop.classList.remove('show');
+    const {sidebar,backdrop}=getMobileMenuParts();
+    if(sidebar) sidebar.classList.remove('open');
+    if(backdrop) backdrop.classList.remove('show');
     document.body.classList.remove('menu-open');
   }
   function openMobileMenu(){
-    sidebar.classList.add('open');
-    mobileBackdrop.classList.add('show');
+    const {sidebar,backdrop}=getMobileMenuParts();
+    if(sidebar) sidebar.classList.add('open');
+    if(backdrop) backdrop.classList.add('show');
     document.body.classList.add('menu-open');
   }
-  mobileMenuBtn.addEventListener('click',()=>sidebar.classList.contains('open') ? closeMobileMenu() : openMobileMenu());
-  mobileBackdrop.addEventListener('click',closeMobileMenu);
+  function toggleMobileMenu(){
+    const {sidebar}=getMobileMenuParts();
+    if(!sidebar) return;
+    sidebar.classList.contains('open') ? closeMobileMenu() : openMobileMenu();
+  }
 
   const tabs=[...document.querySelectorAll('[data-tab]')];
   function openTab(name){
