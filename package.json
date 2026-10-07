@@ -2,5 +2,11 @@
   "private": true,
   "dependencies": {
     "@netlify/blobs": "11.0.3"
+  },
+  "scripts": {
+    "test:editor": "playwright test tests/notion-editor.spec.cjs --workers=1"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

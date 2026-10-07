@@ -15,6 +15,8 @@ const state = {
     originalIds: new Set(),
     originalParentById: new Map(),
     snapshots: new Map(),
+    blockSnapshots: new Map(),
+    pendingTables: [],
     selectedImage: null,
     formattingRange: null,
     formattingEditables: [],
@@ -124,6 +126,10 @@ function richTextHtml(items) {
         if (annotations.italic) html = `<em>${html}</em>`;
         if (annotations.underline) html = `<u>${html}</u>`;
         if (annotations.strikethrough) html = `<s>${html}</s>`;
+        if (item.type === "mention" || item.type === "equation") {
+            html = `<span data-notion-rich="${escapeHtml(JSON.stringify(item))}" contenteditable="false">${html}</span>`;
+        }
+        if (annotations.color && annotations.color !== "default") html = `<span data-notion-color="${escapeHtml(annotations.color)}">${html}</span>`;
         const href = item.href || item.text?.link?.url;
         if (href) html = `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${html}</a>`;
         return html;
@@ -156,6 +162,8 @@ function makeEditable(block, tagName = "div", className = "") {
     element.dataset.editable = "true";
     element.dataset.id = block.id;
     element.dataset.type = block.type;
+    element.contentEditable = 'true';
+    element.dataset.placeholder = "Type / for commands";
     element.spellcheck = true;
     element.innerHTML = richTextHtml(block?.[block.type]?.rich_text);
     return element;
@@ -171,32 +179,31 @@ function makeToggleMarker(children) {
     marker.textContent = "▸";
     children.hidden = true;
 
-    marker.addEventListener("mousedown", event => event.preventDefault());
-    marker.addEventListener("click", event => {
-        event.preventDefault();
-        event.stopPropagation();
-        const open = children.hidden;
-        children.hidden = !open;
-        marker.textContent = open ? "▾" : "▸";
-        marker.setAttribute("aria-expanded", String(open));
-        marker.setAttribute("aria-label", open ? "Collapse toggle" : "Expand toggle");
-    });
     return marker;
 }
 
 function renderTable(block, wrapper) {
     const table = document.createElement("table");
     table.className = "notion-table";
-    table.contentEditable = "false";
     const tbody = document.createElement("tbody");
     for (const row of block.children || []) {
         if (row.type !== "table_row") continue;
         const tr = document.createElement("tr");
-        for (const cell of row.table_row?.cells || []) {
+        tr.className = "notion-block block-table_row";
+        tr.dataset.blockId = row.id;
+        tr.dataset.blockType = "table_row";
+        tr.dataset.parentId = block.id;
+        tr.dataset.blockValue = JSON.stringify(row.table_row);
+        (row.table_row?.cells || []).forEach((cell, index) => {
             const td = document.createElement("td");
+            td.dataset.editable = "true";
+            td.dataset.id = row.id;
+            td.dataset.type = "table_row";
+            td.dataset.cell = index;
+            td.contentEditable = "true";
             td.innerHTML = richTextHtml(cell);
             tr.appendChild(td);
-        }
+        });
         tbody.appendChild(tr);
     }
     table.appendChild(tbody);
@@ -266,6 +273,9 @@ function renderBlock(block, parentId = "") {
     wrapper.dataset.blockId = block.id;
     wrapper.dataset.blockType = block.type;
     wrapper.dataset.parentId = parentId || "";
+    const blockValue = { ...(block[block.type] || {}) };
+    delete blockValue.children;
+    wrapper.dataset.blockValue = JSON.stringify(blockValue);
     if (isTempId(block.id)) wrapper.dataset.newBlock = "true";
 
     if (editableTypes.has(block.type)) {
@@ -325,11 +335,11 @@ function renderBlock(block, parentId = "") {
         renderReadOnly(block, wrapper);
     }
 
-    if (block.children?.length && block.type !== "table") {
+    if ((block.children?.length || block.type === "toggle" || block[block.type]?.is_toggleable) && block.type !== "table") {
         const children = document.createElement("div");
         children.className = "notion-children";
         children.dataset.childrenOf = block.id;
-        for (const child of block.children) children.appendChild(renderBlock(child, block.id));
+        for (const child of block.children || []) children.appendChild(renderBlock(child, block.id));
 
         const row = directChildByClass(wrapper, "toggle-row");
         const value = block?.[block.type] || {};
@@ -356,6 +366,7 @@ function render(data) {
     state.originalParentById.clear();
     state.snapshots.clear();
     state.selectedImage = null;
+    state.pendingTables = [];
     state.currentTitle = data.title || { property: "", text: PAGE_LABEL };
 
     content.contentEditable = "true";
@@ -367,6 +378,7 @@ function render(data) {
         const title = document.createElement("h1");
         title.className = "page-title";
         title.dataset.pageTitle = "true";
+        title.contentEditable = 'true';
         title.textContent = state.currentTitle.text || PAGE_LABEL;
         content.appendChild(title);
     }
@@ -375,6 +387,7 @@ function render(data) {
     for (const block of data.blocks || []) content.appendChild(renderBlock(block));
 
     refreshSnapshots();
+    document.dispatchEvent(new Event("notion:render"));
     state.dirty = false;
     setSaveStatus("Saved");
     content.setAttribute("aria-busy", "false");
@@ -403,22 +416,6 @@ function visibleEditables() {
     });
 }
 
-function previousEditable(wrapper) {
-    if (!wrapper) return null;
-    const editables = visibleEditables();
-    const current = wrapper.querySelector('[data-editable="true"]');
-    const index = editables.indexOf(current);
-    return index > 0 ? editables[index - 1] : null;
-}
-
-function nextEditable(wrapper) {
-    if (!wrapper) return null;
-    const editables = visibleEditables();
-    const current = wrapper.querySelector('[data-editable="true"]');
-    const index = editables.indexOf(current);
-    return index >= 0 && index + 1 < editables.length ? editables[index + 1] : null;
-}
-
 function placeCaret(element, atEnd = false, offset = null) {
     if (!element) return;
     content.focus({ preventScroll: true });
@@ -427,18 +424,25 @@ function placeCaret(element, atEnd = false, offset = null) {
     const range = document.createRange();
 
     if (offset !== null) {
-        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-        let remaining = offset;
-        let node;
-        while ((node = walker.nextNode())) {
-            if (remaining <= node.nodeValue.length) {
-                range.setStart(node, remaining);
-                range.collapse(true);
-                selection.removeAllRanges();
-                selection.addRange(range);
-                return;
-            }
-            remaining -= node.nodeValue.length;
+        let remaining = offset, point = null;
+        function visit(node) {
+            if (point || node.dataset?.softBreakTail) return;
+            if (node.nodeType === Node.TEXT_NODE) {
+                if (remaining <= node.length) point = [node, remaining];
+                else remaining -= node.length;
+            } else if (node.nodeName === 'BR') {
+                remaining--;
+                if (remaining <= 0) point = [node.parentNode, Array.from(node.parentNode.childNodes).indexOf(node) + 1];
+            } else if (node.dataset?.notionRich) {
+                const value = JSON.parse(node.dataset.notionRich);
+                remaining -= (value.plain_text || value.equation?.expression || '').length;
+                if (remaining <= 0) point = [node.parentNode, Array.from(node.parentNode.childNodes).indexOf(node) + 1];
+            } else Array.from(node.childNodes).forEach(visit);
+        }
+        Array.from(element.childNodes).forEach(visit);
+        if (point) {
+            range.setStart(...point); range.collapse(true);
+            selection.removeAllRanges(); selection.addRange(range); return;
         }
     }
 
@@ -459,7 +463,9 @@ function selectionOffsetWithin(editable) {
     } catch {
         return 0;
     }
-    return before.toString().length;
+    const holder = document.createElement('div');
+    holder.appendChild(before.cloneContents());
+    return serializeEditableRichText(holder).reduce((length, item) => length + (item.text?.content || item.plain_text || item.equation?.expression || '').length, 0);
 }
 
 function isCaretAtStart(editable) {
@@ -467,100 +473,13 @@ function isCaretAtStart(editable) {
 }
 
 function isCaretAtEnd(editable) {
-    return selectionOffsetWithin(editable) >= editable.innerText.length;
+    const length = serializeEditableRichText(editable).reduce((n, item) => n + (item.text?.content || item.plain_text || item.equation?.expression || '').length, 0);
+    return selectionOffsetWithin(editable) >= length;
 }
 
 function newBlockTypeAfter(type) {
     if (["bulleted_list_item", "numbered_list_item", "to_do"].includes(type)) return type;
     return "paragraph";
-}
-
-function insertLocalBlockAfter(wrapper, type, fragment = null) {
-    const id = makeTempId();
-    const parentId = wrapper?.dataset.parentId || "";
-    const faux = {
-        id,
-        type,
-        [type]: {
-            rich_text: [],
-            ...(type === "to_do" ? { checked: false } : {})
-        },
-        children: []
-    };
-    const newWrapper = renderBlock(faux, parentId);
-    newWrapper.dataset.newBlock = "true";
-    wrapper.insertAdjacentElement("afterend", newWrapper);
-    const editable = newWrapper.querySelector('[data-editable="true"]');
-    if (fragment && editable) editable.appendChild(fragment);
-    markDirty();
-    placeCaret(editable, false);
-    return newWrapper;
-}
-
-function insertLineBreakAtSelection() {
-    const selection = window.getSelection();
-    if (!selection || !selection.rangeCount) return;
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    const br = document.createElement("br");
-    range.insertNode(br);
-    range.setStartAfter(br);
-    range.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(range);
-    markDirty();
-}
-
-function splitBlockAtSelection(editable) {
-    const wrapper = currentWrapperForEditable(editable);
-    const selection = window.getSelection();
-    if (!wrapper || !selection || !selection.rangeCount) return;
-
-    const range = selection.getRangeAt(0);
-    if (!range.collapsed) range.deleteContents();
-
-    const after = document.createRange();
-    after.selectNodeContents(editable);
-    try {
-        after.setStart(range.startContainer, range.startOffset);
-    } catch {
-        after.setStart(editable, editable.childNodes.length);
-    }
-    const fragment = after.extractContents();
-    editable.normalize();
-
-    const type = newBlockTypeAfter(editable.dataset.type);
-    insertLocalBlockAfter(wrapper, type, fragment);
-    markDirty();
-}
-
-function mergeWithPrevious(editable) {
-    const wrapper = currentWrapperForEditable(editable);
-    const previous = previousEditable(wrapper);
-    if (!wrapper || !previous) return false;
-
-    const boundary = previous.innerText.length;
-    while (editable.firstChild) previous.appendChild(editable.firstChild);
-    wrapper.remove();
-    previous.normalize();
-    markDirty();
-    placeCaret(previous, false, boundary);
-    return true;
-}
-
-function mergeWithNext(editable) {
-    const wrapper = currentWrapperForEditable(editable);
-    const next = nextEditable(wrapper);
-    if (!wrapper || !next) return false;
-
-    const nextWrapper = currentWrapperForEditable(next);
-    const boundary = editable.innerText.length;
-    while (next.firstChild) editable.appendChild(next.firstChild);
-    nextWrapper?.remove();
-    editable.normalize();
-    markDirty();
-    placeCaret(editable, false, boundary);
-    return true;
 }
 
 function clearImageSelection() {
@@ -573,16 +492,7 @@ function bindImage(wrapper, image) {
     wrapper.contentEditable = "false";
     image.contentEditable = "false";
     image.style.cursor = "pointer";
-    image.addEventListener("mousedown", event => event.preventDefault());
-    image.addEventListener("click", event => {
-        event.preventDefault();
-        event.stopPropagation();
-        clearImageSelection();
-        state.selectedImage = wrapper;
-        wrapper.classList.add("image-selected");
-        wrapper.tabIndex = -1;
-        wrapper.focus({ preventScroll: true });
-    });
+
 }
 
 function removeSelectedImage() {
@@ -599,61 +509,10 @@ content.addEventListener("click", event => {
     if (state.selectedImage && !state.selectedImage.contains(event.target)) clearImageSelection();
 });
 
-content.addEventListener("beforeinput", event => {
-    if (state.saveInFlight) {
-        event.preventDefault();
-        return;
-    }
-
-    const editable = editableAtCaret();
-    if (event.inputType === "insertParagraph" && editable) {
-        event.preventDefault();
-        if (editable.dataset.type === "code") insertLineBreakAtSelection();
-        else splitBlockAtSelection(editable);
-        return;
-    }
-
-    if (event.inputType === "deleteContentBackward" && editable && window.getSelection()?.isCollapsed && isCaretAtStart(editable)) {
-        if (mergeWithPrevious(editable)) {
-            event.preventDefault();
-            return;
-        }
-        if (!editable.innerText && currentWrapperForEditable(editable)) {
-            const wrapper = currentWrapperForEditable(editable);
-            const next = nextEditable(wrapper);
-            if (next) {
-                event.preventDefault();
-                wrapper.remove();
-                markDirty();
-                placeCaret(next, false);
-            }
-        }
-        return;
-    }
-
-    if (event.inputType === "deleteContentForward" && editable && window.getSelection()?.isCollapsed && isCaretAtEnd(editable)) {
-        if (mergeWithNext(editable)) event.preventDefault();
-    }
-});
-
 function ownEditable(wrapper) {
     return Array.from(wrapper.querySelectorAll('[data-editable="true"]'))
         .find(editable => editable.closest(".notion-block") === wrapper) || null;
 }
-
-function normalizeEditorStructure() {
-    content.querySelectorAll(".notion-block[data-block-type]").forEach(wrapper => {
-        const type = wrapper.dataset.blockType;
-        if (!editableTypes.has(type)) return;
-        if (!ownEditable(wrapper)) wrapper.remove();
-    });
-}
-
-content.addEventListener("input", () => {
-    if (state.saveInFlight) return;
-    normalizeEditorStructure();
-    markDirty();
-});
 
 function sameAnnotations(a, b) {
     return a.bold === b.bold && a.italic === b.italic && a.strikethrough === b.strikethrough &&
@@ -671,7 +530,7 @@ function serializeEditableRichText(root) {
             const chunk = value.slice(0, 2000);
             value = value.slice(2000);
             const previous = segments[segments.length - 1];
-            if (previous && previous.text.content.length + chunk.length <= 2000 &&
+            if (previous?.type === 'text' && previous.text.content.length + chunk.length <= 2000 &&
                 (previous.text.link?.url || null) === href && sameAnnotations(previous.annotations, annotations)) {
                 previous.text.content += chunk;
             } else {
@@ -691,6 +550,12 @@ function serializeEditableRichText(root) {
         }
         if (node.nodeType !== Node.ELEMENT_NODE) return;
 
+        if (node.dataset.notionRich) {
+            const original = JSON.parse(node.dataset.notionRich);
+            segments.push(original);
+            return;
+        }
+        if (node.dataset.softBreakTail) return;
         const tag = node.tagName.toLowerCase();
         if (tag === "br") {
             pushText("\n", annotations, href);
@@ -698,6 +563,7 @@ function serializeEditableRichText(root) {
         }
 
         const next = { ...annotations };
+        if (node.dataset.notionColor) next.color = node.dataset.notionColor;
         if (tag === "strong" || tag === "b") next.bold = true;
         if (tag === "em" || tag === "i") next.italic = true;
         if (tag === "u") next.underline = true;
@@ -705,6 +571,7 @@ function serializeEditableRichText(root) {
         if (tag === "code") next.code = true;
         const nextHref = tag === "a" ? (node.getAttribute("href") || href) : href;
 
+        if ((tag === "div" || tag === "p") && node.previousSibling) pushText("\n", annotations, href);
         Array.from(node.childNodes).forEach(child => walk(child, next, nextHref));
     }
 
@@ -713,11 +580,7 @@ function serializeEditableRichText(root) {
 }
 
 function richSignature(items) {
-    return JSON.stringify((items || []).map(item => ({
-        content: item.text?.content || "",
-        link: item.text?.link?.url || null,
-        annotations: item.annotations || {}
-    })));
+    return JSON.stringify(items || []);
 }
 
 function snapshotForEditable(editable) {
@@ -733,6 +596,10 @@ function snapshotForEditable(editable) {
 
 function refreshSnapshots() {
     state.snapshots.clear();
+    state.blockSnapshots.clear();
+    content.querySelectorAll(".notion-block[data-block-id]").forEach(wrapper => {
+        if (!isTempId(wrapper.dataset.blockId)) state.blockSnapshots.set(wrapper.dataset.blockId, JSON.stringify(valueForWrapper(wrapper)));
+    });
     content.querySelectorAll('[data-editable="true"]').forEach(editable => {
         if (!isTempId(editable.dataset.id)) state.snapshots.set(editable.dataset.id, snapshotForEditable(editable));
     });
@@ -771,52 +638,36 @@ function previousSiblingBlockId(wrapper) {
     return "";
 }
 
-function collectPayload() {
-    const changes = [];
-    const creates = [];
-    const deletes = minimalDeletedIds();
-    const deletedSet = new Set(deletes);
+function valueForWrapper(wrapper) {
+    const type = wrapper.dataset.blockType;
+    const value = JSON.parse(wrapper.dataset.blockValue || "{}");
+    const editable = ownEditable(wrapper);
+    if (editable && type !== "table_row") value.rich_text = serializeEditableRichText(editable);
+    if (type === "to_do") value.checked = Boolean(wrapper.querySelector('input[type="checkbox"]')?.checked);
+    if (type === "table_row") value.cells = Array.from(wrapper.querySelectorAll("td")).map(serializeEditableRichText);
+    return value;
+}
 
+function collectPayload() {
+    const changes = [], creates = [];
+    const deletes = minimalDeletedIds();
     content.querySelectorAll('.notion-block[data-block-id]').forEach(wrapper => {
         const id = wrapper.dataset.blockId;
-        const editable = ownEditable(wrapper);
-        if (!editable || deletedSet.has(id)) return;
-
-        const type = editable.dataset.type;
-        const rich_text = serializeEditableRichText(editable);
-        const text = editable.innerText.replace(/\r\n/g, "\n");
-        let checked;
-        if (type === "to_do") checked = Boolean(wrapper.querySelector('input[type="checkbox"]')?.checked);
-
+        const type = wrapper.dataset.blockType;
+        const value = valueForWrapper(wrapper);
         if (isTempId(id)) {
-            creates.push({
-                tempId: id,
-                parentId: wrapper.dataset.parentId || "",
-                afterId: previousSiblingBlockId(wrapper),
-                type,
-                text,
-                rich_text,
-                ...(type === "to_do" ? { checked } : {})
-            });
-            return;
-        }
-
-        const previous = state.snapshots.get(id);
-        const currentSignature = richSignature(rich_text);
-        if (!previous || previous.text !== text || previous.richSignature !== currentSignature ||
-            (type === "to_do" && previous.checked !== checked)) {
-            changes.push({ id, type, text, rich_text, ...(type === "to_do" ? { checked } : {}) });
+            creates.push({ tempId: id, parentId: wrapper.dataset.parentId || "", afterId: previousSiblingBlockId(wrapper), type, value });
+        } else if (state.blockSnapshots.get(id) !== JSON.stringify(value)) {
+            changes.push({ id, type, value });
         }
     });
-
     const titleElement = content.querySelector('[data-page-title="true"]');
     let title = null;
     if (titleElement && state.currentTitle?.property) {
         const text = titleElement.innerText.replace(/\r\n/g, "\n");
         if (text !== state.snapshots.get("__title__")?.text) title = { property: state.currentTitle.property, text };
     }
-
-    return { changes, creates, deletes, title };
+    return { changes, creates, deletes, title, pendingTables: state.pendingTables };
 }
 
 function applyCreatedMappings(created) {
@@ -828,8 +679,9 @@ function applyCreatedMappings(created) {
 
         wrapper.dataset.blockId = actualId;
         wrapper.removeAttribute("data-new-block");
-        const editable = ownEditable(wrapper);
-        if (editable) editable.dataset.id = actualId;
+        wrapper.querySelectorAll('[data-id]').forEach(editable => {
+            if (editable.dataset.id === tempId) editable.dataset.id = actualId;
+        });
         const checkbox = wrapper.querySelector('[data-todo-id]');
         if (checkbox) checkbox.dataset.todoId = actualId;
 
@@ -855,6 +707,9 @@ function refreshBaselineAfterSave() {
 }
 
 function setEditingEnabled(enabled) {
+    content.querySelectorAll('input, button').forEach(control => { control.disabled = !enabled; });
+    content.querySelectorAll('td[data-editable]').forEach(cell => { cell.contentEditable = String(enabled); });
+    content.querySelectorAll('[data-editable], [data-page-title]').forEach(editable => { editable.contentEditable = String(enabled); });
     if (enabled) {
         content.contentEditable = "true";
         content.removeAttribute("aria-disabled");
@@ -879,23 +734,28 @@ async function save() {
     hideFormattingToolbar();
     clearImageSelection();
     setEditingEnabled(false);
+    let savedMappings = null;
 
     try {
         const result = await api("PUT", payload);
         applyCreatedMappings(result.created);
         refreshBaselineAfterSave();
+        state.pendingTables = [];
         state.dirty = false;
+        savedMappings = result.created || {};
         setConnected(true);
         setSaveStatus("Saved");
         toast("Saved", `${PAGE_LABEL} was updated in Notion.`);
     } catch (error) {
         applyCreatedMappings(error.data?.created);
+        state.pendingTables = error.data?.pendingTables || state.pendingTables;
         state.dirty = true;
         setSaveStatus("Save failed");
         toast("Save failed", error.message || String(error));
     } finally {
         state.saveInFlight = false;
         setEditingEnabled(true);
+        if (savedMappings) document.dispatchEvent(new CustomEvent("notion:saved", { detail: savedMappings }));
     }
 }
 
@@ -931,13 +791,11 @@ function ensureFormattingToolbar() {
         <button type="button" data-format="underline" aria-label="Underline"><u>U</u></button>
         <button type="button" data-format="strikeThrough" aria-label="Strikethrough"><s>S</s></button>
         <button type="button" data-format="code" aria-label="Code"><code>&lt;/&gt;</code></button>
+        <button type="button" data-format="link" aria-label="Link" title="Add link">↗</button>
+        <button type="button" data-format="color" aria-label="Text color" title="Text color">A</button>
     `;
     toolbar.addEventListener("mousedown", event => {
         if (event.target.closest("button[data-format]")) event.preventDefault();
-    });
-    toolbar.addEventListener("click", event => {
-        const button = event.target.closest("button[data-format]");
-        if (button) applyFormatting(button.dataset.format);
     });
     document.body.appendChild(toolbar);
     state.toolbar = toolbar;
@@ -1000,23 +858,6 @@ function toggleInlineCode(range, editable) {
     }
 }
 
-function applyFormatting(format) {
-    if (!state.formattingRange || !state.formattingEditables.length) return;
-    const pieces = state.formattingEditables
-        .map(editable => ({ editable, range: subRangeForEditable(state.formattingRange, editable) }))
-        .filter(piece => piece.range);
-
-    for (const { editable, range } of pieces) {
-        setDocumentSelection(range);
-        if (format === "code") toggleInlineCode(range, editable);
-        else document.execCommand(format, false, null);
-        editable.normalize();
-    }
-    markDirty();
-    hideFormattingToolbar();
-    content.focus({ preventScroll: true });
-}
-
 document.addEventListener("selectionchange", () => requestAnimationFrame(updateFormattingToolbar));
 window.addEventListener("scroll", () => { if (state.toolbar && !state.toolbar.hidden) updateFormattingToolbar(); }, true);
 window.addEventListener("resize", () => { if (state.toolbar && !state.toolbar.hidden) updateFormattingToolbar(); });
@@ -1029,7 +870,7 @@ function deleteSelectionIfImage(event) {
 }
 
 document.addEventListener("keydown", event => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "s") {
         event.preventDefault();
         save();
         return;
