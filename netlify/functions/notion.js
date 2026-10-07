@@ -99,7 +99,20 @@ function sanitizeRichText(items, fallbackText) {
     if (!Array.isArray(items)) return richTextFromPlainText(fallbackText);
     const output = [];
     for (const item of items) {
-        if (!item || item.type !== "text") continue;
+        if (!item) continue;
+        if (item.type === "mention" && item.mention) {
+            const mention = item.mention;
+            const type = mention.type;
+            if (["page", "database", "user"].includes(type) && mention[type]?.id) output.push({ type: "mention", mention: { type, [type]: { id: mention[type].id } }, annotations: item.annotations });
+            else if (type === "date" && mention.date?.start) output.push({ type: "mention", mention: { type, date: mention.date }, annotations: item.annotations });
+            else throw new Error(`This ${type || "unknown"} mention must be edited in Notion to preserve its data.`);
+            continue;
+        }
+        if (item.type === "equation" && item.equation?.expression) {
+            output.push({ type: "equation", equation: { expression: String(item.equation.expression) }, annotations: item.annotations });
+            continue;
+        }
+        if (item.type !== "text") continue;
         const content = String(item.text?.content ?? "");
         if (!content) continue;
         const href = typeof item.text?.link?.url === "string" ? item.text.link.url : null;
@@ -118,7 +131,7 @@ function sanitizeRichText(items, fallbackText) {
                     strikethrough: Boolean(annotations.strikethrough),
                     underline: Boolean(annotations.underline),
                     code: Boolean(annotations.code),
-                    color: "default"
+                    color: validColor(annotations.color)
                 }
             });
         }
@@ -126,16 +139,43 @@ function sanitizeRichText(items, fallbackText) {
     return output;
 }
 
-const EDITABLE_TYPES = new Set([
-    "paragraph", "heading_1", "heading_2", "heading_3", "heading_4",
-    "bulleted_list_item", "numbered_list_item", "quote", "to_do", "toggle", "callout", "code"
+const CREATABLE_TYPES = new Set([
+    "paragraph", "heading_1", "heading_2", "heading_3", "bulleted_list_item", "numbered_list_item",
+    "to_do", "quote", "toggle", "callout", "code", "divider", "table", "table_row",
+    "image", "bookmark", "embed", "video", "pdf", "file", "audio", "equation"
 ]);
 
-const CREATABLE_TYPES = new Set(["paragraph", "bulleted_list_item", "numbered_list_item", "to_do"]);
+function validColor(color) {
+    return /^(default|gray|brown|orange|yellow|green|blue|purple|pink|red)(_background)?$/.test(color || "") ? color : "default";
+}
 
 function blockValueFor(type, item) {
-    const value = { rich_text: sanitizeRichText(item.rich_text, item.text) };
-    if (type === "to_do") value.checked = Boolean(item.checked);
+    const source = item.value || item;
+    if (type === "divider") return {};
+    if (type === "table") return { ...(item.tempId ? { table_width: source.table_width } : {}), has_column_header: Boolean(source.has_column_header), has_row_header: Boolean(source.has_row_header) };
+    if (type === "table_row") {
+        if (!Array.isArray(source.cells) || !source.cells.length) throw new Error("Table rows need cells.");
+        return { cells: source.cells.map(cell => sanitizeRichText(cell, "")) };
+    }
+    if (type === "equation") return { expression: String(source.expression || "") };
+    if (["bookmark", "embed"].includes(type)) {
+        if (!/^https?:\/\//i.test(source.url || "")) throw new Error("Invalid media URL.");
+        return { url: source.url, caption: sanitizeRichText(source.caption || [], "") };
+    }
+    if (["image", "video", "pdf", "file", "audio"].includes(type)) {
+        if (source.type !== "external" || !/^https?:\/\//i.test(source.external?.url || "")) throw new Error("Notion-hosted files must be managed in Notion.");
+        return { type: "external", external: { url: source.external.url }, caption: sanitizeRichText(source.caption || [], "") };
+    }
+    const value = { rich_text: sanitizeRichText(source.rich_text, source.text), color: validColor(source.color) };
+    if (type === "to_do") value.checked = Boolean(source.checked);
+    if (/^heading_[123]$/.test(type)) value.is_toggleable = Boolean(source.is_toggleable);
+    if (type === "callout") {
+        if (source.icon?.type === "emoji") value.icon = { type: "emoji", emoji: source.icon.emoji };
+        else if (source.icon?.type === "external") value.icon = { type: "external", external: { url: source.icon.external.url } };
+        else if (!source.icon) value.icon = { type: "emoji", emoji: "💡" };
+        else if (item.tempId) throw new Error("This callout icon must be managed in Notion.");
+    }
+    if (type === "code") { delete value.color; value.language = source.language || "plain text"; value.caption = sanitizeRichText(source.caption || [], ""); }
     return value;
 }
 
@@ -151,17 +191,42 @@ function validatePayload(payload) {
     if (changes.length + creates.length + deletes.length > MAX_OPERATIONS) {
         throw new Error("Too many changes in one save.");
     }
+    const seen = new Set();
+    for (const item of creates) {
+        if (!item || typeof item.tempId !== "string" || !item.tempId.startsWith("local-") || seen.has(item.tempId)) throw new Error("Invalid new block identifier.");
+        seen.add(item.tempId);
+        if (item.parentId?.startsWith("local-") && !seen.has(item.parentId)) throw new Error("New parent must precede its children.");
+        if (item.afterId?.startsWith("local-") && !seen.has(item.afterId)) throw new Error("New sibling must precede the next block.");
+        const payload = createBlockPayload(item);
+        if (item.type === "table") {
+            const rows = creates.filter(row => row.parentId === item.tempId && row.type === "table_row");
+            if (!rows.length || rows.length > 100) throw new Error("Tables need between 1 and 100 rows per save.");
+            if (rows.some(row => row.value?.cells?.length !== payload.table.table_width)) throw new Error("Table cells must match its width.");
+        }
+    }
+    for (const item of changes) {
+        if (!item?.id || !CREATABLE_TYPES.has(item.type)) throw new Error("Invalid block update.");
+        blockValueFor(item.type, item);
+    }
+    for (const id of deletes) if (typeof id !== "string" || !id || id.startsWith("local-")) throw new Error("Invalid deletion identifier.");
     return { changes, creates, deletes };
 }
 
-async function createBlocks(pageId, creates) {
-    const created = {};
+async function createBlocks(pageId, creates, initialCreated = {}) {
+    const created = { ...initialCreated };
     try {
         for (const item of creates) {
             if (!item || typeof item.tempId !== "string" || !item.tempId.startsWith("local-")) continue;
+            if (created[item.tempId]) continue;
             const parentId = item.parentId ? (created[item.parentId] || item.parentId) : pageId;
             const afterId = item.afterId ? (created[item.afterId] || item.afterId) : "";
-            const body = { children: [createBlockPayload(item)] };
+            const payload = createBlockPayload(item);
+            const tableRows = item.type === "table" ? creates.filter(row => row.parentId === item.tempId && row.type === "table_row") : [];
+            if (item.type === "table") {
+                if (!tableRows.length || tableRows.length > 100) throw new Error("Tables need between 1 and 100 rows per save.");
+                payload.table.children = tableRows.map(createBlockPayload);
+            }
+            const body = { children: [payload] };
             body.position = afterId
                 ? { type: "after_block", after_block: { id: afterId } }
                 : { type: "start" };
@@ -173,6 +238,16 @@ async function createBlocks(pageId, creates) {
             const actualId = result?.results?.[0]?.id;
             if (!actualId) throw new Error("Notion did not return the created block id.");
             created[item.tempId] = actualId;
+            if (tableRows.length) {
+                try {
+                    const rows = await getAllChildren(actualId);
+                    if (rows.length !== tableRows.length) throw new Error("Could not map all saved table rows.");
+                    tableRows.forEach((row, index) => created[row.tempId] = rows[index].id);
+                } catch (error) {
+                    error.pendingTables = [{ id: actualId, rowTempIds: tableRows.map(row => row.tempId) }];
+                    throw error;
+                }
+            }
         }
         return created;
     } catch (error) {
@@ -183,7 +258,7 @@ async function createBlocks(pageId, creates) {
 
 async function updateExistingBlocks(changes, created) {
     for (const change of changes) {
-        if (!change || !change.id || !EDITABLE_TYPES.has(change.type)) continue;
+        if (!change || !change.id || !CREATABLE_TYPES.has(change.type)) continue;
         const id = created[change.id] || change.id;
         await notionFetch(`/blocks/${encodeURIComponent(id)}`, {
             method: "PATCH",
@@ -209,9 +284,21 @@ async function trashBlocks(deletes, created) {
 
 async function saveChanges(pageId, payload) {
     const { changes, creates, deletes } = validatePayload(payload);
-    const created = await createBlocks(pageId, creates);
+    const recovered = {};
+    const pending = Array.isArray(payload.pendingTables) ? payload.pendingTables : [];
+    if (pending.length > MAX_OPERATIONS) throw new Error("Too many table recoveries.");
     try {
-        await updateExistingBlocks(changes, created);
+        for (const table of pending) {
+            if (!table.id || !Array.isArray(table.rowTempIds) || table.rowTempIds.length > 100) throw new Error("Invalid table recovery.");
+            const rows = await getAllChildren(table.id);
+            if (rows.length !== table.rowTempIds.length) throw new Error("Saved table rows changed; reload before saving again.");
+            table.rowTempIds.forEach((tempId, index) => { recovered[tempId] = rows[index].id; });
+        }
+    } catch (error) { error.pendingTables = pending; throw error; }
+    const created = await createBlocks(pageId, creates, recovered);
+    try {
+        const recoveredChanges = creates.filter(item => recovered[item.tempId]).map(item => ({ ...item, id: recovered[item.tempId] }));
+        await updateExistingBlocks([...changes, ...recoveredChanges], created);
         await trashBlocks(deletes, created);
 
         if (payload.title && payload.title.property) {
@@ -251,7 +338,7 @@ exports.handler = async function(event) {
                 const created = await saveChanges(pageId, body);
                 return response({ ok: true, created });
             } catch (error) {
-                return response({ error: error?.message || String(error), created: error?.created || {} }, 500);
+                return response({ error: error?.message || String(error), created: error?.created || {}, pendingTables: error?.pendingTables || [] }, 500);
             }
         }
 
