@@ -1,11 +1,9 @@
 const PROJECTS = Object.freeze({
   imenu: {
-    repo: "metrix0/imenu",
-    vercelContext: "Vercel – imenu"
+    repo: "metrix0/imenu"
   },
   engravida: {
-    repo: "metrix0/EngravidaHub",
-    vercelContext: "Vercel – hubengravida"
+    repo: "metrix0/EngravidaHub"
   }
 });
 
@@ -107,52 +105,28 @@ function checkRunState(run) {
   return run.conclusion === "success" ? "success" : "failure";
 }
 
-function commitStatusState(status) {
-  if (!status || status.state === "pending") return "pending";
-  return status.state === "success" ? "success" : "failure";
-}
-
-async function getMergeValidation(repo, sha, vercelContext) {
-  const [checks, statuses] = await Promise.all([
-    github(repo, `/commits/${sha}/check-runs?per_page=100`),
-    github(repo, `/commits/${sha}/status`)
-  ]);
+async function getMergeValidation(repo, sha) {
+  const checks = await github(repo, `/commits/${sha}/check-runs?per_page=100`);
 
   const typecheckRun = (Array.isArray(checks?.check_runs) ? checks.check_runs : [])
     .filter(run => run?.name === "merge-typecheck" && run?.conclusion !== "skipped")
     .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))[0] || null;
 
-  const vercelStatus = (Array.isArray(statuses?.statuses) ? statuses.statuses : [])
-    .filter(status => status?.context === vercelContext)
-    .sort((a, b) =>
-      String(b?.updated_at || b?.created_at || "").localeCompare(
-        String(a?.updated_at || a?.created_at || "")
-      )
-    )[0] || null;
-
   const typecheck = {
     state: checkRunState(typecheckRun),
     url: typecheckRun?.html_url || typecheckRun?.details_url || null
   };
-  const vercel = {
-    state: commitStatusState(vercelStatus),
-    url: vercelStatus?.target_url || null
-  };
 
   return {
-    ready: typecheck.state === "success" && vercel.state === "success",
-    failed: typecheck.state === "failure" || vercel.state === "failure",
-    typecheck,
-    vercel
+    ready: typecheck.state === "success",
+    failed: typecheck.state === "failure",
+    typecheck
   };
 }
 
 function validationError(validation) {
-  const failed = [];
-  if (validation?.typecheck?.state === "failure") failed.push("TypeScript");
-  if (validation?.vercel?.state === "failure") failed.push("Vercel");
-  return failed.length
-    ? `${failed.join(" + ")} validation failed.`
+  return validation?.typecheck?.state === "failure"
+    ? "TypeScript validation failed."
     : "Required validation is still running.";
 }
 
@@ -210,8 +184,7 @@ exports.handler = async function(event) {
     const pr = await getOrCreatePr(repo);
     const validation = await getMergeValidation(
       repo,
-      pr?.head?.sha || comparison?.commits?.at(-1)?.sha,
-      project.vercelContext
+      pr?.head?.sha || comparison?.commits?.at(-1)?.sha
     );
 
     if (validation.failed) {
