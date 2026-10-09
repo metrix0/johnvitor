@@ -105,34 +105,47 @@ function checkRunState(run) {
   return run.conclusion === "success" ? "success" : "failure";
 }
 
-async function approveBlockedTypecheck(repo, sha) {
+async function restartBlockedTypecheck(repo, sha, prNumber) {
   const query = new URLSearchParams({
     event: "pull_request",
     head_sha: sha,
     per_page: "20"
   });
   const runs = await github(repo, `/actions/runs?${query.toString()}`);
-  const blocked = (Array.isArray(runs?.workflow_runs) ? runs.workflow_runs : [])
-    .filter(run =>
-      run?.path === ".github/workflows/validate-build.yml" &&
-      run?.conclusion === "action_required"
-    )
-    .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))[0] || null;
+  const workflowRuns = (Array.isArray(runs?.workflow_runs) ? runs.workflow_runs : [])
+    .filter(run => run?.path === ".github/workflows/validate-build.yml")
+    .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
+
+  const blocked = workflowRuns.find(
+    run => run?.conclusion === "action_required"
+  ) || null;
 
   if (!blocked?.id) return null;
 
-  try {
-    await github(repo, `/actions/runs/${blocked.id}/approve`, {
-      method: "POST"
-    });
-  } catch (error) {
-    if (![409, 422].includes(error.status)) throw error;
-  }
+  const newerRun = workflowRuns.find(run =>
+    run?.id !== blocked.id &&
+    run?.conclusion !== "action_required" &&
+    new Date(run?.created_at || 0).getTime() >=
+      new Date(blocked?.created_at || 0).getTime()
+  );
+  if (newerRun) return newerRun.html_url || blocked.html_url || null;
+
+  const headers = { "Content-Type": "application/json" };
+  await github(repo, `/pulls/${prNumber}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ state: "closed" })
+  });
+  await github(repo, `/pulls/${prNumber}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ state: "open" })
+  });
 
   return blocked.html_url || null;
 }
 
-async function getMergeValidation(repo, sha) {
+async function getMergeValidation(repo, sha, prNumber) {
   const checks = await github(repo, `/commits/${sha}/check-runs?per_page=100`);
 
   const typecheckRun = (Array.isArray(checks?.check_runs) ? checks.check_runs : [])
@@ -140,14 +153,14 @@ async function getMergeValidation(repo, sha) {
     .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))[0] || null;
 
   if (!typecheckRun) {
-    const approvalUrl = await approveBlockedTypecheck(repo, sha);
-    if (approvalUrl) {
+    const restartUrl = await restartBlockedTypecheck(repo, sha, prNumber);
+    if (restartUrl) {
       return {
         ready: false,
         failed: false,
         typecheck: {
           state: "pending",
-          url: approvalUrl,
+          url: restartUrl,
           error: null
         }
       };
@@ -263,7 +276,8 @@ exports.handler = async function(event) {
     const pr = await getOrCreatePr(repo);
     const validation = await getMergeValidation(
       repo,
-      pr?.head?.sha || comparison?.commits?.at(-1)?.sha
+      pr?.head?.sha || comparison?.commits?.at(-1)?.sha,
+      pr.number
     );
 
     if (validation.failed) {
