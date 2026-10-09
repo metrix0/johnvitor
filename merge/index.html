@@ -114,7 +114,7 @@
 
     function scheduleMerge(project, button) {
       clearTimeout(mergeTimers.get(project));
-      mergeTimers.set(project, setTimeout(() => merge(project, button), 3000));
+      mergeTimers.set(project, setTimeout(() => merge(project, button, true), 3000));
     }
 
     async function loadCommits(project) {
@@ -153,9 +153,11 @@
       }
     }
 
-    async function merge(project, button) {
+    async function merge(project, button, validating = false) {
       button.disabled = true;
-      button.textContent = "Merging...";
+      if (!validating) {
+        button.textContent = "Merging...";
+      }
 
       try {
         const response = await fetch("/api/merge", {
