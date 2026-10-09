@@ -1,6 +1,12 @@
-const REPOS = Object.freeze({
-  imenu: "metrix0/imenu",
-  engravida: "metrix0/EngravidaHub"
+const PROJECTS = Object.freeze({
+  imenu: {
+    repo: "metrix0/imenu",
+    vercelContext: "Vercel – imenu"
+  },
+  engravida: {
+    repo: "metrix0/EngravidaHub",
+    vercelContext: "Vercel – hubengravida"
+  }
 });
 
 function json(statusCode, body) {
@@ -96,6 +102,60 @@ async function getOrCreatePr(repo) {
   }
 }
 
+function checkRunState(run) {
+  if (!run || run.status !== "completed") return "pending";
+  return run.conclusion === "success" ? "success" : "failure";
+}
+
+function commitStatusState(status) {
+  if (!status || status.state === "pending") return "pending";
+  return status.state === "success" ? "success" : "failure";
+}
+
+async function getMergeValidation(repo, sha, vercelContext) {
+  const [checks, statuses] = await Promise.all([
+    github(repo, `/commits/${sha}/check-runs?per_page=100`),
+    github(repo, `/commits/${sha}/status`)
+  ]);
+
+  const typecheckRun = (Array.isArray(checks?.check_runs) ? checks.check_runs : [])
+    .filter(run => run?.name === "merge-typecheck")
+    .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))[0] || null;
+
+  const vercelStatus = (Array.isArray(statuses?.statuses) ? statuses.statuses : [])
+    .filter(status => status?.context === vercelContext)
+    .sort((a, b) =>
+      String(b?.updated_at || b?.created_at || "").localeCompare(
+        String(a?.updated_at || a?.created_at || "")
+      )
+    )[0] || null;
+
+  const typecheck = {
+    state: checkRunState(typecheckRun),
+    url: typecheckRun?.html_url || typecheckRun?.details_url || null
+  };
+  const vercel = {
+    state: commitStatusState(vercelStatus),
+    url: vercelStatus?.target_url || null
+  };
+
+  return {
+    ready: typecheck.state === "success" && vercel.state === "success",
+    failed: typecheck.state === "failure" || vercel.state === "failure",
+    typecheck,
+    vercel
+  };
+}
+
+function validationError(validation) {
+  const failed = [];
+  if (validation?.typecheck?.state === "failure") failed.push("TypeScript");
+  if (validation?.vercel?.state === "failure") failed.push("Vercel");
+  return failed.length
+    ? `${failed.join(" + ")} validation failed.`
+    : "Required validation is still running.";
+}
+
 exports.handler = async function(event) {
   if (event.httpMethod !== "POST") {
     return json(405, { ok: false, error: "Method not allowed." });
@@ -108,8 +168,9 @@ exports.handler = async function(event) {
     return json(400, { ok: false, error: "Invalid request." });
   }
 
-  const repo = REPOS[body.project];
-  if (!repo) return json(400, { ok: false, error: "Unknown project." });
+  const project = PROJECTS[body.project];
+  if (!project) return json(400, { ok: false, error: "Unknown project." });
+  const repo = project.repo;
 
   try {
     const expected = await expectedPassword(event);
@@ -122,24 +183,56 @@ exports.handler = async function(event) {
     }
 
     const comparison = await github(repo, "/compare/main...preview");
+    const changedFiles = Array.isArray(comparison.files) ? comparison.files.length : null;
+    const commits = Array.isArray(comparison.commits)
+      ? comparison.commits.map(commit =>
+          String(commit?.commit?.message || "").split("\n")[0].trim()
+        ).filter(Boolean)
+      : [];
+    const synced = (comparison.ahead_by || 0) === 0 || changedFiles === 0;
+
+    if (synced) {
+      return json(200, {
+        ok: true,
+        merged: false,
+        synced: true,
+        commits: []
+      });
+    }
+
+    const pr = await getOrCreatePr(repo);
+    const validation = await getMergeValidation(
+      repo,
+      pr?.head?.sha || comparison?.commits?.at(-1)?.sha,
+      project.vercelContext
+    );
 
     if (body.action === "status") {
       return json(200, {
         ok: true,
-        commits: Array.isArray(comparison.commits)
-          ? comparison.commits.map(commit =>
-              String(commit?.commit?.message || "").split("\n")[0].trim()
-            ).filter(Boolean)
-          : []
+        commits,
+        pr: pr.number,
+        validation
       });
     }
-    const changedFiles = Array.isArray(comparison.files) ? comparison.files.length : null;
 
-    if ((comparison.ahead_by || 0) === 0 || changedFiles === 0) {
-      return json(200, { ok: true, merged: false, synced: true });
+    if (validation.failed) {
+      return json(409, {
+        ok: false,
+        error: validationError(validation),
+        pr: pr.number,
+        validation
+      });
     }
 
-    const pr = await getOrCreatePr(repo);
+    if (!validation.ready) {
+      return json(202, {
+        ok: true,
+        pending: true,
+        pr: pr.number,
+        validation
+      });
+    }
 
     const result = await github(repo, `/pulls/${pr.number}/merge`, {
       method: "PUT",

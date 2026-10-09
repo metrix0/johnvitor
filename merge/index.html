@@ -66,6 +66,7 @@
   <script>
     const ACCESS_KEY = "ANKI_APP_ACCESS_UNTIL";
     let mergePassword = "";
+    const refreshTimers = new Map();
 
     function hasValidAccess() {
       return Date.now() < Number(localStorage.getItem(ACCESS_KEY) || "0");
@@ -111,9 +112,18 @@
       }[char]));
     }
 
+    function scheduleRefresh(project) {
+      clearTimeout(refreshTimers.get(project));
+      refreshTimers.set(project, setTimeout(() => loadCommits(project), 3000));
+    }
+
     async function loadCommits(project) {
       const list = document.querySelector(`[data-commits="${project}"]`);
-      if (!list) return;
+      const button = document.querySelector(`[data-project="${project}"]`);
+      if (!list || !button) return;
+
+      const original = button.dataset.label || button.textContent;
+      button.dataset.label = original;
 
       try {
         const response = await fetch("/api/merge", {
@@ -127,13 +137,37 @@
         list.innerHTML = (data.commits || [])
           .map(name => `<li>${escapeHtml(name)}</li>`)
           .join("");
+
+        if (data.synced) {
+          button.textContent = "Already synced ✓";
+          button.disabled = true;
+          return;
+        }
+
+        if (data.validation?.failed) {
+          button.textContent = "Validation failed";
+          button.disabled = true;
+          scheduleRefresh(project);
+          return;
+        }
+
+        if (!data.validation?.ready) {
+          button.textContent = "Validating...";
+          button.disabled = true;
+          scheduleRefresh(project);
+          return;
+        }
+
+        button.textContent = original;
+        button.disabled = false;
       } catch {
         list.innerHTML = "";
+        button.textContent = original;
+        button.disabled = false;
       }
     }
 
     async function merge(project, button) {
-      const original = button.textContent;
       button.disabled = true;
       button.textContent = "Merging...";
 
@@ -149,16 +183,18 @@
           throw new Error(data.error || "Merge failed.");
         }
 
+        if (data.pending) {
+          button.textContent = "Validating...";
+          scheduleRefresh(project);
+          return;
+        }
+
         button.textContent = data.merged ? "Merged ✓" : "Already synced ✓";
         await loadCommits(project);
       } catch (error) {
         button.textContent = "Failed";
         alert(error?.message || String(error));
-      } finally {
-        setTimeout(() => {
-          button.textContent = original;
-          button.disabled = false;
-        }, 2200);
+        setTimeout(() => loadCommits(project), 1200);
       }
     }
 
