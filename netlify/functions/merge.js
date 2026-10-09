@@ -105,12 +105,54 @@ function checkRunState(run) {
   return run.conclusion === "success" ? "success" : "failure";
 }
 
+async function approveBlockedTypecheck(repo, sha) {
+  const query = new URLSearchParams({
+    event: "pull_request",
+    head_sha: sha,
+    per_page: "20"
+  });
+  const runs = await github(repo, `/actions/runs?${query.toString()}`);
+  const blocked = (Array.isArray(runs?.workflow_runs) ? runs.workflow_runs : [])
+    .filter(run =>
+      run?.path === ".github/workflows/validate-build.yml" &&
+      run?.conclusion === "action_required"
+    )
+    .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))[0] || null;
+
+  if (!blocked?.id) return null;
+
+  try {
+    await github(repo, `/actions/runs/${blocked.id}/approve`, {
+      method: "POST"
+    });
+  } catch (error) {
+    if (![409, 422].includes(error.status)) throw error;
+  }
+
+  return blocked.html_url || null;
+}
+
 async function getMergeValidation(repo, sha) {
   const checks = await github(repo, `/commits/${sha}/check-runs?per_page=100`);
 
   const typecheckRun = (Array.isArray(checks?.check_runs) ? checks.check_runs : [])
     .filter(run => run?.name === "merge-typecheck" && run?.conclusion !== "skipped")
     .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))[0] || null;
+
+  if (!typecheckRun) {
+    const approvalUrl = await approveBlockedTypecheck(repo, sha);
+    if (approvalUrl) {
+      return {
+        ready: false,
+        failed: false,
+        typecheck: {
+          state: "pending",
+          url: approvalUrl,
+          error: null
+        }
+      };
+    }
+  }
 
   let error = null;
   if (typecheckRun?.conclusion === "failure" && typecheckRun.id) {
