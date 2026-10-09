@@ -112,9 +112,41 @@ async function getMergeValidation(repo, sha) {
     .filter(run => run?.name === "merge-typecheck" && run?.conclusion !== "skipped")
     .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))[0] || null;
 
+  let error = null;
+  if (typecheckRun?.conclusion === "failure" && typecheckRun.id) {
+    try {
+      const annotations = await github(
+        repo,
+        `/check-runs/${typecheckRun.id}/annotations?per_page=100`
+      );
+      const details = (Array.isArray(annotations) ? annotations : [])
+        .map(annotation => {
+          const location = annotation?.path
+            ? `${annotation.path}${annotation.start_line ? `:${annotation.start_line}` : ""}`
+            : "";
+          const message = String(annotation?.message || "").trim();
+          return [location, message].filter(Boolean).join("\n");
+        })
+        .filter(Boolean);
+
+      if (details.length) error = details.join("\n\n");
+    } catch {
+      // Fall back to the check output below.
+    }
+
+    if (!error) {
+      error = [
+        typecheckRun?.output?.title,
+        typecheckRun?.output?.summary,
+        typecheckRun?.output?.text
+      ].filter(Boolean).join("\n\n") || null;
+    }
+  }
+
   const typecheck = {
     state: checkRunState(typecheckRun),
-    url: typecheckRun?.html_url || typecheckRun?.details_url || null
+    url: typecheckRun?.html_url || typecheckRun?.details_url || null,
+    error
   };
 
   return {
@@ -125,9 +157,14 @@ async function getMergeValidation(repo, sha) {
 }
 
 function validationError(validation) {
-  return validation?.typecheck?.state === "failure"
-    ? "TypeScript validation failed."
-    : "Required validation is still running.";
+  if (validation?.typecheck?.state !== "failure") {
+    return "Required validation is still running.";
+  }
+
+  const details = String(validation.typecheck.error || "").trim();
+  return details
+    ? `TypeScript validation failed.\n\n${details}`
+    : "TypeScript validation failed.";
 }
 
 exports.handler = async function(event) {
