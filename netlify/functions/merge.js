@@ -200,21 +200,19 @@ exports.handler = async function(event) {
       });
     }
 
+    if (body.action === "status") {
+      return json(200, {
+        ok: true,
+        commits
+      });
+    }
+
     const pr = await getOrCreatePr(repo);
     const validation = await getMergeValidation(
       repo,
       pr?.head?.sha || comparison?.commits?.at(-1)?.sha,
       project.vercelContext
     );
-
-    if (body.action === "status") {
-      return json(200, {
-        ok: true,
-        commits,
-        pr: pr.number,
-        validation
-      });
-    }
 
     if (validation.failed) {
       return json(409, {
