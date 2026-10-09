@@ -119,7 +119,7 @@ async function getMergeValidation(repo, sha, vercelContext) {
   ]);
 
   const typecheckRun = (Array.isArray(checks?.check_runs) ? checks.check_runs : [])
-    .filter(run => run?.name === "merge-typecheck")
+    .filter(run => run?.name === "merge-typecheck" && run?.conclusion !== "skipped")
     .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))[0] || null;
 
   const vercelStatus = (Array.isArray(statuses?.statuses) ? statuses.statuses : [])
