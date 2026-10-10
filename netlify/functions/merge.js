@@ -160,6 +160,7 @@ async function getMergeValidation(repo, sha, prNumber) {
         failed: false,
         typecheck: {
           state: "pending",
+          status: "queued",
           url: restartUrl,
           error: null
         }
@@ -200,6 +201,8 @@ async function getMergeValidation(repo, sha, prNumber) {
 
   const typecheck = {
     state: checkRunState(typecheckRun),
+    status: typecheckRun?.status || "queued",
+    conclusion: typecheckRun?.conclusion || null,
     url: typecheckRun?.html_url || typecheckRun?.details_url || null,
     error
   };
@@ -237,6 +240,20 @@ exports.handler = async function(event) {
   const project = PROJECTS[body.project];
   if (!project) return json(400, { ok: false, error: "Unknown project." });
   const repo = project.repo;
+  const action = body.action || "merge";
+  if (!["status", "validate", "merge", "result"].includes(action)) {
+    return json(400, { ok: false, error: "Unknown action." });
+  }
+  if ((action === "result" || body.pr !== undefined) &&
+      (!Number.isSafeInteger(body.pr) || body.pr < 1)) {
+    return json(400, { ok: false, error: "Invalid pull request." });
+  }
+  if (action === "merge" && body.pr !== undefined && !/^[a-f0-9]{40}$/.test(body.headSha || "")) {
+    return json(400, { ok: false, error: "Missing validated commit." });
+  }
+
+  let activePr = null;
+  let mergeRequested = false;
 
   try {
     const expected = await expectedPassword(event);
@@ -246,6 +263,28 @@ exports.handler = async function(event) {
 
     if (!githubToken()) {
       return json(500, { ok: false, error: "GitHub merge token is not configured." });
+    }
+
+    // Result checks are read-only, including when newer preview commits exist.
+    if (action === "result" || (action === "merge" && body.pr !== undefined)) {
+      activePr = await github(repo, `/pulls/${body.pr}`);
+      if (activePr?.head?.ref !== "preview" || activePr?.base?.ref !== "main" ||
+          activePr?.head?.repo?.full_name !== repo) {
+        return json(400, { ok: false, error: "This is not a preview → main pull request." });
+      }
+      if (action === "result" || activePr.merged) {
+        return json(200, {
+          ok: true,
+          merged: Boolean(activePr.merged),
+          closed: activePr.state === "closed",
+          pr: activePr.number,
+          prUrl: activePr.html_url,
+          sha: activePr.merged ? activePr.merge_commit_sha : null
+        });
+      }
+      if (activePr.state !== "open") {
+        return json(409, { ok: false, pr: activePr.number, error: "Pull request was closed without merging." });
+      }
     }
 
     const comparison = await github(repo, "/compare/main...preview");
@@ -266,17 +305,26 @@ exports.handler = async function(event) {
       });
     }
 
-    if (body.action === "status") {
+    if (action === "status") {
       return json(200, {
         ok: true,
         commits
       });
     }
 
-    const pr = await getOrCreatePr(repo);
+    const pr = activePr || await getOrCreatePr(repo);
+    activePr = pr;
+    const headSha = pr?.head?.sha || comparison?.commits?.at(-1)?.sha;
+    const metadata = { pr: pr.number, prUrl: pr.html_url, headSha, commits };
+    if (action === "merge" && body.headSha && body.headSha !== headSha) {
+      return json(409, {
+        ok: false, ...metadata, code: "preview_changed",
+        error: "Preview changed after validation. Validate the new changes before merging."
+      });
+    }
     const validation = await getMergeValidation(
       repo,
-      pr?.head?.sha || comparison?.commits?.at(-1)?.sha,
+      headSha,
       pr.number
     );
 
@@ -284,7 +332,7 @@ exports.handler = async function(event) {
       return json(409, {
         ok: false,
         error: validationError(validation),
-        pr: pr.number,
+        ...metadata,
         validation
       });
     }
@@ -293,20 +341,31 @@ exports.handler = async function(event) {
       return json(202, {
         ok: true,
         pending: true,
-        pr: pr.number,
+        ...metadata,
         validation
       });
     }
 
+    if (action === "validate") {
+      return json(200, { ok: true, ready: true, ...metadata, validation });
+    }
+
+    // GitHub must merge exactly the head that passed validation.
+    mergeRequested = true;
     const result = await github(repo, `/pulls/${pr.number}/merge`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ merge_method: "squash" })
+      body: JSON.stringify({ merge_method: "squash", sha: headSha })
     });
+
+    if (typeof result.merged !== "boolean") {
+      throw new Error("GitHub did not return a confirmed merge result.");
+    }
 
     if (!result.merged) {
       return json(409, {
         ok: false,
+        ...metadata,
         error: result.message || "GitHub did not merge the pull request."
       });
     }
@@ -314,14 +373,18 @@ exports.handler = async function(event) {
     return json(200, {
       ok: true,
       merged: true,
-      pr: pr.number,
+      ...metadata,
       sha: result.sha || null
     });
   } catch (error) {
     console.error("merge:", error);
-    const status = error.status === 409 || error.status === 405 ? 409 : 500;
+    const refused = [400, 401, 403, 404, 405, 409, 422].includes(error.status);
+    const uncertain = mergeRequested && !refused;
+    const status = refused ? 409 : 500;
     return json(status, {
       ok: false,
+      ...(activePr ? { pr: activePr.number, prUrl: activePr.html_url } : {}),
+      ...(uncertain ? { uncertain: true } : {}),
       error: error?.message || "Merge failed."
     });
   }
