@@ -4,203 +4,370 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>Merge</title>
+  <title>Merge · Preview to main</title>
   <style>
+    :root { color-scheme: dark; --muted: #a1a1aa; --line: #2a2a30; --green: #9be9b4; --red: #ffabab; --accent: #c4b5fd; }
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: #0d0d0d;
-      font-family: Arial, sans-serif;
-    }
-    main {
-      width: min(92vw, 420px);
-      display: grid;
-      gap: 14px;
-    }
-    button {
-      width: 100%;
-      border: 1px solid #2b2b2b;
-      border-radius: 12px;
-      background: #191919;
-      color: #fff;
-      font: inherit;
-      font-weight: 600;
-      font-size: 16px;
-      padding: 18px 20px;
-      cursor: pointer;
-      transition: background .15s ease, transform .15s ease, opacity .15s ease;
-    }
-    button:hover { background: #232323; }
-    button:active { transform: scale(.99); }
-    button:disabled { cursor: default; opacity: .65; }
-    .project {
-      display: grid;
-      gap: 8px;
-    }
-    .commits {
-      margin: 0;
-      padding-left: 22px;
-      color: #a8a8a8;
-      font-size: 13px;
-      line-height: 1.45;
-    }
-    .commits:empty { display: none; }
+    body { margin: 0; min-height: 100vh; display: none; background: #0d0d10; color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; }
+    main { width: min(100% - 40px, 1040px); margin: 72px auto; }
+    .eyebrow { color: var(--accent); font-size: 12px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 12px; }
+    h1 { margin: 0; font-size: clamp(30px, 5vw, 42px); letter-spacing: -.04em; font-weight: 650; }
+    h1 span { color: #666674; padding: 0 .15em; }
+    .intro { color: var(--muted); margin: 14px 0 32px; max-width: 660px; font-size: 15px; }
+    .projects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+    .project { min-width: 0; border: 1px solid var(--line); border-radius: 20px; background: #151518; padding: 26px; }
+    .project-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    h2 { margin: 0; font-size: 24px; letter-spacing: -.025em; }
+    .badge { font-size: 11px; font-weight: 650; padding: 5px 9px; border-radius: 100px; background: #25252c; color: #c4c4cd; white-space: nowrap; }
+    .badge[data-tone="success"] { background: #193325; color: var(--green); }
+    .badge[data-tone="error"] { background: #3c2327; color: var(--red); }
+    .badge[data-tone="active"] { background: #2e2745; color: var(--accent); }
+    .branch { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; margin: 8px 0 26px; }
+    .branch span { color: #676773; margin: 0 8px; }
+    .flow { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0; margin: 0 0 24px; gap: 8px; }
+    .step { min-width: 0; position: relative; }
+    .step:not(:last-child)::after { content: ""; position: absolute; height: 1px; background: #35353e; left: 34px; right: 0; top: 13px; }
+    .number { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid #41414b; border-radius: 50%; font-size: 11px; color: var(--muted); margin-bottom: 9px; }
+    .step strong { display: block; font-size: 13px; font-weight: 600; }
+    .step small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .step[data-state="active"] .number { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px #c4b5fd0b; }
+    .step[data-state="done"] .number { color: #101d14; border-color: var(--green); background: var(--green); }
+    .step[data-state="error"] .number { border-color: var(--red); color: var(--red); }
+    .step[data-state="active"] strong { color: var(--accent); }
+    .step[data-state="error"] strong { color: var(--red); }
+    .outcome { border: 1px solid var(--line); background: #101013; border-radius: 12px; padding: 16px; min-height: 118px; }
+    .outcome[data-tone="success"] { border-color: #345341; }
+    .outcome[data-tone="error"] { border-color: #663c43; }
+    .outcome h3 { margin: 0 0 5px; font-size: 15px; font-weight: 600; }
+    .outcome p { margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+    .links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 12px; }
+    .links:empty { display: none; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    a:hover { color: #e3dbff; }
+    .error-detail { margin-top: 12px; font-size: 12px; }
+    .error-detail summary { cursor: pointer; color: var(--red); }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #1d1417; padding: 12px; border-radius: 8px; max-height: 300px; overflow: auto; font: 11px/1.6 ui-monospace, monospace; }
+    button { width: 100%; border: 1px solid #d1c5ff; border-radius: 10px; background: #c4b5fd; color: #181222; font: inherit; font-weight: 650; font-size: 14px; padding: 13px 16px; margin-top: 16px; cursor: pointer; transition: background .15s ease; }
+    button:hover { background: #d7ccff; }
+    button:disabled { background: #24242c; border-color: #35353e; color: #a4a4b0; cursor: default; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    .changes { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 18px; font-size: 12px; }
+    .changes summary { color: #c6c6cf; cursor: pointer; }
+    .commits { padding-left: 18px; color: var(--muted); margin: 12px 0 0; font-size: 12px; }
+    .commits li { padding-left: 2px; margin-top: 8px; overflow-wrap: anywhere; }
+    .empty, .refresh-note { color: var(--muted); font-size: 12px; margin: 12px 0 0; }
+    .footer { font-size: 12px; color: #858591; margin: 24px 0 0; }
+    [hidden] { display: none !important; }
+    @media (max-width: 720px) { main { margin: 36px auto; } .projects { grid-template-columns: 1fr; } .project { padding: 22px; } }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
 <body>
   <main>
-    <div class="project">
-      <button type="button" data-project="imenu">Squash &amp; Merge iMenu</button>
-      <ul class="commits" data-commits="imenu"></ul>
-    </div>
-    <div class="project">
-      <button type="button" data-project="engravida">Squash &amp; Merge Engravida</button>
-      <ul class="commits" data-commits="engravida"></ul>
-    </div>
+    <header>
+      <p class="eyebrow">Merge</p>
+      <h1>Preview <span>→</span> main</h1>
+      <p class="intro">One click validates TypeScript, then squash &amp; merges the validated changes. Follow each step below until GitHub confirms the result.</p>
+    </header>
+    <div class="projects" id="projects"></div>
+    <p class="footer">Validation starts when you click. A failed check stops the merge. Deployment happens separately after merging.</p>
   </main>
-
   <script>
     const ACCESS_KEY = "ANKI_APP_ACCESS_UNTIL";
+    const RESULT_KEY = "MERGE_RESULT_";
     let mergePassword = "";
-    const mergeTimers = new Map();
+    const projects = new Map();
 
     function hasValidAccess() {
       return Date.now() < Number(localStorage.getItem(ACCESS_KEY) || "0");
     }
-
     function grantAccessFor1Day() {
       localStorage.setItem(ACCESS_KEY, String(Date.now() + 24 * 60 * 60 * 1000));
     }
-
     async function getExistingPassword() {
       const response = await fetch("/msg/app.js", { cache: "no-store" });
       if (!response.ok) throw new Error("Could not load password configuration.");
       const source = await response.text();
-      const match = source.match(/const API_KEY = "([^"]+)"/);
-      const expected = match?.[1]?.slice(-3);
+      const expected = source.match(/const API_KEY = "([^"]+)"/)?.[1]?.slice(-3);
       if (!expected) throw new Error("Could not read password configuration.");
       return expected;
     }
-
     async function requireExistingPassword() {
       const expected = await getExistingPassword();
-
       if (!hasValidAccess()) {
         const typed = prompt("Enter password:");
         if (typed === null) return null;
-        if (typed.trim() !== expected) {
-          alert("Wrong password.");
-          return null;
-        }
+        if (typed.trim() !== expected) { alert("Wrong password."); return null; }
         grantAccessFor1Day();
       }
-
       return expected;
     }
-
     function escapeHtml(value) {
       return String(value ?? "").replace(/[&<>"']/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
       }[char]));
     }
-
-    function scheduleMerge(project, button) {
-      clearTimeout(mergeTimers.get(project));
-      mergeTimers.set(project, setTimeout(() => merge(project, button, true), 3000));
-    }
-
-    async function loadCommits(project) {
-      const list = document.querySelector(`[data-commits="${project}"]`);
-      const button = document.querySelector(`[data-project="${project}"]`);
-      if (!list || !button) return;
-
-      const original = button.dataset.label || button.textContent;
-      button.dataset.label = original;
-
+    function saveResult(project, result) {
+      // Never store the password. Only retain enough to recover a merge result.
       try {
-        const response = await fetch("/api/merge", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ project, password: mergePassword, action: "status" })
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.ok) throw new Error(data.error || "Could not load commits.");
-
-        list.innerHTML = (data.commits || [])
-          .map(name => `<li>${escapeHtml(name)}</li>`)
-          .join("");
-
-        if (data.synced) {
-          button.textContent = "Already synced ✓";
-          button.disabled = true;
+        if (result) sessionStorage.setItem(RESULT_KEY + project.id, JSON.stringify(result));
+        else sessionStorage.removeItem(RESULT_KEY + project.id);
+      } catch { /* The current page still works if storage is unavailable. */ }
+    }
+    function savedResult(id) {
+      try { return JSON.parse(sessionStorage.getItem(RESULT_KEY + id) || "null"); }
+      catch { return null; }
+    }
+    async function request(project, action, extra = {}) {
+      const response = await fetch("/api/merge", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: project.id, password: mergePassword, action, ...extra }),
+        signal: AbortSignal.timeout(30000)
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        const error = new Error(data.error || "Could not complete the request.");
+        error.data = data;
+        throw error;
+      }
+      return data;
+    }
+    function setLink(container, url, label) {
+      if (!url) return;
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "https:" || parsed.hostname !== "github.com") return;
+        const a = document.createElement("a");
+        a.href = parsed.href; a.textContent = label; a.target = "_blank"; a.rel = "noopener noreferrer";
+        container.append(a);
+      } catch { /* Ignore invalid links. */ }
+    }
+    function render(project, phase, title, message, options = {}) {
+      project.phase = phase;
+      const card = project.card;
+      const busy = ["loading", "validating", "merging", "confirming"].includes(phase);
+      const tone = ["merged", "synced"].includes(phase) ? "success" :
+        ["failed", "load-error"].includes(phase) ? "error" : busy || phase === "uncertain" ? "active" : "neutral";
+      const labels = { loading: "Loading", ready: "Ready", validating: "Validating", merging: "Merging", confirming: "Confirming", merged: "Merged", synced: "Synced", failed: "Not merged", "load-error": "Unavailable", uncertain: "Unconfirmed" };
+      card.querySelector(".badge").textContent = labels[phase];
+      card.querySelector(".badge").dataset.tone = tone;
+      const outcome = card.querySelector(".outcome");
+      outcome.dataset.tone = tone;
+      outcome.querySelector("h3").textContent = title;
+      outcome.querySelector("p").textContent = message;
+      const links = card.querySelector(".links"); links.replaceChildren();
+      setLink(links, project.prUrl, project.pr ? `Pull request #${project.pr}` : "Pull request");
+      setLink(links, project.checkUrl, "TypeScript check");
+      if (phase === "merged" && project.sha) {
+        setLink(links, `https://github.com/${project.repo}/commit/${project.sha}`, "Merged commit");
+      }
+      const details = card.querySelector(".error-detail");
+      details.hidden = !options.error;
+      details.querySelector("pre").textContent = options.error || "";
+      const button = card.querySelector("button");
+      const buttonLabels = { loading: "Loading changes…", ready: "Validate & merge", validating: "Validating TypeScript…", merging: "Squash & merging…", confirming: "Confirming merge…", merged: project.hasChanges ? "Merge new changes" : "Merged successfully ✓", synced: "Already synced ✓", failed: "Retry validation & merge", "load-error": "Retry loading changes", uncertain: "Check merge result" };
+      button.textContent = buttonLabels[phase];
+      button.disabled = busy || phase === "synced" || (phase === "merged" && !project.hasChanges);
+      card.setAttribute("aria-busy", String(busy));
+      const states = ["waiting", "waiting", "waiting"];
+      const notes = ["TypeScript", "Squash into main", "GitHub confirmation"];
+      if (phase === "validating") { states[0] = "active"; notes[0] = options.checkLabel || "Starting check"; }
+      if (["merging", "confirming", "uncertain", "merged"].includes(phase)) { states[0] = "done"; notes[0] = "Passed"; }
+      if (phase === "merging") { states[1] = "active"; notes[1] = "In progress"; }
+      if (["confirming", "uncertain"].includes(phase)) { states[1] = "active"; notes[1] = "Awaiting confirmation"; states[2] = "active"; notes[2] = "Checking GitHub"; }
+      if (phase === "uncertain") { states[1] = "waiting"; notes[1] = "Not confirmed"; notes[2] = "Unconfirmed"; }
+      if (phase === "merged") { states.fill("done"); notes[1] = "Merged into main"; notes[2] = "Merge confirmed"; }
+      if (phase === "synced") { notes[0] = "Not needed"; notes[1] = "No changes"; states[2] = "done"; notes[2] = "Already synced"; }
+      if (phase === "failed") {
+        const step = options.step ?? 0;
+        if (step === 1) { states[0] = "done"; notes[0] = "Passed"; }
+        else notes[1] = "Not started";
+        states[step] = "error"; notes[step] = step === 0 ? "Stopped" : "Not merged";
+        states[2] = "error"; notes[2] = "Not merged";
+      }
+      card.querySelectorAll(".step").forEach((step, i) => {
+        step.dataset.state = states[i];
+        step.querySelector(".number").textContent = states[i] === "done" ? "✓" : states[i] === "error" ? "!" : String(i + 1);
+        step.querySelector("small").textContent = notes[i];
+        if (states[i] === "active") step.setAttribute("aria-current", "step"); else step.removeAttribute("aria-current");
+      });
+    }
+    function metadata(project, data) {
+      if (data.pr) project.pr = data.pr;
+      if (data.prUrl) project.prUrl = data.prUrl;
+      if (data.validation?.typecheck?.url) project.checkUrl = data.validation.typecheck.url;
+      if (Array.isArray(data.commits)) updateCommits(project, data);
+    }
+    function updateCommits(project, data) {
+      const commits = data.commits || [];
+      project.card.querySelector(".commits").innerHTML = commits.map(name => `<li>${escapeHtml(name)}</li>`).join("");
+      project.card.querySelector(".changes summary").textContent = `Changes to merge · ${commits.length}`;
+      project.card.querySelector(".empty").hidden = commits.length > 0;
+      project.card.querySelector(".empty").textContent = data.synced ? "Preview and main have no differences." : "No commit titles available.";
+    }
+    async function loadCommits(project, preserve = false) {
+      try {
+        const data = await request(project, "status");
+        project.hasChanges = !data.synced;
+        updateCommits(project, data);
+        project.card.querySelector(".refresh-note").hidden = true;
+        if (preserve) {
+          if (project.phase === "merged") showMerged(project);
           return;
         }
-
-        button.textContent = original;
-        button.disabled = false;
-      } catch {
-        list.innerHTML = "";
-        button.textContent = original;
-        button.disabled = false;
-      }
-    }
-
-    async function merge(project, button, validating = false) {
-      button.disabled = true;
-      if (!validating) {
-        button.textContent = "Merging...";
-      }
-
-      try {
-        const response = await fetch("/api/merge", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ project, password: mergePassword })
-        });
-
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || "Merge failed.");
-        }
-
-        if (data.pending) {
-          button.textContent = "Validating...";
-          scheduleMerge(project, button);
-          return;
-        }
-
-        button.textContent = data.merged ? "Merged ✓" : "Already synced ✓";
-        await loadCommits(project);
+        render(project, data.synced ? "synced" : "ready", data.synced ? "Already synced" : "Ready to merge",
+          data.synced ? "There are no changes to merge from preview into main." : "Click below to run the TypeScript check. If it passes, these changes are merged automatically.");
       } catch (error) {
-        clearTimeout(mergeTimers.get(project));
-        button.textContent = "Failed";
-        alert(error?.message || String(error));
-        setTimeout(() => loadCommits(project), 1200);
+        project.hasChanges = false;
+        if (preserve) {
+          const note = project.card.querySelector(".refresh-note");
+          note.hidden = false; note.textContent = "Could not refresh the remaining changes. Reload to check them.";
+          if (project.phase === "merged") showMerged(project);
+        } else render(project, "load-error", "Could not load changes", error.message);
       }
     }
-
+    function showMerged(project) {
+      render(project, "merged", "Merged successfully", project.hasChanges
+        ? "GitHub confirmed this merge. New preview changes are available below for a separate merge."
+        : "GitHub confirmed the squash merge into main. These changes are merged.");
+    }
+    async function completed(project, data) {
+      metadata(project, data);
+      if (!data.merged) {
+        saveResult(project, null);
+        render(project, "synced", "Already synced", "There are no remaining changes to merge.");
+        await loadCommits(project, true);
+        return;
+      }
+      project.sha = data.sha; project.hasChanges = false;
+      saveResult(project, { phase: "merged", pr: project.pr, prUrl: project.prUrl, sha: project.sha });
+      showMerged(project);
+      await loadCommits(project, true);
+    }
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+    async function confirmResult(project) {
+      render(project, "confirming", "Confirming with GitHub", "The merge request may have completed. Checking the pull request before reporting a result.");
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const result = await request(project, "result", { pr: project.pr });
+          metadata(project, result);
+          if (result.merged) { await completed(project, result); return; }
+          if (result.closed) {
+            saveResult(project, null);
+            render(project, "failed", "Not merged", "GitHub confirms the pull request was closed without merging.", { step: 1 });
+            return;
+          }
+        } catch { /* A failed read cannot prove that the merge failed. */ }
+        if (attempt < 3) await delay(3000);
+      }
+      render(project, "uncertain", "Merge result not confirmed", "GitHub has not confirmed the merge. Check the result again or inspect the pull request. No additional merge request will be sent.");
+    }
+    async function startMerge(project) {
+      saveResult(project, null);
+      project.pr = null; project.prUrl = null; project.checkUrl = null; project.sha = null;
+      const started = Date.now();
+      render(project, "validating", "Validating TypeScript", "Preparing the preview → main pull request. Merging begins only after the check passes.");
+      while (Date.now() - started < 15 * 60 * 1000) {
+        let data;
+        try {
+          data = await request(project, "validate");
+          metadata(project, data);
+        } catch (error) {
+          metadata(project, error.data || {});
+          const check = error.data?.validation?.typecheck;
+          render(project, "failed", check?.state === "failure" ? "Validation did not pass · not merged" : "Validation interrupted · not merged",
+            check?.state === "failure" ? "The required TypeScript check did not pass. Inspect the check, fix any reported errors, then retry." : error.message,
+            { error: check?.error || (check?.conclusion ? `Check conclusion: ${check.conclusion}` : null) });
+          return;
+        }
+        if (data.synced) { await completed(project, data); return; }
+        if (data.ready) {
+          render(project, "merging", "Validation passed · merging", "The TypeScript check passed. Sending the squash merge for this exact validated commit to GitHub.");
+          saveResult(project, { phase: "uncertain", pr: project.pr, prUrl: project.prUrl });
+          try {
+            const result = await request(project, "merge", { pr: project.pr, headSha: data.headSha });
+            metadata(project, result);
+            if (result.pending) {
+              saveResult(project, null);
+              render(project, "validating", "Validation is running again", "GitHub is checking this commit again. Waiting before merging.");
+              await delay(3000);
+              continue;
+            }
+            await completed(project, result);
+          } catch (error) {
+            metadata(project, error.data || {});
+            if (!error.data || error.data.uncertain) { await confirmResult(project); return; }
+            saveResult(project, null);
+            const check = error.data.validation?.typecheck;
+            render(project, "failed", "Not merged", error.data.code === "preview_changed"
+              ? "Preview changed after validation. Retry to validate and merge the new changes."
+              : error.message, { step: check?.state === "failure" ? 0 : 1, error: check?.error });
+          }
+          return;
+        }
+        const running = data.validation?.typecheck?.status === "in_progress";
+        const elapsed = Math.floor((Date.now() - started) / 1000);
+        const duration = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+        render(project, "validating", running ? "TypeScript check is running" : "Waiting for the TypeScript check",
+          `${running ? "GitHub is validating the preview changes." : "Waiting for GitHub to start the required check."} The merge will start automatically if it passes. Elapsed: ${duration}.`,
+          { checkLabel: running ? "Running" : "Queued" });
+        await delay(3000);
+      }
+      render(project, "failed", "Validation timed out · not merged", "This page waited 15 minutes without a passing check. Inspect the check on GitHub, then retry. No merge request was sent.");
+    }
+    function createProject(id, name, repo) {
+      const card = document.createElement("section");
+      card.className = "project"; card.dataset.id = id; card.setAttribute("aria-labelledby", `${id}-title`);
+      card.innerHTML = `<div class="project-header"><h2 id="${id}-title">${name}</h2><span class="badge">Loading</span></div>
+        <p class="branch">preview <span>→</span> main</p>
+        <ol class="flow" aria-label="Merge progress">${["Validate", "Merge", "Result"].map((label, i) => `<li class="step"><span class="number" aria-hidden="true">${i + 1}</span><strong>${label}</strong><small></small></li>`).join("")}</ol>
+        <div class="outcome" role="status" aria-live="polite" aria-atomic="true"><h3></h3><p></p></div>
+        <div class="links"></div>
+        <details class="error-detail" hidden open><summary>Validation details</summary><pre></pre></details>
+        <button type="button" data-project="${id}" disabled>Loading changes…</button>
+        <details class="changes" open><summary>Changes to merge</summary><ul class="commits" data-commits="${id}"></ul><p class="empty">Loading changes…</p></details>
+        <p class="refresh-note" hidden></p>`;
+      document.querySelector("#projects").append(card);
+      const project = { id, repo, card, hasChanges: false, busy: false };
+      projects.set(id, project);
+      card.querySelector("button").addEventListener("click", async () => {
+        if (project.busy) return;
+        project.busy = true;
+        try {
+          if (project.phase === "load-error") {
+            render(project, "loading", "Loading changes", "Comparing preview with main…");
+            await loadCommits(project);
+          } else if (project.phase === "uncertain") await confirmResult(project);
+          else await startMerge(project);
+        } finally { project.busy = false; }
+      });
+      render(project, "loading", "Loading changes", "Comparing preview with main…");
+      return project;
+    }
+    async function initialize(project) {
+      const saved = savedResult(project.id);
+      if (saved && Number.isSafeInteger(saved.pr) && ["merged", "uncertain"].includes(saved.phase)) {
+        metadata(project, saved);
+        if (saved.phase === "merged") {
+          project.sha = saved.sha; showMerged(project);
+          await loadCommits(project, true);
+        } else {
+          project.busy = true;
+          try { await loadCommits(project, true); await confirmResult(project); }
+          finally { project.busy = false; }
+        }
+      } else await loadCommits(project);
+    }
     (async () => {
       try {
         mergePassword = await requireExistingPassword();
         if (!mergePassword) return;
-
-        document.body.style.display = "flex";
-
-        document.querySelectorAll("[data-project]").forEach(button => {
-          button.addEventListener("click", () => merge(button.dataset.project, button));
-          loadCommits(button.dataset.project);
-        });
-      } catch (error) {
-        alert(error?.message || String(error));
-      }
+        document.body.style.display = "block";
+        await Promise.all([
+          initialize(createProject("imenu", "iMenu", "metrix0/imenu")),
+          initialize(createProject("engravida", "Engravida", "metrix0/EngravidaHub"))
+        ]);
+      } catch (error) { alert(error?.message || String(error)); }
     })();
   </script>
 </body>
