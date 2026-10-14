@@ -637,6 +637,10 @@
             if (!(event.ctrlKey || event.metaKey)) event.preventDefault();
             return;
         }
+        // A completed text drag may dispatch click on the block wrapper.
+        // Never replace that native text range with a whole-block selection.
+        const nativeSelection = getSelection();
+        if (nativeSelection && !nativeSelection.isCollapsed && root.contains(nativeSelection.anchorNode)) return;
         if (w && !editable(event.target) && !w.querySelector('td')) { select(w); return; }
         clearSelection();
         // Browsers can collapse native paragraph selection in nested contenteditable blocks.
@@ -882,34 +886,8 @@
         transact(() => move(items, w, position, event.altKey));
     });
     root.addEventListener('dragend', () => { drag = null; hydrate(); });
-    let marquee = null, selectionBox = null, suppressClick = false;
-    document.addEventListener('pointerdown', event => {
-        const rect = root.getBoundingClientRect();
-        if (event.clientX < rect.left - 30 || event.clientX > rect.right + 30 || event.clientY < rect.top || event.clientY > rect.bottom) return;
-        if (event.button !== 0 || event.pointerType === 'touch' || state.saveInFlight ||
-            editable(event.target) || event.target.closest('button,input,a,table,img,[data-page-title]')) return;
-        marquee = { x: event.clientX, y: event.clientY, started: false };
-    });
-    document.addEventListener('pointermove', event => {
-        if (!marquee || !(event.buttons & 1)) return;
-        if (!marquee.started && Math.hypot(event.clientX - marquee.x, event.clientY - marquee.y) < 5) return;
-        marquee.started = true; event.preventDefault();
-        const top = Math.min(event.clientY, marquee.y), bottom = Math.max(event.clientY, marquee.y);
-        clearSelection();
-        for (const w of visibleBlocks()) {
-            const rect = w.getBoundingClientRect();
-            if (rect.bottom >= top && rect.top <= bottom && !w.parentElement.closest('.block-selected')) select(w, false, true);
-        }
-        if (!selectionBox) { selectionBox = document.createElement('div'); selectionBox.className = 'notion-selection-box'; document.body.appendChild(selectionBox); }
-        Object.assign(selectionBox.style, { left: `${Math.min(event.clientX, marquee.x)}px`, top: `${top}px`, width: `${Math.abs(event.clientX - marquee.x)}px`, height: `${bottom-top}px` });
-    });
-    document.addEventListener('pointerup', () => {
-        suppressClick = Boolean(marquee?.started); marquee = null; selectionBox?.remove(); selectionBox = null;
-        setTimeout(() => { suppressClick = false; }, 0);
-    });
-    root.addEventListener('click', event => {
-        if (suppressClick) { event.preventDefault(); event.stopImmediatePropagation(); }
-    }, true);
+    // Let the browser handle drag selection across lines and blocks.
+    // Whole-block selection remains available through the block handles and shortcuts.
     document.addEventListener('notion:render', () => { hydrate(); history = []; historyIndex = -1; clearSelection(); record(); });
     document.addEventListener('notion:saved', event => {
         // Remap every historic DOM snapshot to the new Notion IDs; undo remains
