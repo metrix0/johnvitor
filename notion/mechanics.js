@@ -639,6 +639,19 @@
         }
         if (w && !editable(event.target) && !w.querySelector('td')) { select(w); return; }
         clearSelection();
+        // Browsers can collapse native paragraph selection in nested contenteditable blocks.
+        // Triple-click should reliably select the text of the clicked Notion block.
+        if (event.detail === 3) {
+            const target = event.target.closest('[data-editable="true"], [data-page-title="true"], td[contenteditable="true"]');
+            if (target) {
+                const range = document.createRange();
+                range.selectNodeContents(target);
+                const selection = getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                return;
+            }
+        }
         if (event.target === root) {
             const blocks = visibleBlocks(), last = blocks[blocks.length - 1];
             if (!last || event.clientY > last.getBoundingClientRect().bottom) {
