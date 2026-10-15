@@ -126,5 +126,5 @@ test('fingerprint ignores changes outside main, detects markup inside main',()=>
   assert.equal(hashSnapshot(snapshotPage(page('Sold out','A'))),
     hashSnapshot(snapshotPage(page('Sold out','B'))));
   assert.notEqual(hashSnapshot(snapshotPage(page('Sold out','A'))),
-    hashSnapshot(snapshotPage('Sold out','A','<span data-amount="2"></span>')));
+    hashSnapshot(snapshotPage(page('Sold out','A','<span data-amount="2"></span>'))));
 });
