@@ -1,6 +1,8 @@
 // Independent five-minute GitHub backup for the Netlify AstroVials monitor.
 import pageFingerprint from '../../lib/astrovials-page-fingerprint.js';
-const {snapshotPage,hashSnapshot} = pageFingerprint;
+import pageFetch from '../../lib/astrovials-page-fetch.js';
+const {hashSnapshot} = pageFingerprint;
+const {fetchProductSnapshot} = pageFetch;
 const PAGE_URL='https://astrovials.com/en/shop/estradiol-enanthate-mct';
 const ALERT_TOPIC_URL='https://ntfy.sh/astrovialseen';
 const STATE_TOPIC_URL='https://ntfy.sh/astrovialseen-github-v3-state-20261015-jv';
@@ -38,15 +40,11 @@ async function post(url,title,body,priority) {
 async function main() {
   try {
     const previous=await previousHash();
-    const response=await fetch(PAGE_URL,{
-      headers:{Accept:'text/html','Cache-Control':'no-cache, no-store',Pragma:'no-cache',
-        'User-Agent':'Mozilla/5.0 AstroVialsGitHubBackup/3.0'},
-      cache:'no-store',signal:AbortSignal.timeout(14000)
+    // Use the same two-attempt protection as Netlify.
+    const {snapshot,attempts}=await fetchProductSnapshot({
+      url:PAGE_URL, userAgent:'Mozilla/5.0 AstroVialsGitHubBackup/3.1'
     });
-    if (!response.ok) throw new Error('AstroVials HTTP '+response.status);
-    if (!(response.headers.get('content-type')||'').includes('text/html'))
-      throw new Error('Unexpected product page content type');
-    const hash=hashSnapshot(snapshotPage(await response.text()));
+    const hash=hashSnapshot(snapshot);
     if (!previous) {
       // Initializing new semantic state is not an actual page change.
       await post(STATE_TOPIC_URL,'AstroVials backup semantic state',HASH_PREFIX+hash,1);
