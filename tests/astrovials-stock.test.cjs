@@ -60,6 +60,8 @@ test('Sold out -> BANANA sends a priority-5 ntfy alarm', async () => {
     assert.match(t.alarms[1].body, /Before: .*Sold out/);
     assert.match(t.alarms[1].body, /After: .*BANANA/);
     assert.equal(t.alarms[1].headers.Priority, '5');
+    assert.equal(t.alarms[1].headers.Title, 'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED');
+    assert.equal(t.alarms[1].headers.Click, 'https://astrovials.com/en/shop/estradiol-enanthate-mct');
     assert.equal(JSON.parse((await t.handler()).body).notified, false);
   } finally { t.restore(); }
 });
@@ -77,5 +79,41 @@ test('ntfy failure never advances baseline; next run retries and alerts', async 
     assert.equal(retried.notified, true);
     assert.equal(t.alarms.length, 3);
     assert.match(t.alarms[2].body, /BANANA/);
+  } finally { t.restore(); }
+});
+
+test('ANY single-character or HTML markup difference causes ALARM TRIGGER, including reversions', async () => {
+  const t = setup('<html><main>Sold out</main></html>');
+  try {
+    await t.handler();
+    const expectedChanges = [
+      '<html><main>Sold ouT</main></html>',
+      '<html><main class="stock">Sold ouT</main></html>',
+      '<html><main>Sold out</main></html>'
+    ];
+    for (const [index, html] of expectedChanges.entries()) {
+      t.setPage(html);
+      const result = JSON.parse((await t.handler()).body);
+      assert.equal(result.changed, true, 'change ' + index);
+      assert.equal(result.notified, true, 'change ' + index);
+      assert.equal(t.alarms[index + 1].headers.Title, 'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED');
+      assert.equal(t.alarms[index + 1].headers.Priority, '5');
+    }
+    assert.equal(t.alarms.length, 4);
+  } finally { t.restore(); }
+});
+
+test('empty page produces an ALARM TRIGGER watcher failure and does not replace baseline', async () => {
+  const t = setup();
+  try {
+    await t.handler();
+    t.setPage('');
+    const failed = JSON.parse((await t.handler()).body);
+    assert.equal(failed.ok, false);
+    assert.equal(failed.failureAlarmSent, true);
+    assert.equal(t.alarms[1].headers.Title, 'ALARM TRIGGER - AstroVials WATCHER FAILED');
+    t.setPage('<html><main>BANANA</main></html>');
+    assert.equal(JSON.parse((await t.handler()).body).notified, true);
+    assert.equal(t.alarms[2].headers.Title, 'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED');
   } finally { t.restore(); }
 });
