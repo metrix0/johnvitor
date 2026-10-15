@@ -1,67 +1,125 @@
-// Independent five-minute GitHub backup for the Netlify AstroVials monitor.
+// Independent GitHub Actions backup. Durable comparison state lives on a dedicated
+// GitHub branch, never in the expiring ntfy history or the website's main branch.
 import pageFingerprint from '../../lib/astrovials-page-fingerprint.js';
 import pageFetch from '../../lib/astrovials-page-fetch.js';
-const {hashSnapshot} = pageFingerprint;
-const {fetchProductSnapshot} = pageFetch;
-const PAGE_URL='https://astrovials.com/en/shop/estradiol-enanthate-mct';
-const ALERT_TOPIC_URL='https://ntfy.sh/astrovialseen';
-const STATE_TOPIC_URL='https://ntfy.sh/astrovialseen-github-v3-state-20261015-jv';
-const HASH_PREFIX='sha256:';
 
-async function previousHash() {
-  const response=await fetch(STATE_TOPIC_URL+'/json?poll=1&since=latest',{
-    headers:{Accept:'application/x-ndjson'},cache:'no-store',signal:AbortSignal.timeout(10000)
+const { hashSnapshot } = pageFingerprint;
+const { fetchProductSnapshot } = pageFetch;
+const PAGE_URL = 'https://astrovials.com/en/shop/estradiol-enanthate-mct';
+const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
+
+const STATE_BRANCH = 'astrovials-watcher-state';  // Keep stable across code revisions.
+const STATE_PATH = 'astrovials/estradiol-enanthate-mct.json';
+const ALGORITHM = 'product-dom-semantic-v2';
+const githubRepo = process.env.GITHUB_REPOSITORY;
+const githubToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+
+async function githubRequest(url, options = {}) {
+  if (!githubRepo || !githubToken) throw new Error('GitHub state storage not configured');
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: 'Bearer ' + githubToken,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(options.headers || {})
+    },
+    cache: 'no-store',
+    signal: AbortSignal.timeout(10000)
   });
-  if (!response.ok) throw new Error('Backup state read HTTP '+response.status);
-  const messages=(await response.text()).split('\n').filter(Boolean)
-    .map(line=>{try{return JSON.parse(line)}catch{return null}})
-    .filter(entry=>entry?.event==='message'&&typeof entry.message==='string');
-  const latest=messages.at(-1)?.message||'';
-  return /^sha256:[0-9a-f]{64}$/.test(latest)?latest.slice(HASH_PREFIX.length):null;
+  const raw = await response.text();
+  if (!response.ok) throw new Error('GitHub state HTTP ' + response.status + ': ' + raw.slice(0,300));
+  return JSON.parse(raw);
 }
 
-async function post(url,title,body,priority) {
+const stateUrl = () =>
+  'https://api.github.com/repos/' + githubRepo + '/contents/' + STATE_PATH;
+
+async function readState() {
+  const data = await githubRequest(stateUrl() + '?ref=' + encodeURIComponent(STATE_BRANCH));
+  const current = JSON.parse(Buffer.from(data.content.replace(/\s/g, ''), 'base64').toString('utf8'));
+  if (current.version !== 1 || current.algorithm !== ALGORITHM ||
+      current.page !== PAGE_URL || !/^[a-f0-9]{64}$/.test(current.hash)) {
+    // Never silently reset or compare differently-versioned snapshots.
+    throw new Error('Backup baseline exists but has an incompatible format');
+  }
+  return { current, blobSha: data.sha };
+}
+
+async function saveState(next, blobSha) {
+  const content = Buffer.from(JSON.stringify(next, null, 2) + '\n').toString('base64');
+  await githubRequest(stateUrl(), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: 'chore(watcher-state): update durable AstroVials product fingerprint',
+      branch: STATE_BRANCH,
+      sha: blobSha,
+      content
+    })
+  });
+}
+
+async function sendAlarm(previous, current) {
   let lastError;
-  for (let attempt=0;attempt<2;attempt++) {
+  for (let attempt=0; attempt<2; attempt++) {
     try {
-      const response=await fetch(url,{
-        method:'POST',
-        headers:{'Content-Type':'text/plain; charset=utf-8',Title:title,Priority:String(priority),
-          ...(url===ALERT_TOPIC_URL?{Tags:'warning,rotating_light',Click:PAGE_URL}:{})},
-        body,signal:AbortSignal.timeout(10000)
+      const response = await fetch(ALERT_TOPIC_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          Title: 'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED (BACKUP)',
+          Priority: '5',
+          Tags: 'warning,rotating_light',
+          Click: PAGE_URL
+        },
+        body: 'PRODUCT PAGE CONTENT CHANGED\n' + PAGE_URL +
+          '\nPrevious fingerprint: ' + previous +
+          '\nCurrent fingerprint: ' + current,
+        signal: AbortSignal.timeout(9000)
       });
-      if (!response.ok) throw new Error('ntfy HTTP '+response.status);
+      if (!response.ok) throw new Error('ntfy HTTP ' + response.status);
       return;
-    } catch (error) {lastError=error}
+    } catch (error) { lastError = error; }
   }
   throw lastError;
 }
 
 async function main() {
-  try {
-    const previous=await previousHash();
-    // Use the same two-attempt protection as Netlify.
-    const {snapshot,attempts}=await fetchProductSnapshot({
-      url:PAGE_URL, userAgent:'Mozilla/5.0 AstroVialsGitHubBackup/3.1'
-    });
-    const hash=hashSnapshot(snapshot);
-    if (!previous) {
-      // Initializing new semantic state is not an actual page change.
-      await post(STATE_TOPIC_URL,'AstroVials backup semantic state',HASH_PREFIX+hash,1);
-      console.log(JSON.stringify({ok:true,initialized:true,notified:false,provider:'github-actions'}));
-      return;
-    }
-    if (previous!==hash) {
-      await post(ALERT_TOPIC_URL,'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED (BACKUP)',
-        'PRODUCT PAGE CONTENT CHANGED\n'+PAGE_URL+'\nPrevious fingerprint: '+previous+
-          '\nCurrent fingerprint: '+hash,5);
-    }
-    // Refresh the ntfy state TTL; acknowledge only after any change alert succeeded.
-    await post(STATE_TOPIC_URL,'AstroVials backup semantic state',HASH_PREFIX+hash,1);
-    console.log(JSON.stringify({ok:true,changed:previous!==hash,notified:previous!==hash,provider:'github-actions'}));
-  } catch (error) {
-    console.error('AstroVials backup failed:',error?.message||String(error));
-    process.exitCode=1;
+  // First load durable history. Missing/unreadable history is an error, never
+  // a page change and never permission to silently choose a new baseline.
+  const { current: previous, blobSha } = await readState();
+  const { snapshot, attempts } = await fetchProductSnapshot({
+    url: PAGE_URL,
+    userAgent: 'Mozilla/5.0 AstroVialsGitHubBackup/4.0'
+  });
+  const hash = hashSnapshot(snapshot);
+  if (previous.hash !== hash) {
+    await sendAlarm(previous.hash, hash);
   }
+  // Store current canonical DOM for diagnosing any future false positives.
+  // Save after sending, so failed notifications don't discard the change.
+  if (previous.hash !== hash || previous.snapshot !== snapshot) {
+    await saveState({
+      version: 1,
+      algorithm: ALGORITHM,
+      page: PAGE_URL,
+      hash,
+      snapshot,
+      checkedAt: new Date().toISOString()
+    }, blobSha);
+  }
+  console.log(JSON.stringify({
+    ok: true, provider: 'github-actions',
+    changed: previous.hash !== hash,
+    notified: previous.hash !== hash,
+    hash, attempts, stateBranch: STATE_BRANCH
+  }));
 }
-await main();
+
+main().catch(error => {
+  // Failed GitHub jobs are surfaced in Actions, without spamming the phone
+  // with a false "page changed" alert.
+  console.error('AstroVials backup monitor FAILED:',error?.message||String(error));
+  process.exitCode=1;
+});
