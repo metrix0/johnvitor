@@ -74,11 +74,12 @@ exports.handler = async function(event) {
     const contentType = siteResponse.headers.get('content-type') || '';
     if (!contentType.includes('text/html')) throw new Error(`Unexpected AstroVials content type: ${contentType || 'none'}`);
 
-    const html = await siteResponse.text();
-    if (!html.trim()) throw new Error('AstroVials returned an empty page');
+    const bytes = Buffer.from(await siteResponse.arrayBuffer());
+    const html = bytes.toString('utf8');
+    if (!bytes.length || !html.trim()) throw new Error('AstroVials returned an empty page');
 
-    // Compare the entire response, not just availability labels or a single page state.
-    const hash = createHash('sha256').update(html, 'utf8').digest('hex');
+    // Compare all response bytes, including differences that decode to identical text.
+    const hash = createHash('sha256').update(bytes).digest('hex');
     if (previous?.hash === hash) {
       return json(200, { ok: true, changed: false, notified: false, hash });
     }
