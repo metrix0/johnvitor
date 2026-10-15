@@ -117,3 +117,16 @@ test('empty page produces an ALARM TRIGGER watcher failure and does not replace 
     assert.equal(t.alarms[2].headers.Title, 'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED');
   } finally { t.restore(); }
 });
+
+test('different raw bytes trigger alarm even when decoded HTML is visually identical', async () => {
+  const t = setup(Uint8Array.from([60, 112, 62, 255, 60, 47, 112, 62]));
+  try {
+    const first = JSON.parse((await t.handler()).body);
+    assert.equal(first.notified, true);
+    t.setPage(Uint8Array.from([60, 112, 62, 254, 60, 47, 112, 62]));
+    const changed = JSON.parse((await t.handler()).body);
+    assert.equal(changed.changed, true);
+    assert.equal(changed.notified, true);
+    assert.equal(t.alarms[1].headers.Title, 'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED');
+  } finally { t.restore(); }
+});
