@@ -89,7 +89,7 @@ exports.handler = async function(event) {
       : describeDifference(previous.html, html);
 
     await notify(
-      isFirstRun ? 'ALARM - AstroVials monitor initialized' : 'ALARM - AstroVials PRODUCT PAGE CHANGED',
+      isFirstRun ? 'ALARM TRIGGER - AstroVials monitor initialized' : 'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED',
       `${isFirstRun ? 'INITIAL WATCHER ALARM' : 'PAGE CONTENT CHANGED'}\n${PAGE_URL}\n${description}`
     );
 
@@ -103,7 +103,7 @@ exports.handler = async function(event) {
     console.error('AstroVials watcher failure:', reason);
     let failureAlarmSent = false;
     try {
-      await notify('ALARM - AstroVials WATCHER FAILED', `AstroVials watcher failed: ${reason}\n${PAGE_URL}`);
+      await notify('ALARM TRIGGER - AstroVials WATCHER FAILED', `AstroVials watcher failed: ${reason}\n${PAGE_URL}`);
       failureAlarmSent = true;
     } catch (notifyError) {
       console.error('AstroVials failure notification also failed:', notifyError);
