@@ -6,8 +6,8 @@ const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
 const STATE_TOPIC_URL = 'https://ntfy.sh/astrovialseen-github-v2-state-20261015-jv';
 const HASH_PREFIX = 'sha256:';
 
-function digest(html) {
-  return createHash('sha256').update(html, 'utf8').digest('hex');
+function digest(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
 }
 
 async function previousHash() {
@@ -63,9 +63,10 @@ async function main() {
     if (!response.ok) throw new Error('AstroVials HTTP ' + response.status);
     const type = response.headers.get('content-type') || '';
     if (!type.includes('text/html')) throw new Error('Unexpected page content type: ' + (type || 'none'));
-    const html = await response.text();
-    if (!html.trim()) throw new Error('AstroVials page returned empty HTML');
-    const current = digest(html);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const html = bytes.toString('utf8');
+    if (!bytes.length || !html.trim()) throw new Error('AstroVials page returned empty HTML');
+    const current = digest(bytes);
 
     if (previous === current) {
       console.log(JSON.stringify({ ok: true, changed: false, provider: 'github-actions' }));
