@@ -1,0 +1,22 @@
+name: AstroVials backup state integrity check
+on:
+  push:
+    paths:
+      - ".github/workflows/astrovials-backup-state-validation.yml"
+      - ".github/scripts/astrovials-backup.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate syntax
+        run: node --check .github/scripts/astrovials-backup.mjs
+      - name: Read migrated durable baseline and compare real product snapshot without notifying
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASTROVIALS_BACKUP_DRY_RUN: '1'
+        run: node .github/scripts/astrovials-backup.mjs
