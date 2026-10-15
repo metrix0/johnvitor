@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 
 const PAGE_URL = 'https://astrovials.com/en/shop/estradiol-enanthate-mct';
 const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
-const STATE_TOPIC_URL = 'https://ntfy.sh/astrovialseen-github-state-20261001-jv';
+const STATE_TOPIC_URL = 'https://ntfy.sh/astrovialseen-github-v2-state-20261015-jv';
 const HASH_PREFIX = 'sha256:';
 
 function digest(html) {
