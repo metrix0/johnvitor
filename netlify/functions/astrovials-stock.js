@@ -1,124 +1,113 @@
-const SITE_URL = 'https://astrovials.com/';
+const { createHash } = require('node:crypto');
+const { connectLambda, getStore } = require('@netlify/blobs');
+
+const PAGE_URL = 'https://astrovials.com/en/shop/estradiol-enanthate-mct';
 const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
-const STATE_TOPIC_URL = 'https://ntfy.sh/astrovialseen-site-state-20261001-jv';
+const STORE_NAME = 'astrovials-page-monitor';
+const STORE_KEY = 'estradiol-enanthate-mct-v1';
 
 function json(statusCode, body) {
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store'
-    },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
     body: JSON.stringify(body)
   };
 }
 
-function detectSiteState(html) {
-  const hasComingSoonHeading = /<h1\b[^>]*>\s*Coming soon\s*<\/h1>/i.test(html);
-  const hasNotOpenMessage = /<p\b[^>]*>\s*This shop is not open yet\.\s*<\/p>/i.test(html);
-
-  return hasComingSoonHeading && hasNotOpenMessage
-    ? 'coming_soon'
-    : 'changed';
+function excerpt(content, index) {
+  const start = Math.max(0, index - 50);
+  return content.slice(start, index + 80).replace(/[\r\n\t]+/g, ' ').slice(0, 140);
 }
 
-async function getPreviousState() {
-  const response = await fetch(`${STATE_TOPIC_URL}/json?poll=1&since=latest`, {
-    headers: {
-      'Accept': 'application/x-ndjson'
+function describeDifference(oldHtml, newHtml) {
+  if (typeof oldHtml !== 'string') return 'The previous page snapshot was not available.';
+  let index = 0;
+  while (index < oldHtml.length && index < newHtml.length && oldHtml[index] === newHtml[index]) index++;
+  return `Before: ${excerpt(oldHtml, index)}\nAfter: ${excerpt(newHtml, index)}`;
+}
+
+async function notify(title, message) {
+  // Do not suppress the alert on a network error: the next scheduled run must retry.
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(ALERT_TOPIC_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          Title: title,
+          Priority: '5',
+          Tags: 'warning,rotating_light',
+          Click: PAGE_URL
+        },
+        body: message,
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!response.ok) throw new Error(`ntfy HTTP ${response.status}`);
+      return;
+    } catch (error) {
+      lastError = error;
     }
-  });
-
-  if (!response.ok) {
-    throw new Error(`state read HTTP ${response.status}`);
   }
-
-  const body = await response.text();
-  const messages = body
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch {
-        return null;
-      }
-    })
-    .filter((entry) => entry && entry.event === 'message');
-
-  const latest = messages[messages.length - 1];
-  return ['coming_soon', 'changed'].includes(latest?.message)
-    ? latest.message
-    : null;
+  throw lastError;
 }
 
-async function saveState(state) {
-  const response = await fetch(STATE_TOPIC_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Title': 'AstroVials site state',
-      'Priority': '1'
-    },
-    body: state
-  });
-
-  if (!response.ok) {
-    throw new Error(`state write HTTP ${response.status}`);
-  }
-}
-
-async function sendAlarm() {
-  const response = await fetch(ALERT_TOPIC_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Title': 'ALARM TRIGGER - AstroVials SITE CHANGED',
-      'Priority': '5',
-      'Tags': 'warning,rotating_light',
-      'Click': SITE_URL
-    },
-    body: 'TRIGGER ALARM - AstroVials no longer shows the current Coming Soon page. Check the site now.'
-  });
-
-  if (!response.ok) {
-    throw new Error(`ntfy HTTP ${response.status}`);
-  }
-}
-
-exports.handler = async function() {
+exports.handler = async function(event) {
   try {
-    const siteResponse = await fetch(`${SITE_URL}?sitecheck=${Date.now()}`, {
-      headers: {
-        'Accept': 'text/html',
-        'Cache-Control': 'no-cache',
-        'User-Agent': 'Mozilla/5.0 AstroVialsSiteWatcher/1.0'
-      }
-    });
+    connectLambda(event);
+    // Strong consistency prevents a recently saved snapshot from appearing stale.
+    // Site-wide Blobs persist between deployments (unlike in-memory state or ntfy history).
+    const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+    const previous = await store.get(STORE_KEY, { type: 'json' });
 
-    if (!siteResponse.ok) {
-      return json(502, { ok: false, error: `AstroVials HTTP ${siteResponse.status}` });
-    }
+    const siteResponse = await fetch(PAGE_URL, {
+      headers: {
+        Accept: 'text/html',
+        'Cache-Control': 'no-cache, no-store',
+        Pragma: 'no-cache',
+        'User-Agent': 'Mozilla/5.0 AstroVialsPageWatcher/2.0'
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!siteResponse.ok) throw new Error(`AstroVials HTTP ${siteResponse.status}`);
+    const contentType = siteResponse.headers.get('content-type') || '';
+    if (!contentType.includes('text/html')) throw new Error(`Unexpected AstroVials content type: ${contentType || 'none'}`);
 
     const html = await siteResponse.text();
-    const state = detectSiteState(html);
-    const previousState = await getPreviousState();
-    const shouldNotify = state === 'changed' && previousState === 'coming_soon';
+    if (!html.trim()) throw new Error('AstroVials returned an empty page');
 
-    if (shouldNotify) {
-      await sendAlarm();
+    // Compare the entire response, not just availability labels or a single page state.
+    const hash = createHash('sha256').update(html, 'utf8').digest('hex');
+    if (previous?.hash === hash) {
+      return json(200, { ok: true, changed: false, notified: false, hash });
     }
 
-    await saveState(state);
+    const isFirstRun = !previous?.hash;
+    const description = isFirstRun
+      ? 'No previous baseline existed. The current page has been captured and this is an initial alarm.'
+      : describeDifference(previous.html, html);
 
-    return json(200, {
-      ok: true,
-      state,
-      previousState,
-      notified: shouldNotify
-    });
+    await notify(
+      isFirstRun ? 'ALARM - AstroVials monitor initialized' : 'ALARM - AstroVials PRODUCT PAGE CHANGED',
+      `${isFirstRun ? 'INITIAL WATCHER ALARM' : 'PAGE CONTENT CHANGED'}\n${PAGE_URL}\n${description}`
+    );
+
+    // Only acknowledge the new state after ntfy confirms accepting the alert.
+    // If notification fails, keep the old hash so next run tries again.
+    await store.setJSON(STORE_KEY, { hash, html, checkedAt: new Date().toISOString() });
+
+    return json(200, { ok: true, changed: !isFirstRun, initialized: isFirstRun, notified: true, hash });
   } catch (error) {
-    return json(502, { ok: false, error: error?.message || String(error) });
+    const reason = error?.message || String(error);
+    console.error('AstroVials watcher failure:', reason);
+    let failureAlarmSent = false;
+    try {
+      await notify('ALARM - AstroVials WATCHER FAILED', `AstroVials watcher failed: ${reason}\n${PAGE_URL}`);
+      failureAlarmSent = true;
+    } catch (notifyError) {
+      console.error('AstroVials failure notification also failed:', notifyError);
+    }
+    return json(502, { ok: false, error: reason, failureAlarmSent });
   }
 };
