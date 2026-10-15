@@ -94,6 +94,10 @@ async function main() {
     userAgent: 'Mozilla/5.0 AstroVialsGitHubBackup/4.0'
   });
   const hash = hashSnapshot(snapshot);
+  if (process.env.ASTROVIALS_BACKUP_DRY_RUN === '1') {
+    console.log(JSON.stringify({ok:true,dryRun:true,baselineFound:true,changed:previous.hash!==hash,hash,previousHash:previous.hash,attempts}));
+    return;
+  }
   if (previous.hash !== hash) {
     await sendAlarm(previous.hash, hash);
   }
