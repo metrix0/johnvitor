@@ -7,6 +7,8 @@ on:
       - ".github/scripts/astrovials-backup.mjs"
       - "netlify/functions/astrovials-stock.js"
       - "tests/astrovials-stock.test.cjs"
+      - "lib/astrovials-page-fetch.js"
+      - "lib/astrovials-page-fingerprint.js"
   workflow_dispatch:
 
 permissions:
@@ -23,6 +25,7 @@ jobs:
         run: |
           node --check netlify/functions/astrovials-stock.js
           node --check .github/scripts/astrovials-backup.mjs
+          node --check lib/astrovials-page-fetch.js
 
       - name: Simulate Sold out to BANANA and validate alarm retries
         run: node --test tests/astrovials-stock.test.cjs
