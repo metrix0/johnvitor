@@ -1,0 +1,17 @@
+name: AstroVials read-only DOM diagnostic
+on:
+  push:
+    paths:
+      - ".github/workflows/astrovials-diagnose.yml"
+      - ".github/scripts/astrovials-diagnose.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compare five live page snapshots; do not notify
+        run: node .github/scripts/astrovials-diagnose.mjs
