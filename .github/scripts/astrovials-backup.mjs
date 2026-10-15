@@ -1,99 +1,108 @@
-// Independent GitHub Actions backup watcher.
-const SITE_URL = 'https://astrovials.com/';
+// Independent GitHub Actions backup for the Netlify AstroVials watcher.
+import { createHash } from 'node:crypto';
+
+const PAGE_URL = 'https://astrovials.com/en/shop/estradiol-enanthate-mct';
 const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
 const STATE_TOPIC_URL = 'https://ntfy.sh/astrovialseen-github-state-20261001-jv';
+const HASH_PREFIX = 'sha256:';
 
-function detectSiteState(html) {
-  const hasComingSoonHeading = /<h1\b[^>]*>\s*Coming soon\s*<\/h1>/i.test(html);
-  const hasNotOpenMessage = /<p\b[^>]*>\s*This shop is not open yet\.\s*<\/p>/i.test(html);
-  return hasComingSoonHeading && hasNotOpenMessage ? 'coming_soon' : 'changed';
+function digest(html) {
+  return createHash('sha256').update(html, 'utf8').digest('hex');
 }
 
-async function getPreviousState() {
-  const response = await fetch(`${STATE_TOPIC_URL}/json?poll=1&since=latest`, {
+async function previousHash() {
+  const response = await fetch(STATE_TOPIC_URL + '/json?poll=1&since=latest', {
     headers: { Accept: 'application/x-ndjson' },
-    cache: 'no-store'
+    cache: 'no-store',
+    signal: AbortSignal.timeout(10000)
   });
-
-  if (!response.ok) throw new Error(`state read HTTP ${response.status}`);
-
+  if (!response.ok) throw new Error('Backup state read HTTP ' + response.status);
   const messages = (await response.text())
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      try { return JSON.parse(line); } catch { return null; }
-    })
-    .filter((entry) => entry && entry.event === 'message');
-
-  const latest = messages[messages.length - 1];
-  return ['coming_soon', 'changed'].includes(latest?.message) ? latest.message : null;
+    .split('\n').filter(Boolean)
+    .map((line) => { try { return JSON.parse(line); } catch { return null; } })
+    .filter((entry) => entry?.event === 'message' && typeof entry.message === 'string');
+  const last = messages.at(-1)?.message || '';
+  return /^sha256:[0-9a-f]{64}$/.test(last) ? last.slice(HASH_PREFIX.length) : null;
 }
 
-async function saveState(state) {
-  const response = await fetch(STATE_TOPIC_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      Title: 'AstroVials GitHub Actions state',
-      Priority: '1'
-    },
-    body: state
-  });
-
-  if (!response.ok) throw new Error(`state write HTTP ${response.status}`);
-}
-
-async function sendAlarm() {
-  const response = await fetch(ALERT_TOPIC_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      Title: 'ALARM TRIGGER - AstroVials SITE CHANGED',
-      Priority: '5',
-      Tags: 'warning,rotating_light',
-      Click: SITE_URL
-    },
-    body: 'GitHub Actions backup watcher detected that AstroVials no longer shows the current Coming Soon page. Check the site now.'
-  });
-
-  if (!response.ok) throw new Error(`ntfy HTTP ${response.status}`);
+async function post(url, title, body, priority) {
+  let error;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          Title: title,
+          Priority: String(priority),
+          ...(url === ALERT_TOPIC_URL ? { Tags: 'warning,rotating_light', Click: PAGE_URL } : {})
+        },
+        body,
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!response.ok) throw new Error('ntfy HTTP ' + response.status);
+      return;
+    } catch (caught) { error = caught; }
+  }
+  throw error;
 }
 
 async function main() {
-  const response = await fetch(`${SITE_URL}?githubcheck=${Date.now()}`, {
-    headers: {
-      Accept: 'text/html',
-      'Cache-Control': 'no-cache',
-      'User-Agent': 'Mozilla/5.0 AstroVialsGitHubWatcher/1.0'
-    },
-    cache: 'no-store'
-  });
+  try {
+    const previous = await previousHash();
+    const response = await fetch(PAGE_URL, {
+      headers: {
+        Accept: 'text/html',
+        'Cache-Control': 'no-cache, no-store',
+        Pragma: 'no-cache',
+        'User-Agent': 'Mozilla/5.0 AstroVialsGitHubBackup/2.0'
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!response.ok) throw new Error('AstroVials HTTP ' + response.status);
+    const type = response.headers.get('content-type') || '';
+    if (!type.includes('text/html')) throw new Error('Unexpected page content type: ' + (type || 'none'));
+    const html = await response.text();
+    if (!html.trim()) throw new Error('AstroVials page returned empty HTML');
+    const current = digest(html);
 
-  if (!response.ok) throw new Error(`AstroVials HTTP ${response.status}`);
+    if (previous === current) {
+      console.log(JSON.stringify({ ok: true, changed: false, provider: 'github-actions' }));
+      return;
+    }
 
-  const html = await response.text();
-  const state = detectSiteState(html);
-  const previousState = await getPreviousState();
-  const shouldNotify = state === 'changed' && previousState !== 'changed';
+    // Alarm even if the previous state expired or was not initialized.
+    const initialized = !previous;
+    await post(
+      ALERT_TOPIC_URL,
+      initialized
+        ? 'ALARM TRIGGER - AstroVials BACKUP MONITOR INITIALIZED'
+        : 'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED (BACKUP)',
+      (initialized ? 'BACKUP WATCHER BASELINE MISSING OR EXPIRED' : 'BACKUP WATCHER DETECTED PAGE CHANGE') +
+        '\n' + PAGE_URL + '\nPrevious SHA-256: ' + (previous || 'none') +
+        '\nCurrent SHA-256: ' + current,
+      5
+    );
 
-  if (shouldNotify) await sendAlarm();
-  await saveState(state);
-
-  console.log(JSON.stringify({
-    ok: true,
-    state,
-    previousState,
-    notified: shouldNotify,
-    provider: 'github-actions'
-  }));
+    // Never acknowledge an undelivered page change.
+    await post(STATE_TOPIC_URL, 'AstroVials GitHub backup SHA-256 state', HASH_PREFIX + current, 1);
+    console.log(JSON.stringify({ ok: true, changed: !initialized, initialized, notified: true, provider: 'github-actions' }));
+  } catch (caught) {
+    const reason = caught?.message || String(caught);
+    console.error('AstroVials backup failed:', reason);
+    try {
+      await post(
+        ALERT_TOPIC_URL,
+        'ALARM TRIGGER - AstroVials BACKUP WATCHER FAILED',
+        'Backup watcher failure: ' + reason + '\n' + PAGE_URL,
+        5
+      );
+    } catch (alarmError) {
+      console.error('Backup failure alarm also failed:', alarmError);
+    }
+    process.exitCode = 1;
+  }
 }
 
-main().catch((error) => {
-  console.error(JSON.stringify({
-    ok: false,
-    error: error?.message || String(error),
-    provider: 'github-actions'
-  }));
-  process.exit(1);
-});
+await main();
