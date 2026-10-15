@@ -1,5 +1,6 @@
 const { connectLambda, getStore } = require('@netlify/blobs');
-const { snapshotPage, hashSnapshot, humanDiff } = require('../../lib/astrovials-page-fingerprint');
+const { hashSnapshot, humanDiff } = require('../../lib/astrovials-page-fingerprint');
+const { fetchProductSnapshot } = require('../../lib/astrovials-page-fetch');
 
 const PAGE_URL = 'https://astrovials.com/en/shop/estradiol-enanthate-mct';
 const ALERT_TOPIC_URL = 'https://ntfy.sh/astrovialseen';
@@ -35,16 +36,12 @@ exports.handler = async function(event) {
     connectLambda(event);
     store = getStore(STORE_NAME);
     previous = await store.get(STORE_KEY, {type:'json'});
-    const response = await fetch(PAGE_URL, {
-      headers:{Accept:'text/html','Cache-Control':'no-cache, no-store',
-        Pragma:'no-cache','User-Agent':'Mozilla/5.0 AstroVialsPageWatcher/3.0'},
-      cache:'no-store', signal:AbortSignal.timeout(14000)
+    // Transient network errors, HTTP errors and incomplete pages get a second fetch.
+    // Only after both attempts fail does the existing incident-level alarm run.
+    const { snapshot, attempts } = await fetchProductSnapshot({
+      url: PAGE_URL,
+      userAgent: 'Mozilla/5.0 AstroVialsPageWatcher/3.1'
     });
-    if (!response.ok) throw new Error('AstroVials HTTP '+response.status);
-    if (!(response.headers.get('content-type') || '').includes('text/html')) {
-      throw new Error('Unexpected product page content type');
-    }
-    const snapshot = snapshotPage(await response.text());
     const hash = hashSnapshot(snapshot);
 
     // The new snapshot format needs a new baseline; initializing isn't a change.
