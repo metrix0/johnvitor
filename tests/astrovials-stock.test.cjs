@@ -14,7 +14,7 @@ function page(product='Sold out', build='build1', more='') {
 }
 function setup(initialPage=page()) {
   const saved=new Map(),alarms=[];
-  let current=initialPage,failures=0;
+  let current=initialPage,failures=0,pageFailures=0,pageFailureMode='network',pageRequests=0;
   const originalFetch=global.fetch,originalLoad=Module._load;
   Module._load=function(name,parent,isMain) {
     if (name==='@netlify/blobs') return {connectLambda:()=>{},getStore:()=>({
@@ -31,9 +31,16 @@ function setup(initialPage=page()) {
       alarms.push({url,...opts});
       return new Response('ok',{status:200});
     }
+    pageRequests++;
+    if (pageFailures-- > 0) {
+      if (pageFailureMode==='http') return new Response('Unavailable',{status:503});
+      throw new TypeError('fetch failed');
+    }
     return new Response(current,{status:200,headers:{'content-type':'text/html; charset=utf-8'}});
   };
   return {handler,alarms,setPage:html=>{current=html},failNtfy:n=>{failures=n},
+    failPage:(n,mode='network')=>{pageFailures=n;pageFailureMode=mode},
+    pageRequests:()=>pageRequests,
     restore:()=>{global.fetch=originalFetch}};
 }
 
@@ -127,4 +134,72 @@ test('fingerprint ignores changes outside main, detects markup inside main',()=>
     hashSnapshot(snapshotPage(page('Sold out','B'))));
   assert.notEqual(hashSnapshot(snapshotPage(page('Sold out','A'))),
     hashSnapshot(snapshotPage(page('Sold out','A','<span data-amount="2"></span>'))));
+});
+
+
+test('one transient fetch failed error gets retried, with no false alarm',async()=>{
+  const t=setup();
+  try {
+    await t.handler();
+    const before=t.pageRequests();
+    t.failPage(1);
+    const result=JSON.parse((await t.handler()).body);
+    assert.equal(result.ok,true);
+    assert.equal(result.notified,false);
+    assert.equal(t.pageRequests()-before,2);
+    assert.equal(t.alarms.length,0);
+  } finally {t.restore()}
+});
+
+test('HTTP 503 once then 200 is retried without an alarm',async()=>{
+  const t=setup();
+  try {
+    await t.handler();
+    t.failPage(1,'http');
+    const before=t.pageRequests();
+    const result=JSON.parse((await t.handler()).body);
+    assert.equal(result.ok,true);
+    assert.equal(result.notified,false);
+    assert.equal(t.pageRequests()-before,2);
+    assert.equal(t.alarms.length,0);
+  } finally {t.restore()}
+});
+
+test('two fetch failed attempts send ONE ALARM TRIGGER, then recover',async()=>{
+  const t=setup();
+  try {
+    await t.handler();
+    t.failPage(2);
+    const before=t.pageRequests();
+    const result=JSON.parse((await t.handler()).body);
+    assert.equal(result.ok,false);
+    assert.match(result.error,/fetch failed after 2 attempts/);
+    assert.equal(result.failureAlarmSent,true);
+    assert.equal(t.pageRequests()-before,2);
+    assert.equal(t.alarms.length,1);
+    assert.equal(t.alarms[0].headers.Title,'ALARM TRIGGER - AstroVials WATCHER FAILED');
+    assert.equal(t.alarms[0].headers.Priority,'5');
+    t.failPage(2);
+    const next=JSON.parse((await t.handler()).body);
+    assert.equal(next.failureAlarmSent,false);
+    assert.equal(t.alarms.length,1);
+    const recovered=JSON.parse((await t.handler()).body);
+    assert.equal(recovered.ok,true);
+    assert.equal(recovered.notified,false);
+  } finally {t.restore()}
+});
+
+test('retry succeeds on an actual stock change and still sends change alarm',async()=>{
+  const t=setup();
+  try {
+    await t.handler();
+    t.setPage(page('BANANA'));
+    t.failPage(1);
+    const response=JSON.parse((await t.handler()).body);
+    assert.equal(response.ok,true);
+    assert.equal(response.notified,true);
+    assert.equal(t.alarms.length,1);
+    assert.equal(t.alarms[0].headers.Title,'ALARM TRIGGER - AstroVials PRODUCT PAGE CHANGED');
+    assert.match(t.alarms[0].body,/After: .*BANANA/);
+  } finally {t.restore()}
 });
