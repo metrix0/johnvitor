@@ -1,22 +1,24 @@
-name: AstroVials product page backup (manual while false alarms are investigated)
-
-# TEMPORARY: disable 5-minute schedule to stop false change notifications.
-# Netlify's independent 1-minute product watcher remains active.
+name: AstroVials product page backup (every 5 minutes)
 on:
+  push:
+    paths:
+      - ".github/workflows/astrovials-backup-v2.yml"
+      - ".github/scripts/astrovials-backup.mjs"
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
-
 permissions:
-  contents: read
-
+  contents: write # Update the dedicated durable watcher state branch
 concurrency:
   group: astrovials-product-backup-v2
   cancel-in-progress: false
-
 jobs:
   watch:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v5
-      - name: Independently compare exact AstroVials product page HTML
+      - name: Compare exact AstroVials product DOM and persist baseline to separate branch
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: node .github/scripts/astrovials-backup.mjs
