@@ -1,12 +1,8 @@
-name: AstroVials product page backup (every 5 minutes)
+name: AstroVials product page backup (manual while false alarms are investigated)
 
+# TEMPORARY: disable 5-minute schedule to stop false change notifications.
+# Netlify's independent 1-minute product watcher remains active.
 on:
-  push:
-    paths:
-      - ".github/workflows/astrovials-backup-v2.yml"
-      - ".github/scripts/astrovials-backup.mjs"
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
