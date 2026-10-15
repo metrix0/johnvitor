@@ -55,9 +55,9 @@ async function notify(title, message) {
 exports.handler = async function(event) {
   try {
     connectLambda(event);
-    // Strong consistency prevents a recently saved snapshot from appearing stale.
+    // Lambda's Netlify Blobs context supports eventual consistency here.
     // Site-wide Blobs persist between deployments (unlike in-memory state or ntfy history).
-    const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+    const store = getStore(STORE_NAME);
     const previous = await store.get(STORE_KEY, { type: 'json' });
 
     const siteResponse = await fetch(PAGE_URL, {
