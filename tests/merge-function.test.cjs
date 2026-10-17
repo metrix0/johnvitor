@@ -42,6 +42,38 @@ test('status only compares branches: no PR creation or validation', async () => 
   assert.equal(data.status, 200);
   assert.deepEqual(calls.map(call => call.path), ['/msg/app.js', '/compare/main...preview']);
 });
+test('deployment status reports main Vercel and latest VPS run for current preview commit', async () => {
+  const calls = setup({
+    '/commits/main/status': () => Response.json({ sha: SHA, statuses: [
+      { context: 'Vercel – imenu', state: 'success', target_url: 'https://vercel.com/example/imenu/123' }
+    ] }),
+    '/branches/preview': () => Response.json({ commit: { sha: SHA } }),
+    '/actions/workflows/deploy-vps-preview.yml/runs': () => Response.json({ workflow_runs: [
+      { head_sha: 'b'.repeat(40), status: 'completed', conclusion: 'failure' },
+      { head_sha: SHA, status: 'completed', conclusion: 'success', html_url: 'https://github.com/metrix0/imenu/actions/runs/10' }
+    ] })
+  });
+  const data = await run('deploy-status');
+  assert.equal(data.ok, true);
+  assert.deepEqual(data.deployments.main, { state: 'success', sha: SHA, url: 'https://vercel.com/example/imenu/123' });
+  assert.deepEqual(data.deployments.preview, { state: 'success', sha: SHA, url: 'https://github.com/metrix0/imenu/actions/runs/10' });
+  assert.deepEqual(calls.map(call => call.path), [
+    '/msg/app.js', '/commits/main/status', '/branches/preview', '/actions/workflows/deploy-vps-preview.yml/runs'
+  ]);
+  noMerge(calls);
+});
+test('deployment status never treats an old preview deployment as the current commit', async () => {
+  setup({
+    '/commits/main/status': () => Response.json({ sha: SHA, statuses: [] }),
+    '/branches/preview': () => Response.json({ commit: { sha: SHA } }),
+    '/actions/workflows/deploy-vps-preview.yml/runs': () => Response.json({ workflow_runs: [
+      { head_sha: 'b'.repeat(40), status: 'completed', conclusion: 'success' }
+    ] })
+  });
+  const data = await run('deploy-status');
+  assert.equal(data.deployments.main.state, 'unknown');
+  assert.equal(data.deployments.preview.state, 'not_deployed');
+});
 test('authentication failure makes no GitHub calls', async () => {
   const calls = setup();
   assert.equal((await run('validate', { password: 'wrong' })).status, 401);

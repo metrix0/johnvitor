@@ -225,6 +225,37 @@ function validationError(validation) {
     : "TypeScript validation failed.";
 }
 
+async function getImenuDeployments(repo) {
+  const [main, preview, actions] = await Promise.all([
+    github(repo, "/commits/main/status"),
+    github(repo, "/branches/preview"),
+    github(repo, "/actions/workflows/deploy-vps-preview.yml/runs?branch=preview&per_page=30")
+  ]);
+  const mainSha = main?.sha || null;
+  const previewSha = preview?.commit?.sha || null;
+  const vercel = (Array.isArray(main?.statuses) ? main.statuses : [])
+    .find(status => /^Vercel\s*[–-]\s*imenu$/i.test(String(status?.context || "")));
+  const run = (Array.isArray(actions?.workflow_runs) ? actions.workflow_runs : [])
+    .find(item => item.head_sha === previewSha);
+  const runState = !run ? "not_deployed" : run.status !== "completed" ? "pending"
+    : run.conclusion === "success" ? "success"
+    : run.conclusion === "skipped" ? "not_deployed" : "failure";
+
+  return {
+    main: {
+      state: !vercel ? "unknown" : vercel.state === "success" ? "success"
+        : vercel.state === "pending" ? "pending" : "failure",
+      sha: mainSha,
+      url: vercel?.target_url || null
+    },
+    preview: {
+      state: runState,
+      sha: previewSha,
+      url: run?.html_url || null
+    }
+  };
+}
+
 exports.handler = async function(event) {
   if (event.httpMethod !== "POST") {
     return json(405, { ok: false, error: "Method not allowed." });
@@ -241,7 +272,7 @@ exports.handler = async function(event) {
   if (!project) return json(400, { ok: false, error: "Unknown project." });
   const repo = project.repo;
   const action = body.action || "merge";
-  if (!["status", "validate", "merge", "result"].includes(action)) {
+  if (!["status", "deploy-status", "validate", "merge", "result"].includes(action)) {
     return json(400, { ok: false, error: "Unknown action." });
   }
   if ((action === "result" || body.pr !== undefined) &&
@@ -263,6 +294,13 @@ exports.handler = async function(event) {
 
     if (!githubToken()) {
       return json(500, { ok: false, error: "GitHub merge token is not configured." });
+    }
+
+    if (action === "deploy-status") {
+      if (body.project !== "imenu") {
+        return json(400, { ok: false, error: "Deployment status is only available for iMenu." });
+      }
+      return json(200, { ok: true, deployments: await getImenuDeployments(repo) });
     }
 
     // Result checks are read-only, including when newer preview commits exist.

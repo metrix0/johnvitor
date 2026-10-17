@@ -25,7 +25,17 @@ async function setup(mock, options = {}) {
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => localStorage.setItem('ANKI_APP_ACCESS_UNTIL', String(Date.now() + 60000)));
   await page.route('**/api/merge', async route => {
-    const body = route.request().postDataJSON(); calls.push(body);
+    const body = route.request().postDataJSON();
+    if (body.action === 'deploy-status') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        ok: true, deployments: {
+          main: { state: 'success', sha: SHA, url: 'https://vercel.com/example/imenu/123' },
+          preview: { state: 'pending', sha: SHA, url: 'https://github.com/metrix0/imenu/actions/runs/10' }
+        }
+      }) });
+      return;
+    }
+    calls.push(body);
     const result = await mock(body, calls);
     if (result === 'abort') { await route.abort('failed'); return; }
     await route.fulfill({ status: result.status || 200, contentType: 'application/json', body: JSON.stringify(result.body || result) });
@@ -45,6 +55,16 @@ test('loading the page only reads status and keeps commit titles as text', async
   await expect(page.locator('[data-id="engravida"] .badge')).toHaveText('Synced');
   expect(errors).toEqual([]);
   if (process.env.MERGE_SCREENSHOTS) await page.screenshot({ path: `${process.env.MERGE_SCREENSHOTS}/ready.png`, fullPage: true });
+  await context.close();
+});
+test('iMenu displays both deployment statuses without affecting Engravida', async () => {
+  const { context, page, card, errors } = await setup(defaultMock);
+  await expect(card.locator('.deploy-row')).toHaveCount(2);
+  await expect(card.locator('[data-branch="main"] .deploy-state')).toHaveText('Deployed');
+  await expect(card.locator('[data-branch="preview"] .deploy-state')).toHaveText('Deploying');
+  await expect(card.locator('[data-branch="main"] .deploy-links a')).toHaveAttribute('href', 'https://vercel.com/example/imenu/123');
+  await expect(page.locator('[data-id="engravida"] .deployments')).toHaveCount(0);
+  expect(errors).toEqual([]);
   await context.close();
 });
 test('queued → running → passed → merged remains visible after refresh and reload', async () => {

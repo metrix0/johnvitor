@@ -18,10 +18,10 @@
     .project { min-width: 0; border: 1px solid var(--line); border-radius: 20px; background: #151518; padding: 26px; }
     .project-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
     h2 { margin: 0; font-size: 24px; letter-spacing: -.025em; }
-    .badge { font-size: 11px; font-weight: 650; padding: 5px 9px; border-radius: 100px; background: #25252c; color: #c4c4cd; white-space: nowrap; }
-    .badge[data-tone="success"] { background: #193325; color: var(--green); }
-    .badge[data-tone="error"] { background: #3c2327; color: var(--red); }
-    .badge[data-tone="active"] { background: #2e2745; color: var(--accent); }
+    .badge, .deploy-state { font-size: 11px; font-weight: 650; padding: 5px 9px; border-radius: 100px; background: #25252c; color: #c4c4cd; white-space: nowrap; }
+    .badge[data-tone="success"], .deploy-state[data-tone="success"] { background: #193325; color: var(--green); }
+    .badge[data-tone="error"], .deploy-state[data-tone="error"] { background: #3c2327; color: var(--red); }
+    .badge[data-tone="active"], .deploy-state[data-tone="active"] { background: #2e2745; color: var(--accent); }
     .branch { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; margin: 8px 0 26px; }
     .branch span { color: #676773; margin: 0 8px; }
     .flow { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0; margin: 0 0 24px; gap: 8px; }
@@ -56,6 +56,12 @@
     .commits { padding-left: 18px; color: var(--muted); margin: 12px 0 0; font-size: 12px; }
     .commits li { padding-left: 2px; margin-top: 8px; overflow-wrap: anywhere; }
     .empty, .refresh-note { color: var(--muted); font-size: 12px; margin: 12px 0 0; }
+    .deployments { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 16px; display: grid; gap: 10px; }
+    .deployments h3 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
+    .deploy-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .deploy-row strong { display: block; font-size: 13px; font-weight: 600; }
+    .deploy-row small { display: block; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+    .deploy-links { font-size: 11px; }
     .footer { font-size: 12px; color: #858591; margin: 24px 0 0; }
     [hidden] { display: none !important; }
     @media (max-width: 720px) { main { margin: 36px auto; } .projects { grid-template-columns: 1fr; } .project { padding: 22px; } }
@@ -141,6 +147,41 @@
         a.href = parsed.href; a.textContent = label; a.target = "_blank"; a.rel = "noopener noreferrer";
         container.append(a);
       } catch { /* Ignore invalid links. */ }
+    }
+    async function loadDeployments(project) {
+      if (project.deploymentsLoading) return;
+      project.deploymentsLoading = true;
+      try {
+        const data = await request(project, "deploy-status");
+        for (const branch of ["main", "preview"]) {
+          const row = project.card.querySelector('[data-branch="' + branch + '"]');
+          const deployment = data.deployments?.[branch] || {};
+          const labels = { success: "Deployed", pending: "Deploying", failure: "Failed", not_deployed: "Not deployed", unknown: "Unavailable" };
+          const state = row.querySelector(".deploy-state");
+          state.textContent = labels[deployment.state] || "Unavailable";
+          state.dataset.tone = deployment.state === "success" ? "success"
+            : deployment.state === "failure" ? "error" : deployment.state === "pending" ? "active" : "neutral";
+          const sha = /^[a-f0-9]{40}$/.test(deployment.sha || "") ? deployment.sha.slice(0, 7) : null;
+          row.querySelector("small").textContent = (branch === "main" ? "Vercel" : "VPS staging")
+            + (sha ? " · " + sha : " · Commit unavailable");
+          const links = row.querySelector(".deploy-links");
+          links.replaceChildren();
+          try {
+            const url = new URL(deployment.url);
+            if (url.protocol === "https:" && ["github.com", "vercel.com"].includes(url.hostname)) {
+              const a = document.createElement("a");
+              a.href = url.href; a.textContent = "Details"; a.target = "_blank"; a.rel = "noopener noreferrer";
+              links.append(a);
+            }
+          } catch { /* No deployment link available. */ }
+        }
+      } catch {
+        for (const row of project.card.querySelectorAll(".deploy-row")) {
+          row.querySelector(".deploy-state").textContent = "Unavailable";
+          row.querySelector(".deploy-state").dataset.tone = "neutral";
+          row.querySelector("small").textContent = "Could not check deployment";
+        }
+      } finally { project.deploymentsLoading = false; }
     }
     function render(project, phase, title, message, options = {}) {
       project.phase = phase;
@@ -318,11 +359,17 @@
     function createProject(id, name, repo) {
       const card = document.createElement("section");
       card.className = "project"; card.dataset.id = id; card.setAttribute("aria-labelledby", `${id}-title`);
+      const deploymentsHtml = id === "imenu" ? '<section class="deployments" aria-label="iMenu deployment status">' +
+        '<h3>Deployment status</h3>' +
+        ["main", "preview"].map(branch => '<div class="deploy-row" data-branch="' + branch + '">' +
+          '<div><strong>' + branch + '</strong><small>Checking deployment…</small><div class="deploy-links"></div></div>' +
+          '<span class="deploy-state" data-tone="active">Checking</span></div>').join("") + '</section>' : "";
       card.innerHTML = `<div class="project-header"><h2 id="${id}-title">${name}</h2><span class="badge">Loading</span></div>
         <p class="branch">preview <span>→</span> main</p>
         <ol class="flow" aria-label="Merge progress">${["Validate", "Merge", "Result"].map((label, i) => `<li class="step"><span class="number" aria-hidden="true">${i + 1}</span><strong>${label}</strong><small></small></li>`).join("")}</ol>
         <div class="outcome" role="status" aria-live="polite" aria-atomic="true"><h3></h3><p></p></div>
         <div class="links"></div>
+        ${deploymentsHtml}
         <details class="error-detail" hidden open><summary>Validation details</summary><pre></pre></details>
         <button type="button" data-project="${id}" disabled>Loading changes…</button>
         <details class="changes" open><summary>Changes to merge</summary><ul class="commits" data-commits="${id}"></ul><p class="empty">Loading changes…</p></details>
@@ -363,10 +410,10 @@
         mergePassword = await requireExistingPassword();
         if (!mergePassword) return;
         document.body.style.display = "block";
-        await Promise.all([
-          initialize(createProject("imenu", "iMenu", "metrix0/imenu")),
-          initialize(createProject("engravida", "Engravida", "metrix0/EngravidaHub"))
-        ]);
+        const imenu = createProject("imenu", "iMenu", "metrix0/imenu");
+        const engravida = createProject("engravida", "Engravida", "metrix0/EngravidaHub");
+        await Promise.all([initialize(imenu), initialize(engravida), loadDeployments(imenu)]);
+        setInterval(() => loadDeployments(imenu), 60000);
       } catch (error) { alert(error?.message || String(error)); }
     })();
   </script>
