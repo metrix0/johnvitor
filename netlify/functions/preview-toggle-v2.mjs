@@ -2,10 +2,27 @@ import { getStore } from '@netlify/blobs';
 
 const STORE = 'preview-deploy-toggle-v2';
 const KEY = 'enabled';
-const DEPLOY_HOOK = 'https://api.vercel.com/v1/integrations/deploy/prj_6dB0Yk1fQjoWLTSOTPvMjibf9nCw/QdNyV6TWd0';
+const PREVIEW_WORKFLOW_URL = 'https://api.github.com/repos/metrix0/imenu/actions/workflows/deploy-vps-preview.yml/dispatches';
 
 const SECONDARY_PROJECT_MATCH = 'engravida';
 const SHARED_STATUS_COMMAND = 'if [ "$VERCEL_GIT_COMMIT_REF" = "main" ]; then exit 1; fi; if [ "$VERCEL_GIT_COMMIT_REF" != "preview" ]; then exit 0; fi; if [ "$(curl -fsS --max-time 5 https://johnvitor.com/api/preview-deploy-status)" = "ON" ]; then exit 1; else exit 0; fi';
+
+async function dispatchVpsPreview() {
+  const token = process.env.GITHUB_MERGE_TOKEN || '';
+  if (!token) throw new Error('GITHUB_MERGE_TOKEN is not configured.');
+  const response = await fetch(PREVIEW_WORKFLOW_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    },
+    body: JSON.stringify({ ref: 'preview' }),
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!response.ok) throw new Error(`GitHub preview dispatch failed (HTTP ${response.status}): ${(await response.text()).slice(0, 400)}`);
+}
 
 async function vercelRequest(token, path, options = {}) {
   const response = await fetch(`https://api.vercel.com${path}`, {
@@ -132,10 +149,11 @@ export default async (req) => {
     await store.set(KEY, next);
 
     if (next === 'ON') {
-      const deploy = await fetch(DEPLOY_HOOK, { method: 'POST' });
-      if (!deploy.ok) {
+      try {
+        await dispatchVpsPreview();
+      } catch (error) {
         await store.set(KEY, 'OFF');
-        return new Response('ERROR', { status: 502 });
+        throw error;
       }
     }
 
