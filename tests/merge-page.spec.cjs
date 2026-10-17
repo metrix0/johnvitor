@@ -29,8 +29,13 @@ async function setup(mock, options = {}) {
     if (body.action === 'deploy-status') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
         ok: true, deployments: {
-          main: { state: 'success', sha: SHA, url: 'https://vercel.com/example/imenu/123' },
-          preview: { state: 'pending', sha: SHA, url: 'https://github.com/metrix0/imenu/actions/runs/10' }
+          main: { state: 'success', sha: null, url: 'https://www.imenuapp.com.br', history: [] },
+          preview: { state: 'pending', sha: SHA, url: 'https://github.com/metrix0/imenu/actions/runs/10',
+            history: [
+              { state: 'pending', sha: SHA, date: '2026-10-16T13:00:00Z', url: 'https://github.com/metrix0/imenu/actions/runs/10' },
+              { state: 'success', sha: 'b'.repeat(40), date: '2026-10-16T12:00:00Z', url: 'https://github.com/metrix0/imenu/actions/runs/9' },
+              { state: 'failure', sha: 'c'.repeat(40), date: '2026-10-16T11:00:00Z', url: 'https://github.com/metrix0/imenu/actions/runs/8' }
+            ] }
         }
       }) });
       return;
@@ -60,9 +65,11 @@ test('loading the page only reads status and keeps commit titles as text', async
 test('iMenu displays both deployment statuses without affecting Engravida', async () => {
   const { context, page, card, errors } = await setup(defaultMock);
   await expect(card.locator('.deploy-row')).toHaveCount(2);
-  await expect(card.locator('[data-branch="main"] .deploy-state')).toHaveText('Deployed');
+  await expect(card.locator('[data-branch="main"] .deploy-state')).toHaveText('Healthy');
   await expect(card.locator('[data-branch="preview"] .deploy-state')).toHaveText('Deploying');
-  await expect(card.locator('[data-branch="main"] .deploy-links a')).toHaveAttribute('href', 'https://vercel.com/example/imenu/123');
+  await expect(card.locator('[data-branch="main"] .deploy-links a')).toHaveAttribute('href', 'https://www.imenuapp.com.br/');
+  await expect(card.locator('[data-branch="preview"] .deploy-history li')).toHaveCount(3);
+  await expect(card.locator('[data-branch="main"] .deploy-history')).toContainText('history unavailable');
   await expect(page.locator('[data-id="engravida"] .deployments')).toHaveCount(0);
   expect(errors).toEqual([]);
   await context.close();

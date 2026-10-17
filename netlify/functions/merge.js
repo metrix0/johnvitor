@@ -225,33 +225,51 @@ function validationError(validation) {
     : "TypeScript validation failed.";
 }
 
-async function getImenuDeployments(repo) {
-  const [main, preview, actions] = await Promise.all([
-    github(repo, "/commits/main/status"),
-    github(repo, "/branches/preview"),
-    github(repo, "/actions/workflows/deploy-vps-preview.yml/runs?branch=preview&per_page=30")
-  ]);
-  const mainSha = main?.sha || null;
-  const previewSha = preview?.commit?.sha || null;
-  const vercel = (Array.isArray(main?.statuses) ? main.statuses : [])
-    .find(status => /^Vercel\s*[–-]\s*imenu$/i.test(String(status?.context || "")));
-  const run = (Array.isArray(actions?.workflow_runs) ? actions.workflow_runs : [])
-    .find(item => item.head_sha === previewSha);
-  const runState = !run ? "not_deployed" : run.status !== "completed" ? "pending"
-    : run.conclusion === "success" ? "success"
-    : run.conclusion === "skipped" ? "not_deployed" : "failure";
+async function productionHealth() {
+  try {
+    const response = await fetch("https://www.imenuapp.com.br/api/health", {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000)
+    });
+    const data = await response.json().catch(() => null);
+    return response.status === 200 && data?.ok === true ? "success" : "failure";
+  } catch {
+    return "unknown";
+  }
+}
 
+function deploymentRunState(run) {
+  if (!run) return "unknown";
+  if (run.status !== "completed") return "pending";
+  if (run.conclusion === "success") return "success";
+  if (run.conclusion === "cancelled") return "cancelled";
+  if (run.conclusion === "skipped") return "skipped";
+  return "failure";
+}
+
+async function getImenuDeployments(repo) {
+  const [preview, actions, productionState] = await Promise.all([
+    github(repo, "/branches/preview"),
+    github(repo, "/actions/runs?branch=preview&per_page=100"),
+    productionHealth()
+  ]);
+  const previewSha = preview?.commit?.sha || null;
+  const runs = (Array.isArray(actions?.workflow_runs) ? actions.workflow_runs : [])
+    .filter(run => run?.path === ".github/workflows/deploy-vps-preview.yml")
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  const currentRun = runs.find(run => run.head_sha === previewSha) || null;
   return {
-    main: {
-      state: !vercel ? "unknown" : vercel.state === "success" ? "success"
-        : vercel.state === "pending" ? "pending" : "failure",
-      sha: mainSha,
-      url: vercel?.target_url || null
-    },
+    main: { state: productionState, sha: null, url: "https://www.imenuapp.com.br", history: [] },
     preview: {
-      state: runState,
+      state: !currentRun && runs.length ? "not_deployed" : deploymentRunState(currentRun),
       sha: previewSha,
-      url: run?.html_url || null
+      url: currentRun?.html_url || null,
+      history: runs.slice(0, 3).map(run => ({
+        state: deploymentRunState(run),
+        sha: run.head_sha || null,
+        date: run.created_at || null,
+        url: run.html_url || null
+      }))
     }
   };
 }

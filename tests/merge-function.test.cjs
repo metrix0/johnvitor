@@ -18,6 +18,7 @@ function setup(overrides = {}) {
     const method = options.method || 'GET';
     calls.push({ path, method, body: options.body ? JSON.parse(options.body) : null });
     if (path === '/msg/app.js') return new Response('const API_KEY = "test-abc";');
+    if (path === '/api/health' && !overrides[path]) return Response.json({ ok: true });
     if (overrides[path]) return overrides[path](options, calls);
     if (path === '/compare/main...preview') return Response.json(comparison);
     if (path === '/pulls') return Response.json([PR]);
@@ -42,37 +43,48 @@ test('status only compares branches: no PR creation or validation', async () => 
   assert.equal(data.status, 200);
   assert.deepEqual(calls.map(call => call.path), ['/msg/app.js', '/compare/main...preview']);
 });
-test('deployment status reports main Vercel and latest VPS run for current preview commit', async () => {
+test('VPS statuses use production health and last three preview workflow runs', async () => {
   const calls = setup({
-    '/commits/main/status': () => Response.json({ sha: SHA, statuses: [
-      { context: 'Vercel – imenu', state: 'success', target_url: 'https://vercel.com/example/imenu/123' }
-    ] }),
     '/branches/preview': () => Response.json({ commit: { sha: SHA } }),
-    '/actions/workflows/deploy-vps-preview.yml/runs': () => Response.json({ workflow_runs: [
-      { head_sha: 'b'.repeat(40), status: 'completed', conclusion: 'failure' },
-      { head_sha: SHA, status: 'completed', conclusion: 'success', html_url: 'https://github.com/metrix0/imenu/actions/runs/10' }
+    '/actions/runs': () => Response.json({ workflow_runs: [
+      { path: '.github/workflows/validate-build.yml', head_sha: SHA, created_at: '2026-10-16T14:00:00Z' },
+      { path: '.github/workflows/deploy-vps-preview.yml', head_sha: SHA, status: 'completed', conclusion: 'success', created_at: '2026-10-16T13:00:00Z', html_url: 'https://github.com/metrix0/imenu/actions/runs/12' },
+      { path: '.github/workflows/deploy-vps-preview.yml', head_sha: 'b'.repeat(40), status: 'completed', conclusion: 'failure', created_at: '2026-10-16T12:00:00Z' },
+      { path: '.github/workflows/deploy-vps-preview.yml', head_sha: 'c'.repeat(40), status: 'completed', conclusion: 'success', created_at: '2026-10-16T11:00:00Z' },
+      { path: '.github/workflows/deploy-vps-preview.yml', head_sha: 'd'.repeat(40), status: 'completed', conclusion: 'success', created_at: '2026-10-16T10:00:00Z' }
     ] })
   });
   const data = await run('deploy-status');
   assert.equal(data.ok, true);
-  assert.deepEqual(data.deployments.main, { state: 'success', sha: SHA, url: 'https://vercel.com/example/imenu/123' });
-  assert.deepEqual(data.deployments.preview, { state: 'success', sha: SHA, url: 'https://github.com/metrix0/imenu/actions/runs/10' });
-  assert.deepEqual(calls.map(call => call.path), [
-    '/msg/app.js', '/commits/main/status', '/branches/preview', '/actions/workflows/deploy-vps-preview.yml/runs'
-  ]);
+  assert.deepEqual(data.deployments.main, { state: 'success', sha: null, url: 'https://www.imenuapp.com.br', history: [] });
+  assert.equal(data.deployments.preview.state, 'success');
+  assert.equal(data.deployments.preview.sha, SHA);
+  assert.equal(data.deployments.preview.history.length, 3);
+  assert.deepEqual(data.deployments.preview.history.map(x => x.state), ['success', 'failure', 'success']);
+  assert.equal(data.deployments.preview.url, 'https://github.com/metrix0/imenu/actions/runs/12');
+  assert.deepEqual(calls.map(x => x.path), ['/msg/app.js', '/branches/preview', '/actions/runs', '/api/health']);
   noMerge(calls);
 });
-test('deployment status never treats an old preview deployment as the current commit', async () => {
+test('old preview workflow runs are not presented as current deployment', async () => {
   setup({
-    '/commits/main/status': () => Response.json({ sha: SHA, statuses: [] }),
     '/branches/preview': () => Response.json({ commit: { sha: SHA } }),
-    '/actions/workflows/deploy-vps-preview.yml/runs': () => Response.json({ workflow_runs: [
-      { head_sha: 'b'.repeat(40), status: 'completed', conclusion: 'success' }
+    '/actions/runs': () => Response.json({ workflow_runs: [
+      { path: '.github/workflows/deploy-vps-preview.yml', head_sha: 'b'.repeat(40), status: 'completed', conclusion: 'success', created_at: '2026-10-16T10:00:00Z' }
     ] })
   });
   const data = await run('deploy-status');
-  assert.equal(data.deployments.main.state, 'unknown');
   assert.equal(data.deployments.preview.state, 'not_deployed');
+  assert.equal(data.deployments.preview.history.length, 1);
+});
+test('unreachable production health does not count as a failed deployment', async () => {
+  setup({
+    '/branches/preview': () => Response.json({ commit: { sha: SHA } }),
+    '/actions/runs': () => Response.json({ workflow_runs: [] }),
+    '/api/health': () => { throw new Error('Unreachable'); }
+  });
+  const data = await run('deploy-status');
+  assert.equal(data.deployments.main.state, 'unknown');
+  assert.equal(data.deployments.preview.state, 'unknown');
 });
 test('authentication failure makes no GitHub calls', async () => {
   const calls = setup();
