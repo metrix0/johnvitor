@@ -365,7 +365,7 @@
       while (Date.now() - started < 15 * 60 * 1000) {
         let data;
         try {
-          data = await request(project, "validate");
+          data = await request(project, "validate", project.pr ? { pr: project.pr } : {});
           metadata(project, data);
         } catch (error) {
           metadata(project, error.data || {});

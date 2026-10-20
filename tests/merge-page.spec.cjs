@@ -228,9 +228,10 @@ test('browser drives the actual function from validation to confirmed squash mer
     const route = parsed.pathname.replace('/repos/metrix0/imenu', '');
     githubCalls.push({ route, method: options.method || 'GET', body: options.body ? JSON.parse(options.body) : null });
     const pr = { number: 12, state: 'open', merged: false, html_url: ready.prUrl, head: { ref: 'preview', sha: SHA, repo: { full_name: 'metrix0/imenu' } }, base: { ref: 'main' } };
-    if (route === '/compare/main...preview') return Response.json({ ahead_by: didMerge ? 0 : 1, files: didMerge ? [] : [{ filename: 'menu.ts' }], commits: [{ sha: SHA, commit: { message: 'Improve menu' } }] });
-    if (route === '/pulls') return Response.json([pr]);
-    if (route === '/pulls/12') return Response.json(pr);
+    if (route === '/branches/preview') return Response.json({ commit: { sha: SHA } });
+    if (route === '/compare/main...preview' || route === `/compare/main...${SHA}`) return Response.json({ ahead_by: didMerge ? 0 : 1, files: didMerge ? [] : [{ filename: 'menu.ts' }], commits: [{ sha: SHA, commit: { message: 'Improve menu' } }] });
+    if (route === '/pulls') return Response.json([{ ...pr, head: { ...pr.head, ref: 'merge-snapshot-' + SHA } }]);
+    if (route === '/pulls/12') return Response.json({ ...pr, head: { ...pr.head, ref: 'merge-snapshot-' + SHA } });
     if (route === `/commits/${SHA}/check-runs`) return Response.json({ check_runs: [{ id: 10, name: 'merge-typecheck', status: ++checks === 1 ? 'in_progress' : 'completed', conclusion: checks === 1 ? null : 'success' }] });
     if (route === '/pulls/12/merge') { didMerge = true; return Response.json({ merged: true, sha: merged.sha }); }
     throw new Error(`Unexpected GitHub call: ${route}`);
@@ -246,7 +247,7 @@ test('browser drives the actual function from validation to confirmed squash mer
     await expect(state.card.getByRole('heading', { name: 'TypeScript check is running' })).toBeVisible();
     await expect(state.card.getByRole('heading', { name: 'Merged successfully' })).toBeVisible({ timeout: 7000 });
     await expect(state.card.getByRole('button')).toHaveText('Merged successfully ✓');
-    expect(githubCalls.filter(call => call.method === 'PUT')).toEqual([{ route: '/pulls/12/merge', method: 'PUT', body: { merge_method: 'squash', sha: SHA } }]);
+    expect(githubCalls.filter(call => call.method === 'PUT')).toEqual([expect.objectContaining({ route: '/pulls/12/merge', method: 'PUT', body: expect.objectContaining({ merge_method: 'squash', sha: SHA, commit_message: expect.stringContaining('[merge-snapshot:') }) })]);
     expect(state.errors).toEqual([]);
   } finally {
     await context?.close(); global.fetch = originalFetch;

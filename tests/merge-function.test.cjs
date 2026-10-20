@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { handler } = require('../netlify/functions/merge.js');
 const SHA = 'a'.repeat(40);
 const PR = { number: 12, state: 'open', merged: false, html_url: 'https://github.com/metrix0/imenu/pull/12', head: { ref: 'preview', sha: SHA, repo: { full_name: 'metrix0/imenu' } }, base: { ref: 'main' } };
+const SNAPSHOT_PR = { ...PR, head: { ...PR.head, ref: "merge-snapshot-" + SHA } };
 const comparison = { ahead_by: 2, files: [{ filename: 'app.ts' }], commits: [{ sha: SHA, commit: { message: 'Fix menu\n\nDetails' } }] };
 const check = { id: 10, name: 'merge-typecheck', status: 'completed', conclusion: 'success', html_url: 'https://github.com/metrix0/imenu/actions/runs/10' };
 const originalFetch = global.fetch;
@@ -20,8 +21,10 @@ function setup(overrides = {}) {
     if (path === '/msg/app.js') return new Response('const API_KEY = "test-abc";');
     if (path === '/api/health' && !overrides[path]) return Response.json({ ok: true });
     if (overrides[path]) return overrides[path](options, calls);
-    if (path === '/compare/main...preview') return Response.json(comparison);
-    if (path === '/pulls') return Response.json([PR]);
+    if (path === '/compare/main...preview' || path === `/compare/main...${SHA}`) return Response.json(comparison);
+    if (path === '/branches/preview') return Response.json({ commit: { sha: SHA } });
+    if (path === '/pulls') return Response.json(method === 'POST' ? SNAPSHOT_PR : [SNAPSHOT_PR]);
+    if (path === '/git/refs') return Response.json({ ref: 'refs/heads/merge-snapshot-' + SHA });
     if (path === '/pulls/12') return Response.json(PR);
     if (path === `/commits/${SHA}/check-runs`) return Response.json({ check_runs: [check] });
     if (path === '/pulls/12/merge') return Response.json({ merged: true, sha: 'b'.repeat(40) });
@@ -94,7 +97,7 @@ test('authentication failure makes no GitHub calls', async () => {
 test('synced preview does not create a PR or merge', async () => {
   const calls = setup({ '/compare/main...preview': () => Response.json({ ...comparison, files: [] }) });
   assert.equal((await run('validate')).synced, true);
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
 });
 test('validation success returns the exact head and never merges', async () => {
   const calls = setup();
@@ -203,17 +206,17 @@ test('invalid action and missing validated SHA are rejected before API calls', a
   assert.equal(calls.length, 0);
 });
 
-test('validation creates a missing PR, without sending a merge', async () => {
-  const calls = setup({ '/pulls': options => Response.json(options.method === 'POST' ? PR : []) });
+test('validation creates a missing snapshot PR, without sending a merge', async () => {
+  const calls = setup({ '/pulls': options => Response.json(options.method === 'POST' ? SNAPSHOT_PR : []) });
   assert.equal((await run('validate')).ready, true);
-  assert.deepEqual(calls.find(call => call.method === 'POST').body, { title: 'Preview', head: 'preview', base: 'main' });
+  assert.deepEqual(calls.find(call => call.path === '/pulls' && call.method === 'POST').body, { title: 'Preview', head: 'merge-snapshot-' + SHA, base: 'main' });
   noMerge(calls);
 });
 test('concurrent PR creation reuses the PR returned after GitHub 422', async () => {
   let reads = 0;
   const calls = setup({ '/pulls': options => {
     if (options.method === 'POST') return Response.json({ message: 'Already exists' }, { status: 422 });
-    return Response.json(++reads === 1 ? [] : [PR]);
+    return Response.json(++reads === 1 ? [] : [SNAPSHOT_PR]);
   } });
   assert.equal((await run('validate')).pr, 12); noMerge(calls);
 });
@@ -221,4 +224,22 @@ test('an incomplete write response cannot be reported as not merged', async () =
   setup({ '/pulls/12/merge': () => new Response('{"merged":tr') });
   const data = await run('merge', { pr: 12, headSha: SHA });
   assert.equal(data.uncertain, true); assert.equal(data.pr, 12);
+});
+
+test('snapshot remains pinned when newer preview commits arrive during validation', async () => {
+  const newer = 'c'.repeat(40);
+  const calls = setup({
+    '/pulls/12': () => Response.json(SNAPSHOT_PR),
+    '/branches/preview': () => Response.json({ commit: { sha: SHA } })
+  });
+  const first = await run('validate');
+  assert.equal(first.headSha, SHA);
+  const poll = await run('validate', { pr: first.pr });
+  assert.equal(poll.headSha, SHA);
+  const merged = await run('merge', { pr: first.pr, headSha: SHA });
+  assert.equal(merged.merged, true);
+  assert.equal(calls.filter(x => x.path === '/branches/preview').length, 1);
+  const put = calls.find(x => x.path === '/pulls/12/merge');
+  assert.equal(put.body.sha, SHA);
+  assert.match(put.body.commit_message, /merge-snapshot:/);
 });

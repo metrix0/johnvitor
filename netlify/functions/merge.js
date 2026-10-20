@@ -77,6 +77,56 @@ async function findOpenPreviewPr(repo) {
   return Array.isArray(prs) ? prs[0] || null : null;
 }
 
+const SNAPSHOT_PREFIX = "merge-snapshot-";
+
+function trustedMergePr(pr, repo) {
+  const ref = pr?.head?.ref || "";
+  return pr?.base?.ref === "main" && pr?.head?.repo?.full_name === repo &&
+    (ref === "preview" ||
+      (ref.startsWith(SNAPSHOT_PREFIX) && ref.slice(SNAPSHOT_PREFIX.length) === pr?.head?.sha));
+}
+
+async function getOrCreateSnapshotPr(repo, sha) {
+  const branch = SNAPSHOT_PREFIX + sha;
+  const query = new URLSearchParams({
+    state: "open", head: repo.split("/")[0] + ":" + branch, base: "main", per_page: "10"
+  });
+  const lookup = () => github(repo, `/pulls?${query.toString()}`);
+  const existing = await lookup();
+  if (existing[0]) {
+    if (!trustedMergePr(existing[0], repo) || existing[0].head.sha !== sha) {
+      throw new Error("The snapshot pull request does not match the approved commit.");
+    }
+    return existing[0];
+  }
+
+  try {
+    await github(repo, "/git/refs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: "refs/heads/" + branch, sha })
+    });
+  } catch (error) {
+    if (error.status !== 422) throw error;
+    const ref = await github(repo, "/git/ref/heads/" + branch);
+    if (ref?.object?.sha !== sha) throw error;
+  }
+
+  try {
+    return await github(repo, "/pulls", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Preview", head: branch, base: "main" })
+    });
+  } catch (error) {
+    if (error.status === 422) {
+      const raced = await lookup();
+      if (raced[0] && trustedMergePr(raced[0], repo) && raced[0].head.sha === sha) return raced[0];
+    }
+    throw error;
+  }
+}
+
 async function getOrCreatePr(repo) {
   const existing = await findOpenPreviewPr(repo);
   if (existing) return existing;
@@ -321,12 +371,11 @@ exports.handler = async function(event) {
       return json(200, { ok: true, deployments: await getImenuDeployments(repo) });
     }
 
-    // Result checks are read-only, including when newer preview commits exist.
-    if (action === "result" || (action === "merge" && body.pr !== undefined)) {
+    // Once created, the PR keeps the exact snapshot across all validation polls.
+    if (body.pr !== undefined && ["validate", "merge", "result"].includes(action)) {
       activePr = await github(repo, `/pulls/${body.pr}`);
-      if (activePr?.head?.ref !== "preview" || activePr?.base?.ref !== "main" ||
-          activePr?.head?.repo?.full_name !== repo) {
-        return json(400, { ok: false, error: "This is not a preview → main pull request." });
+      if (!trustedMergePr(activePr, repo)) {
+        return json(400, { ok: false, error: "This is not a trusted preview snapshot pull request." });
       }
       if (action === "result" || activePr.merged) {
         return json(200, {
@@ -343,7 +392,14 @@ exports.handler = async function(event) {
       }
     }
 
-    const comparison = await github(repo, "/compare/main...preview");
+    const snapshotSha = action === "validate" && !activePr
+      ? (await github(repo, "/branches/preview"))?.commit?.sha
+      : null;
+    if (snapshotSha !== null && !/^[a-f0-9]{40}$/.test(snapshotSha || "")) {
+      throw new Error("Could not capture the preview snapshot.");
+    }
+    const comparisonRef = activePr?.head?.sha || snapshotSha || "preview";
+    const comparison = await github(repo, `/compare/main...${comparisonRef}`);
     const changedFiles = Array.isArray(comparison.files) ? comparison.files.length : null;
     const commits = Array.isArray(comparison.commits)
       ? comparison.commits.map(commit =>
@@ -368,7 +424,9 @@ exports.handler = async function(event) {
       });
     }
 
-    const pr = activePr || await getOrCreatePr(repo);
+    const pr = activePr || (action === "validate"
+      ? await getOrCreateSnapshotPr(repo, snapshotSha)
+      : await getOrCreatePr(repo));
     activePr = pr;
     const headSha = pr?.head?.sha || comparison?.commits?.at(-1)?.sha;
     const metadata = { pr: pr.number, prUrl: pr.html_url, headSha, commits };
@@ -408,10 +466,16 @@ exports.handler = async function(event) {
 
     // GitHub must merge exactly the head that passed validation.
     mergeRequested = true;
+    const isSnapshot = pr.head.ref.startsWith(SNAPSHOT_PREFIX);
+    const mergeBody = { merge_method: "squash", sha: headSha };
+    if (isSnapshot) {
+      mergeBody.commit_message = commits.map(title => "* " + title).join("\n") +
+        "\n\n[merge-snapshot:" + headSha + "]";
+    }
     const result = await github(repo, `/pulls/${pr.number}/merge`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ merge_method: "squash", sha: headSha })
+      body: JSON.stringify(mergeBody)
     });
 
     if (typeof result.merged !== "boolean") {
