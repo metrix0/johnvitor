@@ -1,6 +1,7 @@
 const PRODUCT_URL = 'https://astrovials.com/product/estradiol-enanthate/';
 const IMENU_URL = 'https://www.imenuapp.com.br';
-const NTFY_URL = 'https://ntfy.sh/astrovialseen';
+const ASTROVIALS_NTFY_URL = 'https://ntfy.sh/astrovialseen';
+const SECONDARY_NTFY_URL = 'https://ntfy.sh/jv-secondary-alerts-20261022';
 
 function json(statusCode, body) {
   return {
@@ -19,6 +20,12 @@ exports.handler = async function(event) {
   }
 
   const kind = event.queryStringParameters?.kind || 'astrovials';
+  if (!['astrovials', 'imenu', 'imenu-test'].includes(kind)) {
+    return json(400, { ok: false, error: 'Unknown alarm kind.' });
+  }
+  const notificationUrl = kind === 'imenu' || kind === 'imenu-test'
+    ? SECONDARY_NTFY_URL
+    : ASTROVIALS_NTFY_URL;
 
   let title = 'ALARM TRIGGER - AstroVials EEn IN STOCK';
   let body = 'TRIGGER ALARM - Estradiol Enanthate is in stock and purchasable now';
@@ -35,7 +42,7 @@ exports.handler = async function(event) {
   }
 
   try {
-    const response = await fetch(NTFY_URL, {
+    const response = await fetch(notificationUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
