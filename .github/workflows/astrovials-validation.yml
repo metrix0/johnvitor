@@ -42,4 +42,4 @@ jobs:
             --header "Tags: warning,rotating_light" \
             --header "Click: https://astrovials.com/en/shop/estradiol-enanthate-mct" \
             --data "SIMULATION ONLY - not an actual website change. Before: Sold out. After: BANANA. Product: https://astrovials.com/en/shop/estradiol-enanthate-mct" \
-            "https://ntfy.sh/astrovialseen"
+            "https://ntfy.sh/jv-secondary-alerts-20261022"
