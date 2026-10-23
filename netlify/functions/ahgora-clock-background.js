@@ -32,12 +32,13 @@ function getSaoPauloDateParts(date = new Date()) {
 }
 
 function getExtraNonWorkDates() {
-  return new Set(
-    (process.env.AHGORA_EXTRA_NONWORK_DATES || '')
+  return new Set([
+    '2026-10-26', // Folga pontual (não é feriado nacional)
+    ...(process.env.AHGORA_EXTRA_NONWORK_DATES || '')
       .split(',')
       .map(value => value.trim())
       .filter(Boolean)
-  );
+  ]);
 }
 
 function getNonWorkReason(date = new Date()) {
