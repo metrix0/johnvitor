@@ -15,56 +15,73 @@ textarea{min-height:76px}button{padding:10px 14px;margin-top:12px;border-radius:
 small{color:#a3a4b1}strong{color:#f9fafb}a{color:#bce8d0}
 </style></head><body><main>
 <h1>AI reporting protocol</h1>
-<p>This is the reporting endpoint for John Vitor's private Task Spotlight inbox. It receives a short final status from normal ChatGPT conversations and scheduled task/cron runs. <strong>Only report after the actual work and validation are finished.</strong></p>
-<section><h2>Instructions for AI agents</h2>
-<p><strong>1. Read the private reporting key</strong> from the <code>key</code> query parameter of the URL you were sent (<code>/ai?key=...</code>). If no key is present, explain that you cannot report; do not invent a key.</p>
-<p><strong>2. Determine the conversation kind.</strong> Use <code>chat</code> for ordinary conversations, or <code>cron</code> for a scheduled/recurring ChatGPT task run.</p>
-<p><strong>3. Determine the actual outcome.</strong> Use <code>done</code> only when everything requested is finished and validated; <code>blocked</code> if incomplete, failed, unverified, or awaiting approval; <code>unknown</code> only when the result cannot be established. Include a concise truthful title and summary.</p>
-<p><strong>4. Submit a report to</strong> <code>https://johnvitor.com/api/ai?action=report</code>. Preferred method: <strong>POST JSON</strong> with the header <code>X-Report-Key: &lt;key&gt;</code>. Example JSON body:</p>
+<p>This page explains how normal ChatGPT conversations and scheduled tasks report their final status to Task Spotlight. <strong>No key, login, or private reporting link is needed.</strong></p>
+<section>
+<h2>Instructions for AI agents</h2>
+<p><strong>1. Determine the type.</strong> Use <code>kind=chat</code> for a normal conversation or <code>kind=cron</code> for a scheduled task run.</p>
+<p><strong>2. Report the actual outcome.</strong> Use <code>done</code> only when all requested work has been completed and verified. Use <code>blocked</code> if work failed, is incomplete, unverified, or requires user approval; otherwise <code>unknown</code>. Provide a short truthful title and summary.</p>
+<p><strong>3. Submit the report using either option.</strong> Both are supported; use whichever HTTP-capable tool is available. <strong>No API key is required.</strong> Use one new, unique <code>nonce</code> (8–80 letters, digits, underscores, or hyphens) per distinct report, and reuse it only when retrying that same report.</p>
+<h3>Option A — POST JSON</h3>
+<p>POST to <code>https://johnvitor.com/api/ai?action=report</code> with <code>Content-Type: application/json</code> and this body:</p>
 <pre>{
   "kind": "chat",
-  "status": "blocked",
-  "title": "Project implementation",
-  "summary": "One validation step is still pending.",
-  "nonce": "unique-run-id-12345678",
-  "conversationUrl": ""
+  "status": "done",
+  "title": "Example task",
+  "summary": "The requested work was completed and verified.",
+  "nonce": "unique-task-run-12345678"
 }</pre>
-<p><strong>Recommended for ChatGPT with TinyFish connected:</strong> use <code>TinyFish.fetch_content</code> (URL fetch, not the paid browser automation) with one complete HTTPS report URL. For example, request <code>https://johnvitor.com/api/ai?action=report&amp;key=&lt;key&gt;&amp;kind=cron&amp;status=done&amp;title=Example&amp;summary=Completed&amp;nonce=unique-run-id-12345678</code>. Set <code>kind=chat</code> for a normal conversation. URL-encode the title, summary, and any supplied conversation URL; generate a new unique nonce for each new result and reuse it only when retrying. This GET fallback exists specifically for agents with read-only URL-fetch tools. Prefer POST when an approved HTTP POST tool is available.</p>
-<p><strong>Never mistake a fetched instruction page for submission.</strong> You must fetch the actual <code>?action=report</code> URL and inspect the returned JSON. The API must confirm <code>ok: true</code> and a report ID. Never invent a conversation URL, claim a task was completed without validation, or disclose the private report key in your answer. TinyFish may not be available to every scheduled task, so do not promise delivery without verifying the result.</p>
-<p><strong>5. Verify the actual response.</strong> Successful reporting returns HTTP 200/201 with JSON <code>{"ok":true}</code>. If the request did not succeed, say the report was not delivered. Never claim delivery merely because an instruction was read. Report the result once per completed run, not for every intermediate message.</p>
-<p><small>Important: not every AI configuration has HTTP tools. Reading this page does not guarantee the agent can send the request. Reporting keys grant write-only access. Never publish or include the key in your final user-visible answer.</small></p>
+<h3>Option B — GET URL</h3>
+<p>Make an HTTP GET request to the fully formed URL below (substitute genuine values and URL-encode parameters):</p>
+<pre>https://johnvitor.com/api/ai?action=report&amp;kind=cron&amp;status=done&amp;title=Example%20task&amp;summary=Completed%20and%20verified&amp;nonce=unique-task-run-12345678</pre>
+<p>Optionally supply a verified <code>conversationUrl</code> from ChatGPT. Never invent it. Do not submit sensitive content in the title, summary, or URL.</p>
+<p><strong>4. Verify submission.</strong> Look for HTTP 200/201 and a JSON response containing <code>"ok": true</code> and a report <code>id</code>. Merely opening this instruction page does not submit anything. If you cannot access an HTTP-capable tool or cannot confirm delivery, say so explicitly. Report once at the end of a task, not after each intermediate message.</p>
 </section>
-<section><h2>Reporting link</h2><p class="status" id="link-state">Checking report key…</p>
-<div id="examples" hidden>
-<p>When sharing your private link with an AI, your one-line instruction can be: <strong>“When finished, visit the reporting link I provided and follow its protocol.”</strong></p>
-<button type="button" id="copy">Copy private reporting link</button>
-</div></section>
-<section><h2>Manual test</h2><p>Use this to verify the server and the extension without running an AI task.</p>
-<label for="kind">Kind</label><select id="kind"><option value="chat">Normal chat</option><option value="cron">Scheduled / cron</option></select>
+<section>
+<h2>Reporting link</h2>
+<p class="status" id="link-state">Ready. No key is needed. Use this same public page for any chat or scheduled task.</p>
+<p>Suggested instruction for an AI: <strong>“After finishing your work, read https://johnvitor.com/ai and submit one final status report using POST or GET, then verify delivery.”</strong></p>
+<button id="copy" type="button">Copy AI reporting instruction</button>
+</section>
+<section><h2>Manual test</h2>
+<p>Send a synthetic test report to verify the API and your Spotlight extension. This is not an actual completed AI task.</p>
+<label for="kind">Type</label><select id="kind"><option value="chat">Normal chat</option><option value="cron">Scheduled / cron</option></select>
 <label for="outcome">Outcome</label><select id="outcome"><option value="done">Completed ✅</option><option value="blocked">Blocked 🛑</option><option value="unknown">Unknown</option></select>
 <label for="title">Title</label><input id="title" value="Manual Spotlight test" maxlength="100">
-<label for="summary">Summary</label><textarea id="summary" maxlength="280">This is a deliberate API connectivity test.</textarea>
-<button id="test" type="button">Send test report</button><p id="test-result" aria-live="polite"></p></section>
-<p><small>No ChatGPT conversation data is fetched or scanned by this page. Reports are private to their inbox credentials. This is an independent reporting workflow, not an OpenAI feature.</small></p>
+<label for="summary">Summary</label><textarea id="summary" maxlength="280">This is a deliberate API connectivity test, not a real task result.</textarea>
+<button id="test" type="button">Send test report (POST)</button>
+<button id="test-get" type="button">Send test report (GET)</button>
+<p id="test-result" aria-live="polite"></p></section>
+<p><small>Important: because you requested a keyless system, reporting and the shared inbox are publicly accessible. Anyone can submit reports. Avoid confidential information; status reports are not evidence that a task was really performed. This is independent of OpenAI.</small></p>
 </main>
 <script>
-const params=new URL(location.href).searchParams;
-const key=params.get('key')||'';
-const valid=/^[A-Za-z0-9_-]{40,100}$/.test(key);
 const state=document.getElementById('link-state');
-const examples=document.getElementById('examples');
-const link=location.origin+'/ai?key='+encodeURIComponent(key);
-state.textContent=valid?'Private report key detected. The server will verify it when a report is sent.':'No reporting key provided. Open the private link copied from Task Spotlight in Brave.';
-examples.hidden=!valid;
-document.getElementById('copy').onclick=async()=>{await navigator.clipboard.writeText(link);state.textContent='Private link copied.'};
-document.getElementById('test').onclick=async()=>{
-const status=document.getElementById('test-result');status.textContent='Sending…';
-if(!valid){status.textContent='A private reporting key is required.';return;}
-try{
-const body={kind:document.getElementById('kind').value,status:document.getElementById('outcome').value,title:document.getElementById('title').value,summary:document.getElementById('summary').value,nonce:crypto.randomUUID()};
-const response=await fetch('/api/ai?action=report',{method:'POST',headers:{'Content-Type':'application/json','X-Report-Key':key},body:JSON.stringify(body),cache:'no-store'});
-const json=await response.json();status.textContent=json.ok?'Report stored (ID '+json.id+'). Open ChatGPT to view it.':('Not stored: '+(json.error||response.status));
-}catch(error){status.textContent='Request failed: '+error.message}
+document.getElementById('copy').onclick=async()=>{
+ const instruction='After finishing your work, visit https://johnvitor.com/ai and submit one final status report using either POST or GET. Verify the API returns ok:true and the report ID.';
+ try { await navigator.clipboard.writeText(instruction); state.textContent='Reporting instruction copied. No key required.'; }
+ catch { state.textContent='Clipboard unavailable. Copy the instruction above.'; }
 };
+async function sendTest(method){
+ const output=document.getElementById('test-result'); output.textContent='Sending…';
+ const body={
+   kind:document.getElementById('kind').value,
+   status:document.getElementById('outcome').value,
+   title:document.getElementById('title').value,
+   summary:document.getElementById('summary').value,
+   nonce:crypto.randomUUID()
+ };
+ try{
+   let response;
+   if(method==='GET'){
+     const params=new URLSearchParams({action:'report',...body});
+     response=await fetch('/api/ai?'+params.toString(),{cache:'no-store'});
+   } else {
+     response=await fetch('/api/ai?action=report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
+   }
+   const data=await response.json();
+   output.textContent=(response.ok&&data.ok)?'Report stored (ID '+data.id+'). Refresh ChatGPT to check the inbox.':'Report not saved: '+(data.error||'HTTP '+response.status);
+ } catch(error){ output.textContent='Request failed: '+error.message; }
+}
+document.getElementById('test').onclick=()=>sendTest('POST');
+document.getElementById('test-get').onclick=()=>sendTest('GET');
 </script>
 </body></html>
