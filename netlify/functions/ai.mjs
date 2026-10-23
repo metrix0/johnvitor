@@ -4,6 +4,7 @@ import { getStore } from '@netlify/blobs';
 const STORE = 'ai-report-inbox-v1';
 const BASE = 'https://johnvitor.com';
 const LIMIT = 60;
+const PUBLIC_CHANNEL = 'public'; // Shared, no-reporting-key inbox. Submissions and shared feed are unauthenticated.
 
 
 function json(status, body) {
@@ -51,12 +52,8 @@ async function register() {
   });
 }
 async function submit(params) {
-  const key = String(params.key || '');
-  if (!validToken(key)) return json(401, { ok: false, error: 'Invalid reporting key' });
+  // No authorization or reporting key: any AI with HTTP access can send a result.
   const blobs = store();
-  const who = await blobs.get('write/' + digest(key), { type: 'json' });
-  if (!who?.channel) return json(401, { ok: false, error: 'Reporting key not recognized' });
-
   const kind = params.kind === 'cron' ? 'cron' : params.kind === 'chat' ? 'chat' : null;
   const status = ['done', 'blocked', 'unknown'].includes(params.status) ? params.status : null;
   const title = text(params.title, 100);
@@ -66,7 +63,7 @@ async function submit(params) {
     return json(400, { ok: false, error: 'Required: kind=chat|cron, status=done|blocked|unknown, title, summary, unique nonce (8-80 ASCII characters)' });
   }
 
-  const channel = who.channel;
+  const channel = PUBLIC_CHANNEL;
   const nonceKey = 'nonce/' + channel + '/' + digest(nonce);
   const prior = await blobs.get(nonceKey, { type: 'json' });
   if (prior?.id) return json(200, { ok: true, id: prior.id, duplicate: true });
@@ -83,26 +80,35 @@ async function submit(params) {
   await blobs.setJSON(nonceKey, { id }, { onlyIfNew: true });
   return json(201, { ok: true, id, stored: true, kind, status });
 }
-async function inbox(request) {
-  const authorization = request.headers.get('authorization') || '';
-  const readKey = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
-  if (!validToken(readKey)) return json(401, { ok: false, error: 'Missing inbox credential' });
-  const blobs = store();
-  const who = await blobs.get('read/' + digest(readKey), { type: 'json' });
-  if (!who?.channel) return json(401, { ok: false, error: 'Invalid inbox credential' });
-
-  const prefix = 'event/' + who.channel + '/';
+async function feed(blobs, prefix) {
   const listing = await blobs.list({ prefix });
-  const newest = listing.blobs
+  return listing.blobs
     .map(x => x.key)
-    .filter(x => x.startsWith(prefix))
+    .filter(k => k.startsWith(prefix))
     .sort().reverse()
     .slice(0, LIMIT);
-  // A bounded feed: reading the inbox cannot accidentally scan entire ChatGPT history.
-  const entries = await Promise.all(newest.map(k => blobs.get(k, { type: 'json' }).catch(() => null)));
-  const reports = entries.filter(x => x && x.id).sort((a, b) => b.reportedAt.localeCompare(a.reportedAt));
-  return json(200, { ok: true, reports, serverTime: new Date().toISOString(), limit: LIMIT });
 }
+async function inbox(request) {
+  const blobs = store();
+  // Existing extensions still pass a Bearer credential; their old private history
+  // remains accessible, while all new unkeyed submissions appear in the shared feed.
+  const header = request.headers.get('authorization') || '';
+  const readKey = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  let privateChannel = null;
+  if (validToken(readKey)) {
+    const who = await blobs.get('read/' + digest(readKey), { type: 'json' });
+    privateChannel = who?.channel || null;
+  }
+  const publicPrefix = 'event/' + PUBLIC_CHANNEL + '/';
+  const prefixes = [publicPrefix];
+  if (privateChannel && privateChannel !== PUBLIC_CHANNEL) prefixes.push('event/' + privateChannel + '/');
+  const keys = (await Promise.all(prefixes.map(p => feed(blobs, p))))
+    .flat().sort().reverse().slice(0, LIMIT);
+  const entries = await Promise.all(keys.map(k => blobs.get(k, { type: 'json' }).catch(() => null)));
+  const reports = entries.filter(x => x?.id).sort((a, b) => b.reportedAt.localeCompare(a.reportedAt));
+  return json(200, { ok: true, reports, serverTime: new Date().toISOString(), limit: LIMIT, shared: true });
+}
+
 export default async function handler(request) {
   try {
     const url = new URL(request.url);
@@ -121,16 +127,14 @@ export default async function handler(request) {
         const raw = await request.text();
         if (raw.length > 4096) return json(413, { ok: false, error: 'Body too large' });
         try { params = JSON.parse(raw); } catch { return json(400, { ok: false, error: 'Invalid JSON' }); }
-        params.key = request.headers.get('x-report-key') || params.key;
       } else {
-        // Fallback for AI tools that can only open URLs. Sensitive write capability
-        // remains separate from the read capability used by the Brave extension.
+        // URL-based submission works with ordinary URL-fetch tools.
         params = Object.fromEntries(url.searchParams.entries());
       }
       return await submit(params || {});
     }
     return json(405, {
-      ok: false, error: 'Supported: POST ?action=register; POST/GET ?action=report; GET ?action=inbox',
+      ok: false, error: 'Supported: POST/GET ?action=report; GET ?action=inbox',
       instructions: BASE + '/ai'
     });
   } catch (error) {
