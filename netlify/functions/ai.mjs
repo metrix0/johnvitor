@@ -4,7 +4,7 @@ import { getStore } from '@netlify/blobs';
 const STORE = 'ai-report-inbox-v1';
 const BASE = 'https://johnvitor.com';
 const LIMIT = 60;
-const DAY = 24 * 60 * 60 * 1000;
+
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -20,14 +20,17 @@ function json(status, body) {
 }
 const digest = value => createHash('sha256').update(String(value)).digest('hex');
 const token = () => randomBytes(32).toString('base64url');
-const text = (v, max = 160) => String(v ?? '').trim().replace(/[\\u0000-\\u001f\\u007f]/g, ' ').replace(/\\s+/g, ' ').slice(0, max);
+const text = (v, max = 160) => String(v ?? '').trim().replace(/\s+/g, ' ').slice(0, max);
 const validToken = v => typeof v === 'string' && /^[A-Za-z0-9_-]{40,100}$/.test(v);
 function safeChatUrl(value) {
   if (!value) return '';
   try {
     const url = new URL(String(value));
     if (url.protocol !== 'https:' || !['chatgpt.com', 'chat.openai.com'].includes(url.hostname)) return '';
-    if (!/^\\/(?:g\\/[^/]+\\/)?c\\/[0-9a-f-]{16,}(?:\\/|$)/i.test(url.pathname)) return '';
+    const parts = url.pathname.split('/').filter(Boolean);
+    const chatId = parts[0] === 'c' && parts.length === 2 ? parts[1] :
+      parts[0] === 'g' && parts[2] === 'c' && parts.length === 4 ? parts[3] : '';
+    if (!/^[a-f0-9-]{16,}$/i.test(chatId)) return '';
     return url.origin + url.pathname;
   } catch { return ''; }
 }
