@@ -25,6 +25,7 @@ function setup(overrides = {}) {
     if (path === '/branches/preview') return Response.json({ commit: { sha: SHA } });
     if (path === '/pulls') return Response.json(method === 'POST' ? SNAPSHOT_PR : [SNAPSHOT_PR]);
     if (path === '/git/refs') return Response.json({ ref: 'refs/heads/merge-snapshot-' + SHA });
+    if (method === 'DELETE' && path === '/git/refs/heads/merge-snapshot-' + SHA) return new Response(null, { status: 204 });
     if (path === '/pulls/12') return Response.json(PR);
     if (path === `/commits/${SHA}/check-runs`) return Response.json({ check_runs: [check] });
     if (path === '/pulls/12/merge') return Response.json({ merged: true, sha: 'b'.repeat(40) });
@@ -247,6 +248,62 @@ test('an incomplete write response cannot be reported as not merged', async () =
   assert.equal(data.uncertain, true); assert.equal(data.pr, 12);
 });
 
+test('confirmed snapshot merge deletes only the exact snapshot ref', async () => {
+  const calls = setup({ '/pulls/12': () => Response.json(SNAPSHOT_PR) });
+  const data = await run('merge', { pr: 12, headSha: SHA });
+  assert.equal(data.merged, true);
+  assert.equal(data.snapshotDeleted, true);
+  const mergeIndex = calls.findIndex(c => c.method === 'PUT' && c.path === '/pulls/12/merge');
+  const deleteIndex = calls.findIndex(c => c.method === 'DELETE');
+  assert.ok(mergeIndex >= 0 && deleteIndex > mergeIndex);
+  assert.equal(calls[deleteIndex].path, '/git/refs/heads/merge-snapshot-' + SHA);
+});
+
+test('merged result retries snapshot cleanup without another merge', async () => {
+  const calls = setup({ '/pulls/12': () => Response.json({
+    ...SNAPSHOT_PR, merged: true, state: 'closed', merge_commit_sha: 'b'.repeat(40)
+  }) });
+  const data = await run('result', { pr: 12 });
+  assert.equal(data.merged, true);
+  assert.equal(data.snapshotDeleted, true);
+  assert.equal(calls.filter(c => c.method === 'DELETE').length, 1);
+  noMerge(calls);
+});
+
+test('already-deleted snapshot is treated as cleanup complete', async () => {
+  const calls = setup({
+    '/pulls/12': () => Response.json({ ...SNAPSHOT_PR, merged: true, state: 'closed' }),
+    ['/git/refs/heads/merge-snapshot-' + SHA]: () =>
+      Response.json({ message: 'Not Found' }, { status: 404 })
+  });
+  const data = await run('result', { pr: 12 });
+  assert.equal(data.snapshotDeleted, true);
+  assert.equal(calls.some(c => c.path === '/git/refs/heads/preview'), false);
+});
+
+test('snapshot deletion failure cannot undo or misreport a successful merge', async () => {
+  const calls = setup({
+    '/pulls/12': () => Response.json(SNAPSHOT_PR),
+    ['/git/refs/heads/merge-snapshot-' + SHA]: () =>
+      Response.json({ message: 'Forbidden' }, { status: 403 })
+  });
+  const data = await run('merge', { pr: 12, headSha: SHA });
+  assert.equal(data.merged, true);
+  assert.equal(data.snapshotDeleted, false);
+  assert.match(data.snapshotCleanupError, /could not delete/);
+  assert.equal(calls.filter(c => c.method === 'DELETE').length, 1);
+});
+
+test('snapshot is retained when merge is rejected or PR remains unmerged', async () => {
+  const calls = setup({
+    '/pulls/12': () => Response.json(SNAPSHOT_PR),
+    '/pulls/12/merge': () => Response.json({ message: 'Conflict' }, { status: 409 })
+  });
+  const data = await run('merge', { pr: 12, headSha: SHA });
+  assert.equal(data.merged, undefined);
+  assert.equal(calls.some(c => c.method === 'DELETE'), false);
+});
+
 test('snapshot remains pinned when newer preview commits arrive during validation', async () => {
   const newer = 'c'.repeat(40);
   const calls = setup({
@@ -263,4 +320,5 @@ test('snapshot remains pinned when newer preview commits arrive during validatio
   const put = calls.find(x => x.path === '/pulls/12/merge');
   assert.equal(put.body.sha, SHA);
   assert.match(put.body.commit_message, /merge-snapshot:/);
+  assert.equal(calls.filter(c => c.method === 'DELETE').length, 1);
 });

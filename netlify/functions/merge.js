@@ -86,6 +86,25 @@ function trustedMergePr(pr, repo) {
       (ref.startsWith(SNAPSHOT_PREFIX) && ref.slice(SNAPSHOT_PREFIX.length) === pr?.head?.sha));
 }
 
+// Delete the exact snapshot branch only after a GitHub-confirmed merge.
+// Failures are reported separately and retried by the result endpoint.
+async function cleanupMergedSnapshot(repo, pr) {
+  if (!pr?.merged || !trustedMergePr(pr, repo) ||
+      !pr.head.ref.startsWith(SNAPSHOT_PREFIX)) return {};
+
+  try {
+    await github(repo, "/git/refs/heads/" + pr.head.ref, { method: "DELETE" });
+    return { snapshotDeleted: true };
+  } catch (error) {
+    if (error.status === 404) return { snapshotDeleted: true };
+    console.error("merge snapshot cleanup:", error);
+    return {
+      snapshotDeleted: false,
+      snapshotCleanupError: "GitHub confirmed the merge, but could not delete the snapshot branch."
+    };
+  }
+}
+
 async function getOrCreateSnapshotPr(repo, sha) {
   const branch = SNAPSHOT_PREFIX + sha;
   const query = new URLSearchParams({
@@ -435,13 +454,17 @@ exports.handler = async function(event) {
         return json(400, { ok: false, error: "This is not a trusted preview snapshot pull request." });
       }
       if (action === "result" || activePr.merged) {
+        const cleanup = activePr.merged
+          ? await cleanupMergedSnapshot(repo, activePr)
+          : {};
         return json(200, {
           ok: true,
           merged: Boolean(activePr.merged),
           closed: activePr.state === "closed",
           pr: activePr.number,
           prUrl: activePr.html_url,
-          sha: activePr.merged ? activePr.merge_commit_sha : null
+          sha: activePr.merged ? activePr.merge_commit_sha : null,
+          ...cleanup
         });
       }
       if (activePr.state !== "open") {
@@ -547,11 +570,13 @@ exports.handler = async function(event) {
       });
     }
 
+    const cleanup = await cleanupMergedSnapshot(repo, { ...pr, merged: true });
     return json(200, {
       ok: true,
       merged: true,
       ...metadata,
-      sha: result.sha || null
+      sha: result.sha || null,
+      ...cleanup
     });
   } catch (error) {
     console.error("merge:", error);
