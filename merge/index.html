@@ -252,7 +252,7 @@
       outcome.querySelector("p").textContent = message;
       const links = card.querySelector(".links"); links.replaceChildren();
       setLink(links, project.prUrl, project.pr ? `Pull request #${project.pr}` : "Pull request");
-      setLink(links, project.checkUrl, "TypeScript check");
+      setLink(links, project.checkUrl, "GitHub Actions check");
       if (phase === "merged" && project.sha) {
         setLink(links, `https://github.com/${project.repo}/commit/${project.sha}`, "Merged commit");
       }
@@ -370,8 +370,11 @@
         } catch (error) {
           metadata(project, error.data || {});
           const check = error.data?.validation?.typecheck;
+          const failureMessage = check?.failedStep
+            ? `GitHub Actions failed at "${check.failedStep}".${check.passedSteps?.includes("Typecheck") ? " TypeScript passed." : ""} See the details below before retrying.`
+            : "The required GitHub Actions check did not pass. Inspect the diagnostics, then retry.";
           render(project, "failed", check?.state === "failure" ? "Validation did not pass · not merged" : "Validation interrupted · not merged",
-            check?.state === "failure" ? "The required TypeScript check did not pass. Inspect the check, fix any reported errors, then retry." : error.message,
+            check?.state === "failure" ? failureMessage : error.message,
             { error: check?.error || (check?.conclusion ? `Check conclusion: ${check.conclusion}` : null) });
           return;
         }

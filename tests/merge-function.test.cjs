@@ -120,6 +120,27 @@ test('failed validation retains source locations and errors', async () => {
   assert.equal(data.status, 409); assert.match(data.error, /menu.ts:4\nTS2322/);
   noMerge(calls);
 });
+
+test('failed E2E job shows failing step and diagnostic log after TypeScript passed', async () => {
+  const calls = setup({
+    [`/commits/${SHA}/check-runs`]: () => Response.json({ check_runs: [{ ...check, id: 99, conclusion: 'failure', details_url: 'https://github.com/metrix0/imenu/actions/runs/77/job/99' }] }),
+    '/actions/jobs/99': () => Response.json({ steps: [
+      { name: 'Typecheck', conclusion: 'success' },
+      { name: 'Build', conclusion: 'success' },
+      { name: 'Browser E2E — checkout', conclusion: 'failure' }
+    ] }),
+    '/actions/jobs/99/logs': () => new Response('2026-10-23T15:15:29Z TimeoutError: Waiting failed: 15000ms exceeded\n2026-10-23T15:15:29Z     at click (e2e/checkout.cjs:94:16)\n2026-10-23T15:15:29Z ##[error]Process completed with exit code 1.'),
+    '/check-runs/99/annotations': () => Response.json([{ path: '.github', start_line: 38, message: 'Process completed with exit code 1.' }])
+  });
+  const data = await run('validate');
+  assert.equal(data.status, 409);
+  assert.equal(data.validation.typecheck.failedStep, 'Browser E2E — checkout');
+  assert.deepEqual(data.validation.typecheck.passedSteps, ['Typecheck', 'Build']);
+  assert.match(data.validation.typecheck.error, /TimeoutError: Waiting failed: 15000ms exceeded/);
+  assert.match(data.validation.typecheck.error, /e2e\/checkout.cjs:94:16/);
+  noMerge(calls);
+});
+
 test('cancelled checks cannot pass validation', async () => {
   const calls = setup({ [`/commits/${SHA}/check-runs`]: () => Response.json({ check_runs: [{ ...check, conclusion: 'cancelled' }] }) });
   const data = await run('validate');

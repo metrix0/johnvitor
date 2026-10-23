@@ -111,12 +111,14 @@ test('queued → running → passed → merged remains visible after refresh and
 });
 test('validation failure stays inline, preserves errors, and sends no merge', async () => {
   const { context, page, card, calls } = await setup(body => body.action === 'validate'
-    ? { status: 409, body: { ok: false, error: 'TypeScript validation failed.', pr: 12, prUrl: ready.prUrl, validation: { typecheck: { state: 'failure', error: 'menu.ts:4\nTS2322: Type mismatch', url: ready.validation.typecheck.url } } } }
+    ? { status: 409, body: { ok: false, error: 'TypeScript validation failed.', pr: 12, prUrl: ready.prUrl, validation: { typecheck: { state: 'failure', failedStep: 'Browser E2E — checkout', passedSteps: ['Typecheck', 'Build'], error: 'Failed step: Browser E2E — checkout\n\nLog excerpt:\nTimeoutError: Waiting failed: 15000ms exceeded', url: ready.validation.typecheck.url } } } }
     : defaultMock(body));
   await card.getByRole('button').click();
   await expect(card.getByRole('heading', { name: 'Validation did not pass · not merged' })).toBeVisible();
-  await expect(card.locator('pre')).toContainText('menu.ts:4');
-  await expect(card.getByRole('link', { name: 'TypeScript check' })).toHaveAttribute('href', ready.validation.typecheck.url);
+  await expect(card.locator('.outcome')).toContainText('Browser E2E — checkout');
+  await expect(card.locator('.outcome')).toContainText('TypeScript passed');
+  await expect(card.locator('pre')).toContainText('TimeoutError: Waiting failed');
+  await expect(card.getByRole('link', { name: 'GitHub Actions check' })).toHaveAttribute('href', ready.validation.typecheck.url);
   await page.waitForTimeout(1500);
   await expect(card.locator('.badge')).toHaveText('Not merged');
   expect(calls.filter(call => call.action === 'merge')).toHaveLength(0);

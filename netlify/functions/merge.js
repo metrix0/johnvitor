@@ -195,6 +195,63 @@ async function restartBlockedTypecheck(repo, sha, prNumber) {
   return blocked.html_url || null;
 }
 
+
+function githubActionsJobId(run) {
+  const url = String(run?.details_url || run?.html_url || "");
+  const match = /^https:\/\/github\.com\/[^/]+\/[^/]+\/actions\/runs\/\d+\/job\/(\d+)(?:[/?#]|$)/.exec(url);
+  return match ? Number(match[1]) : null;
+}
+
+function failureLogExcerpt(log) {
+  const lines = log.split(/\r?\n/).map(line => line
+    .replace(/^\d{4}-\d\d-\d\dT\S+Z\s*/, "")
+    .replace(/\x1b\[[\d;]*m/g, "")
+    .replace(/github_pat_[\w]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}/g, "[redacted]")
+    .replace(/(Bearer\s+)\S+/gi, "$1[redacted]")
+    .trimEnd()).filter(Boolean);
+  const diagnostic = /\berror TS\d+\b|\b(?:TimeoutError|AssertionError|SyntaxError|ReferenceError|TypeError|Error):|\bFAIL\b|##\[error\]/i;
+  const hits = lines.map((line, index) => ({ line, index }))
+    .filter(({ line }) => diagnostic.test(line) && !/Process completed with exit code/i.test(line));
+  if (!hits.length) return null;
+  const recent = [...new Set(hits.map(hit => hit.line))].slice(-5);
+  const last = hits[hits.length - 1].index;
+  return [...new Set([...recent, ...lines.slice(last + 1, last + 10)])].join("\n").slice(0, 3000);
+}
+
+async function failedJobDetails(repo, run) {
+  const id = githubActionsJobId(run);
+  if (!id) return { failedStep: null, passedSteps: [], log: null };
+  let failedStep = null, passedSteps = [], log = null;
+  try {
+    const job = await github(repo, `/actions/jobs/${id}`);
+    const steps = Array.isArray(job?.steps) ? job.steps : [];
+    failedStep = steps.find(step => step?.conclusion === "failure" || step?.conclusion === "timed_out")?.name || null;
+    passedSteps = steps.filter(step => step?.conclusion === "success" && /^(Typecheck|Build)$/i.test(step?.name || ""))
+      .map(step => step.name);
+  } catch { /* Preserve annotations if the job metadata is unavailable. */ }
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repo}/actions/jobs/${id}/logs`, {
+      headers: {
+        "Accept": "application/vnd.github+json",
+        "Authorization": `Bearer ${githubToken()}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "johnvitor-merge"
+      },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (response.ok && response.body) {
+      const decoder = new TextDecoder();
+      let tail = "";
+      for await (const chunk of response.body) {
+        tail += decoder.decode(chunk, { stream: true });
+        if (tail.length > 150000) tail = tail.slice(-150000);
+      }
+      log = failureLogExcerpt(tail + decoder.decode());
+    }
+  } catch { /* Job logs are optional; failure must remain visible without them. */ }
+  return { failedStep, passedSteps, log };
+}
+
 async function getMergeValidation(repo, sha, prNumber) {
   const checks = await github(repo, `/commits/${sha}/check-runs?per_page=100`);
 
@@ -218,35 +275,33 @@ async function getMergeValidation(repo, sha, prNumber) {
     }
   }
 
-  let error = null;
+  let error = null, failedStep = null, passedSteps = [];
   if (typecheckRun?.conclusion === "failure" && typecheckRun.id) {
+    const job = await failedJobDetails(repo, typecheckRun);
+    failedStep = job.failedStep;
+    passedSteps = job.passedSteps;
+    let annotations = [];
     try {
-      const annotations = await github(
-        repo,
-        `/check-runs/${typecheckRun.id}/annotations?per_page=100`
-      );
-      const details = (Array.isArray(annotations) ? annotations : [])
+      const response = await github(repo, `/check-runs/${typecheckRun.id}/annotations?per_page=100`);
+      annotations = (Array.isArray(response) ? response : [])
         .map(annotation => {
           const location = annotation?.path
             ? `${annotation.path}${annotation.start_line ? `:${annotation.start_line}` : ""}`
             : "";
-          const message = String(annotation?.message || "").trim();
-          return [location, message].filter(Boolean).join("\n");
-        })
-        .filter(Boolean);
-
-      if (details.length) error = details.join("\n\n");
-    } catch {
-      // Fall back to the check output below.
-    }
-
-    if (!error) {
-      error = [
+          return [location, String(annotation?.message || "").trim()].filter(Boolean).join("\n");
+        }).filter(Boolean);
+    } catch { /* Check-run output remains available. */ }
+    error = [
+      failedStep ? `Failed step: ${failedStep}` : null,
+      passedSteps.length ? `Passed: ${passedSteps.join(", ")}` : null,
+      job.log ? `Log excerpt:\n${job.log}` : null,
+      annotations.length ? `GitHub annotations:\n${annotations.join("\n\n")}` : null,
+      !job.log && !annotations.length ? [
         typecheckRun?.output?.title,
         typecheckRun?.output?.summary,
         typecheckRun?.output?.text
-      ].filter(Boolean).join("\n\n") || null;
-    }
+      ].filter(Boolean).join("\n\n") : null
+    ].filter(Boolean).join("\n\n") || null;
   }
 
   const typecheck = {
@@ -254,6 +309,8 @@ async function getMergeValidation(repo, sha, prNumber) {
     status: typecheckRun?.status || "queued",
     conclusion: typecheckRun?.conclusion || null,
     url: typecheckRun?.html_url || typecheckRun?.details_url || null,
+    failedStep,
+    passedSteps,
     error
   };
 
@@ -271,8 +328,8 @@ function validationError(validation) {
 
   const details = String(validation.typecheck.error || "").trim();
   return details
-    ? `TypeScript validation failed.\n\n${details}`
-    : "TypeScript validation failed.";
+    ? `Required validation failed.\n\n${details}`
+    : "Required validation failed.";
 }
 
 async function productionHealth() {
