@@ -107,6 +107,10 @@ export default async function handler(request) {
   try {
     const url = new URL(request.url);
     const action = url.searchParams.get('action');
+    if (request.method === 'GET' && action === 'health') {
+      await store().list({ prefix: 'healthcheck/' });
+      return json(200, { ok: true, service: 'ai-report-inbox', storage: 'reachable' });
+    }
     if (request.method === 'POST' && action === 'register') return await register();
     if (request.method === 'GET' && action === 'inbox') return await inbox(request);
     if ((request.method === 'POST' || request.method === 'GET') && action === 'report') {
