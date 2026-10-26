@@ -13,7 +13,7 @@ function setBusy(value) {
 }
 function getWorker() {
   if(worker) return worker;
-  worker=new Worker(new URL('./worker.js',import.meta.url));
+  worker=new Worker(new URL('./worker.js?v=2',import.meta.url));
   return worker;
 }
 async function analyze(file,name) {
