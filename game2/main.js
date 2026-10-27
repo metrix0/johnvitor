@@ -1,4 +1,4 @@
-import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL} from './data.js';
+import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js';
 import {View} from './render.js';
 const $=id=>document.getElementById(id);
@@ -162,7 +162,7 @@ function escapeText(s){return String(s).replaceAll('&','&amp;').replaceAll('<','
 function hideOverlay(){activeOverlay='';$('centerOverlay').classList.add('hidden');}
 function showBrief(){
  if(!run)return;const m=MISSIONS[run.mission];
- showOverlay('CASE FILE / '+m.number,m.name,m.description,host?'BEGIN OPERATION ↗':'WAITING FOR THE HOST',host?()=>{run.phase='play';lastPhase='';hideOverlay();softPaused=false;sendState();requestLock();}:null,[['TARGET',m.site],['THREAT LEVEL',String(run.mission+1)+' / 5'],['EST. PAYOUT',coins(m.payout)]]);
+ showOverlay('CASE FILE / '+m.number,m.name,m.description+(run.mission===0?' Scout the neighborhood, get the credentials, breach the backroom safe, carry EACH bag to the parked van, then signal the driver and hold out for extraction. Optional jobs reduce risk or increase your payout.':''),host?'BEGIN OPERATION ↗':'WAITING FOR THE HOST',host?()=>{run.phase='play';lastPhase='';hideOverlay();softPaused=false;sendState();requestLock();}:null,[['TARGET',m.site],['THREAT LEVEL',String(run.mission+1)+' / 5'],['EST. PAYOUT',coins(m.payout)]]);
  if(!host)$('overlayAction').classList.add('hidden');
 }
 function showPause(){
@@ -221,7 +221,7 @@ function randomCode(){
  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',buf=new Uint8Array(6);crypto.getRandomValues(buf);return Array.from(buf,b=>chars[b%chars.length]).join('');
 }
 function send(packet){if(conn?.open)try{conn.send(packet);}catch{}}
-function sendState(){if(host&&run)send({type:'state',run});}
+function sendState(){if(host&&run)send({type:'state',run:{...run,grid:undefined}});}
 function connectionLost(){
  if(mode==='menu')return;
  $('networkDisplay').textContent='OFFLINE';
@@ -256,7 +256,7 @@ function setupConnection(c){
    if(packet.type==='input')remoteInput=sanitizedInput(packet.input);
    if(packet.type==='kit-update'&&packet.kit){const k=packet.kit;remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:WEAPONS[k.weapon]?k.weapon:'pistol',gadget:GADGETS[k.gadget]?k.gadget:null,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};}
   }else if(packet.type==='state'&&packet.run){
-   const previous=run?.runId;run=packet.run;onRunChange();if(previous!==run.runId)view?.build(run);
+   const previous=run?.runId;run=packet.run;run.grid=makeGrid(MISSIONS[run.mission]);onRunChange();if(previous!==run.runId)view?.build(run);
   }
  });
  c.on('close',connectionLost);c.on('error',connectionLost);
@@ -291,11 +291,17 @@ function updateHud(){
  if(!run)return;
  const mission=MISSIONS[run.mission],p=run.players[host?0:1]||run.players[0];if(!p)return;
  $('hudMission').textContent=mission.name;$('hudSite').textContent=mission.site+' / '+mission.number;
- const done=run.objectives.filter(o=>o.done).length,total=run.objectives.length;
- const next=run.objectives.find(o=>objectiveReady(run,o));$('hudObjective').textContent=next?next.name.toUpperCase():'GET TO EXTRACTION';
- $('objectiveProgress').textContent=done+' / '+total+' TASKS SECURED';
+ const required=run.objectives.filter(o=>!o.optional),done=required.filter(o=>o.done).length,total=required.length;
+ let next=required.find(o=>objectiveReady(run,o)),heading=next?next.name.toUpperCase():'GET TO EXTRACTION';
+ if(run.mission===0){
+  if(run.players[host?0:1]?.bagId!==null&&run.players[host?0:1]?.bagId!==undefined)heading='DELIVER THE BAG TO THE VAN';
+  else if(run.loot.length&&run.secured<run.bagGoal)heading='TRANSPORT THE CASH · '+run.secured+'/'+run.bagGoal+' BAGS';
+  else if(run.escapeAt>0)heading=run.escapeAt>run.time?'PROTECT THE VAN · '+Math.ceil(run.escapeAt-run.time)+'S':'BOARD THE GETAWAY VAN';
+ }
+ $('hudObjective').textContent=heading;
+ $('objectiveProgress').textContent=(run.mission===0?'CHAPTER '+Math.min(6,run.chapter||1)+' / 6 · ':'')+done+' / '+total+' PHASES · '+formatTime(run.time);
  $('crew').innerHTML=run.players.map((player,i)=>`<div class="crewCard ${player.hp<=0?'downed':''}" style="border-color:${i===0?'#b7f7d4':'#8bd8ff'}"><div class="crewName">${escapeText(player.name.toUpperCase())}${i===(host?0:1)?' / YOU':''}</div><div class="crewHp">${player.hp>0?Math.ceil(player.hp)+' / '+player.maxHp+' HP':'DOWN — NEEDS REVIVE'}</div><div class="crewMiniBar"><div style="width:${Math.max(0,player.hp/player.maxHp*100)}%"></div></div></div>`).join('');
- $('tasks').innerHTML=run.objectives.map(o=>`<div class="task ${o.done?'done':objectiveReady(run,o)?'':'locked'}"><span class="taskIcon">${o.done?'✓':objectiveReady(run,o)?'◇':'⊠'}</span><span>${escapeText(o.name)}</span></div>`).join('');
+ $('tasks').innerHTML=run.objectives.map(o=>`<div class="task ${o.done?'done':objectiveReady(run,o)?'':'locked'}"><span class="taskIcon">${o.done?'✓':objectiveReady(run,o)?'◇':o.optional?'✧':'⊠'}</span><span>${escapeText(o.name)}${o.optional?' · BONUS':''}</span></div>`).join('');
  $('hpLabel').textContent=Math.ceil(p.hp)+' / '+p.maxHp;$('hpFill').style.width=(p.hp/p.maxHp*100)+'%';$('hpFill').style.background=p.hp/p.maxHp<.3?'#ff786c':'#b8f8d0';
  $('staminaFill').style.width=p.stamina+'%';$('damage').style.opacity=p.hp>0?Math.max(0,(.33-p.hp/p.maxHp))*1.7:.8;
  $('gunName').textContent=WEAPONS[p.weapon].name+ (p.reload>0?' · RELOADING':'');
@@ -318,7 +324,16 @@ function drawMinimap(player){
  if(!run)return;const grid=run.grid,sx=W/grid[0].length,sz=H/grid.length;
  for(let z=0;z<grid.length;z++)for(let x=0;x<grid[z].length;x++){ctx.fillStyle=grid[z][x]==='#'?'#53616b':'#142832';ctx.fillRect(x*sx,z*sz,sx-.4,sz-.4);}
  for(const o of run.objectives)if(!o.done){ctx.fillStyle=objectiveReady(run,o)?'#ffce7a':'#576568';ctx.fillRect(o.x/CELL*sx-2,o.z/CELL*sz-2,4,4);}
- ctx.fillStyle=run.objectives.every(o=>o.done)?'#91ffb3':'#36664f';ctx.fillRect(run.exit.x/CELL*sx-3,run.exit.z/CELL*sz-3,6,6);
+ ctx.fillStyle=#91ffb3:'#36664f';ctx.fillRect(run.exit.x/CELL*sx-3,run.exit.z/CELL*sz-3,6,6);
+ if(run.mission===0){
+  for(const bag of run.loot){
+   if(bag.secured)continue;
+   ctx.fillStyle=bag.carrier===null?'#ffd07d':'#fff4ba';
+   ctx.fillRect(bag.x/CELL*sx-2.4,bag.z/CELL*sz-2.4,5,5);
+  }
+  ctx.fillStyle=run.escapeAt>0&&run.time>=run.escapeAt?'#a4ffc6':'#64eab0';
+  ctx.beginPath();ctx.arc(run.dropoff.x/CELL*sx,run.dropoff.z/CELL*sz,3,0,Math.PI*2);ctx.fill();
+ }
  for(const e of run.enemies)if(e.hp>0){ctx.fillStyle='#ff817d';ctx.beginPath();ctx.arc(e.x/CELL*sx,e.z/CELL*sz,1.6,0,Math.PI*2);ctx.fill();}
  run.players.forEach((p,i)=>{ctx.fillStyle=i===0?'#b7ffd8':'#8bd8ff';ctx.beginPath();ctx.arc(p.x/CELL*sx,p.z/CELL*sz,3.5,0,Math.PI*2);ctx.fill();});
 }

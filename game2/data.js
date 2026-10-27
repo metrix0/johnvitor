@@ -1,3 +1,4 @@
+import {LEVEL1,makeLevel1Grid} from './level1.js';
 // GETAWAY CLUB / mission and equipment definitions. All coordinates are authored in tiles.
 export const CELL = 2;
 export const WIDTH = 27;
@@ -20,12 +21,7 @@ export const UPGRADES = {
   mag:{name:'EXTENDED MAG',desc:'+20% magazine size per tier',cost:[180,300,500],icon:'▤'}
 };
 export const MISSIONS = [
- {id:'bodega',number:'01',name:'AFTER HOURS',site:'EASTSIDE MARKET',type:'CORNER STORE',tag:'THE FIRST SCORE',description:'A late-night corner store. Sweep the aisles, crack the registers, and leave before the neighborhood patrol arrives.',theme:'store',accent:'#ffcf79',payout:350,reinforce:48,alarmRate:.10,
-  walls:[[7,1,1,5],[7,9,1,9],[16,1,1,6],[16,10,1,8]], 
-  decor:[[4,4,'shelf'],[4,7,'shelf'],[4,11,'shelf'],[11,4,'shelf'],[11,11,'shelf'],[20,5,'counter'],[21,11,'fridge'],[23,4,'fridge'],[12,15,'crate']],
-  spawn:[2,8],exit:[24,16],enemies:[[11,8,'guard'],[20,9,'guard'],[22,14,'rusher']],
-  objectives:[{id:'register-a',at:[5,15],name:'Front register',kind:'cash',duration:1.1},{id:'register-b',at:[20,4],name:'Back register',kind:'cash',duration:1.4},{id:'safe',at:[23,13],name:'Office safe',kind:'safe',duration:3,requires:['register-a','register-b']}],
-  completion:'The Vector 9 SMG and smoke grenades are now available.'},
+ LEVEL1,
  {id:'offices',number:'02',name:'THE PAPER TRAIL',site:'HALCYON PLAZA',type:'OFFICE BUILDING',tag:'CORPORATE ESPIONAGE',description:'A corporate office after midnight. Steal the access badge, copy the finance files, then find the courier package.',theme:'office',accent:'#7fdcf3',payout:600,reinforce:35,alarmRate:.14,
   walls:[[6,2,1,6],[6,11,1,6],[13,1,1,5],[13,9,1,8],[20,3,1,6],[20,12,1,5]],
   decor:[[3,4,'desk'],[3,14,'desk'],[9,3,'desk'],[9,13,'desk'],[16,6,'desk'],[16,14,'desk'],[23,5,'desk'],[23,14,'desk'],[10,9,'plant'],[18,10,'plant']],
@@ -53,6 +49,7 @@ export const MISSIONS = [
 ];
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export function makeGrid(mission){
+  if(mission.id==='bodega')return makeLevel1Grid();
   const grid=Array.from({length:HEIGHT},(_,z)=>Array.from({length:WIDTH},(_,x)=>x===0||z===0||x===WIDTH-1||z===HEIGHT-1?'#':'.'));
   for(const [x,z,w,h] of mission.walls)for(let iz=z;iz<z+h;iz++)for(let ix=x;ix<x+w;ix++)if(grid[iz]?.[ix])grid[iz][ix]='#';
   return grid;

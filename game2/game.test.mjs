@@ -20,7 +20,7 @@ test('each of the five authored maps contains reachable objectives and extractio
  }
 });
 test('all five jobs can progress through dependencies, interactions and extraction',()=>{
- for(let n=0;n<5;n++){
+ for(let n=1;n<5;n++){
   const run=makeRun(n,1);run.enemies=[];run.phase='play';const p=run.players[0];
   for(const o of run.objectives){assert.ok(objectiveReady(run,o),'unexpected locked task '+o.id);
    p.x=o.x;p.z=o.z;advance(run,[{...idle,interact:true}],o.duration+.3);
@@ -58,4 +58,56 @@ test('empty magazines start reload, but cannot reload without reserve ammunition
  advance(run,[{...idle,fire:true}],.5);assert.equal(p.reload,0);
  p.reserve=15;advance(run,[{...idle,fire:true}],.1);assert.ok(p.reload>0);
  advance(run,[idle],2);assert.ok(p.ammo>0);
+});
+
+test('level one is a full city block, substantially larger than the original store',()=>{
+ const run=makeRun(0,1),old=makeRun(1,1);
+ assert.ok(run.grid.length>=55&&run.grid[0].length>=70);
+ assert.ok(run.grid.length*run.grid[0].length>old.grid.length*old.grid[0].length*7);
+ assert.ok(run.objectives.filter(o=>!o.optional).length>=7);
+ assert.ok(run.enemies.length>=10);
+ assert.ok(run.objectives.some(o=>o.optional));
+});
+test('level one progresses through recon, infiltration, safe breach, hauling and van defence',()=>{
+ const run=makeRun(0,1);run.enemies=[];run.reinforce=Infinity;run.phase='play';const p=run.players[0];
+ for(const id of ['recon','manifest','badge','breaker','safe']){
+  const obj=run.objectives.find(x=>x.id===id);
+  assert.ok(objectiveReady(run,obj),'phase inaccessible: '+id);
+  p.x=obj.x;p.z=obj.z;
+  advance(run,[{...idle,interact:true}],obj.duration+.25);
+  assert.equal(obj.done,true,'phase did not complete: '+id);
+ }
+ assert.equal(run.loot.length,3);
+ for(const bag of run.loot){
+  p.x=bag.x;p.z=bag.z;
+  advance(run,[{...idle,interact:true}],.9);
+  assert.equal(p.bagId,bag.id,'loot not picked up');
+  p.x=run.dropoff.x;p.z=run.dropoff.z;
+  advance(run,[{...idle,interact:true}],1.45);
+  assert.equal(bag.secured,true,'loot not deposited');
+ }
+ assert.equal(run.secured,3);
+ assert.equal(run.objectives.find(o=>o.id==='bags-secured').done,true);
+ const radio=run.objectives.find(o=>o.id==='radio');
+ p.x=radio.x;p.z=radio.z;
+ assert.ok(objectiveReady(run,radio));
+ advance(run,[{...idle,interact:true}],radio.duration+.25);
+ assert.ok(run.escapeAt>run.time);
+ run.nextWave=Infinity;run.reinforce=Infinity;
+ advance(run,[idle],34);
+ assert.equal(run.escapeReady,true);
+ p.x=run.exit.x;p.z=run.exit.z;
+ advance(run,[{...idle,interact:true}],2);
+ assert.equal(run.phase,'won','getaway should complete');
+ assert.ok(run.earned>=800);
+});
+test('level one side jobs are optional and guard routes reach every room',()=>{
+ const run=makeRun(0,1);
+ const src=run.players[0];
+ for(const o of run.objectives){
+  assert.ok(reachable(run,src,o),'inaccessible mission objective '+o.id);
+ }
+ for(const [i,e] of run.enemies.entries()){
+  assert.ok(reachable(run,src,e),'unreachable guard '+i);
+ }
 });
