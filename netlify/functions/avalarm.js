@@ -1,5 +1,6 @@
 const PRODUCT_URL = 'https://astrovials.com/product/estradiol-enanthate/';
 const IMENU_URL = 'https://www.imenuapp.com.br';
+const ENGRAVIDA_URL = 'https://hub.engravida.com.br';
 const ASTROVIALS_NTFY_URL = 'https://ntfy.sh/astrovialseen';
 const SECONDARY_NTFY_URL = 'https://ntfy.sh/jv-secondary-alerts-20261022';
 
@@ -20,10 +21,10 @@ exports.handler = async function(event) {
   }
 
   const kind = event.queryStringParameters?.kind || 'astrovials';
-  if (!['astrovials', 'imenu', 'imenu-test'].includes(kind)) {
+  if (!['astrovials', 'imenu', 'imenu-test', 'engravida', 'engravida-test'].includes(kind)) {
     return json(400, { ok: false, error: 'Unknown alarm kind.' });
   }
-  const notificationUrl = kind === 'imenu' || kind === 'imenu-test'
+  const notificationUrl = ['imenu', 'imenu-test', 'engravida', 'engravida-test'].includes(kind)
     ? SECONDARY_NTFY_URL
     : ASTROVIALS_NTFY_URL;
 
@@ -39,6 +40,14 @@ exports.handler = async function(event) {
     title = 'ALARM TRIGGER - iMenu HEALTH CHECK TEST';
     body = 'TEST ONLY - iMenu health-check alarm path is working.';
     click = IMENU_URL;
+  } else if (kind === 'engravida') {
+    title = 'ALARM TRIGGER - Engravida Hub indisponível';
+    body = 'Engravida Hub health check failed twice. Check the service now.';
+    click = ENGRAVIDA_URL;
+  } else if (kind === 'engravida-test') {
+    title = 'ALARM TRIGGER - Engravida Hub HEALTH CHECK TEST';
+    body = 'TEST ONLY - Engravida Hub health-check alarm path is working.';
+    click = ENGRAVIDA_URL;
   }
 
   try {
