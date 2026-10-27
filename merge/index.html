@@ -71,6 +71,18 @@
     [hidden] { display: none !important; }
     @media (max-width: 720px) { main { margin: 36px auto; } .projects { grid-template-columns: 1fr; } .project { padding: 22px; } }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  
+    .env-panel { margin-top:32px; }
+    .env-panel label { display:block; color:var(--muted); font-size:13px; margin-top:16px; }
+    .env-panel input, .env-panel select { display:block; width:100%; margin-top:6px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#101013; color:#f4f4f5; font:inherit; }
+    .env-toolbar { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
+    .env-toolbar label { flex:1; min-width:180px; }
+    .env-toolbar button { width:auto; }
+    #env-keys { list-style:none; padding:0; }
+    #env-keys li { display:flex; align-items:center; flex-wrap:wrap; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
+    #env-keys code { flex:1; min-width:150px; overflow-wrap:anywhere; }
+    #env-keys button { width:auto; margin:0; padding:6px 10px; font-size:12px; }
+    #env-status { color:var(--muted); overflow-wrap:anywhere; }
   </style>
 </head>
 <body>
@@ -476,5 +488,6 @@
       } catch (error) { alert(error?.message || String(error)); }
     })();
   </script>
+<script src="/merge/environments.js" defer></script>
 </body>
 </html>
