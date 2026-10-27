@@ -78,7 +78,7 @@ export function makeRun(n=0,count=1,loadouts=[]){
  if(n===0){
   run.objectives.find(o=>o.id==='bags-secured').name=(count===1?'3':'4')+' loot bags secured';
   run.bagGoal=count===1?3:4;
-  for(const [x,z,type] of [[14,28,'ammo'],[35,29,'med'],[48,24,'ammo'],[55,36,'med'],[12,45,'ammo'],[65,42,'ammo']]){
+  for(const [x,z,type] of [[9,32,'ammo'],[35,29,'med'],[48,24,'ammo'],[55,36,'med'],[12,45,'ammo'],[65,42,'ammo']]){
    const location=pos([x,z]);run.pickups.push({id:++run.serial,x:location.x,z:location.z,type,taken:false});
   }
  }
