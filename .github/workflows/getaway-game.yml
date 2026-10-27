@@ -21,3 +21,16 @@ jobs:
           node --check --experimental-default-type=module game2/main.js
       - name: Run campaign regression tests
         run: node --experimental-default-type=module --test game2/game.test.mjs
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install chromium
+      - name: Play solo campaign browser smoke
+        run: node game2/browser.smoke.mjs
+      - name: Upload browser screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: getaway-solo-screenshot
+          path: /tmp/getaway-smoke.png
+          if-no-files-found: ignore
