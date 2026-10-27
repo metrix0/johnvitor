@@ -1,0 +1,356 @@
+import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL} from './data.js';
+import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js';
+import {View} from './render.js';
+const $=id=>document.getElementById(id);
+const key=name=>'getaway-v3-'+name.toLowerCase();
+let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
+let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
+let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set();
+let selectedMission=0,selectedWeapon='pistol',selectedGadget='',last=0,lastNetwork=0,lastHud=0,lastFoot=0,lastShots=0,lastHits=0,lastHp=100,lastToast='',lastToastUntil=0;
+const controls={forward:false,back:false,left:false,right:false,sprint:false,fire:false,reload:false,interact:false,gadget:false,aim:false,yaw:-Math.PI/2,pitch:0};
+let audio=null,muted=localStorage.getItem('getaway-muted')==='true';
+const coins=n=>'₵ '+Math.max(0,Math.floor(n||0)).toLocaleString('en-US');
+function status(message){$('connectStatus').textContent=message;}
+function profileStatus(message){$('profileStatus').textContent=message;}
+function profileWallet(){return Math.max(0,(profile.earned||0)-(profile.spent||0));}
+function saveLocal(){if(!loadedName)return;try{localStorage.setItem(key(loadedName),JSON.stringify(profile));localStorage.setItem('getaway-last-operator',loadedName);}catch{}}
+function mergeProfiles(local,remote,name){
+ const a=normalizeProfile(local,name),b=normalizeProfile(remote,name);
+ const merged=profileDefaults(name);
+ merged.unlocked=Math.max(a.unlocked,b.unlocked);
+ merged.completed=a.completed||b.completed;
+ merged.earned=Math.max(a.earned,b.earned);merged.spent=Math.max(a.spent,b.spent);
+ for(const k of Object.keys(UPGRADES))merged.upgrades[k]=Math.max(a.upgrades[k],b.upgrades[k]);
+ merged.cleared=[...new Set([...a.cleared,...b.cleared])];
+ merged.best={...b.best,...a.best};
+ return merged;
+}
+async function getCloud(name){
+ const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),3800);
+ try{const response=await fetch('/.netlify/functions/getaway-profile-v2?name='+encodeURIComponent(name),{cache:'no-store',signal:ctl.signal});if(!response.ok)throw Error('cloud unavailable');return await response.json();}
+ finally{clearTimeout(timer);}
+}
+let cloudTimer=0;
+async function syncCloud(){
+ if(!loadedName)return;
+ try{const response=await fetch('/.netlify/functions/getaway-profile-v2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(profile)});if(!response.ok)throw Error('cloud offline');cloudAvailable=true;profileStatus('SAVED LOCALLY + CLOUD SYNCED');}
+ catch{cloudAvailable=false;profileStatus('SAVED ON THIS DEVICE · CLOUD UNAVAILABLE');}
+}
+function scheduleSave(){saveLocal();clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>void syncCloud(),800);}
+async function ensureProfile(force=false){
+ const name=$('playerName').value.trim();
+ if(!/^[a-zA-Z0-9_-]{3,24}$/.test(name)){profileStatus('USE 3–24 LETTERS, NUMBERS, _ OR -');return false;}
+ if(!force&&loadedName===name.toLowerCase())return true;
+ profileStatus('LOADING OPERATOR DOSSIER…');
+ let local=null;try{local=JSON.parse(localStorage.getItem(key(name))||'null')}catch{}
+ // Older versions stored unlocked jobs under this key.
+ try{const previous=JSON.parse(localStorage.getItem('getaway-profile-'+name.toLowerCase())||'null');if(previous)local=mergeProfiles(local,previous,name);}catch{}
+ let remote=null;try{remote=await getCloud(name);cloudAvailable=true;}catch{cloudAvailable=false;}
+ profile=mergeProfiles(local,remote,name);loadedName=name.toLowerCase();saveLocal();
+ const kit=readLoadout();
+ selectedWeapon=kit.weapon;selectedGadget=kit.gadget;
+ selectedMission=Math.min(selectedMission,profile.unlocked);
+ refreshMenu();
+ profileStatus(cloudAvailable?'OPERATOR LOADED · CLOUD SYNC ACTIVE':'OPERATOR LOADED · SAVING LOCALLY');
+ if(cloudAvailable&&local&&(!remote||local.unlocked>(remote.unlocked||0)||local.earned>(remote.earned||0)))scheduleSave();
+ return true;
+}
+function readLoadout(){
+ try{return JSON.parse(localStorage.getItem('getaway-kit-'+loadedName)||'null')||{weapon:'pistol',gadget:''};}catch{return {weapon:'pistol',gadget:''};}
+}
+function persistLoadout(){if(loadedName)try{localStorage.setItem('getaway-kit-'+loadedName,JSON.stringify({weapon:selectedWeapon,gadget:selectedGadget}));}catch{}}
+function kit(){return {name:profile.name,weapon:selectedWeapon,gadget:selectedGadget||null,upgrades:profile.upgrades};}
+function refreshMenu(){
+ $('wallet').textContent=coins(profileWallet());$('cleared').textContent=String(profile.cleared.length).padStart(2,'0')+' / 05';$('operator').textContent=loadedName?profile.name.toUpperCase():'GUEST';
+ $('progressText').textContent=profile.cleared.length+' / 5 JOBS';$('progressBar').style.width=(profile.cleared.length*20)+'%';
+ const select=$('missionSelect');select.replaceChildren();
+ for(let i=0;i<MISSIONS.length;i++){
+  const m=MISSIONS[i],o=document.createElement('option');o.value=i;o.textContent=m.number+' / '+m.name+' — '+m.site+(i>profile.unlocked?' [LOCKED]':'');o.disabled=i>profile.unlocked;select.append(o);
+ }
+ selectedMission=Math.min(selectedMission,profile.unlocked);select.value=selectedMission;$('missionNumber').textContent=String(selectedMission+1).padStart(2,'0')+' / 05';
+ $('jobBoard').innerHTML=MISSIONS.map((m,i)=>`<button class="jobCard ${i>profile.unlocked?'locked':''} ${selectedMission===i?'selected':''}" data-job="${i}" ${i>profile.unlocked?'disabled':''}><div class="jobState">${i>profile.unlocked?'▣ CLASSIFIED':profile.cleared.includes(m.id)?'✓ CLEARED':'◈ AVAILABLE'}</div><div class="jobIndex">${m.number}</div><h3>${m.name}</h3><p>${m.site} / ${m.type}</p><div class="jobReward">${coins(m.payout)} + COMBAT BONUS</div></button>`).join('');
+ $('jobBoard').querySelectorAll('[data-job]').forEach(button=>button.onclick=()=>{selectedMission=Number(button.dataset.job);refreshMenu();});
+ const available=availableWeapons(profile),weap=$('weapon');weap.replaceChildren();
+ for(const [id,w] of available){const o=document.createElement('option');o.value=id;o.textContent=w.name+' / '+w.class;weap.append(o);}
+ if(!available.some(([id])=>id===selectedWeapon))selectedWeapon='pistol';weap.value=selectedWeapon;
+ const gd=$('gadget');gd.replaceChildren();const zero=document.createElement('option');zero.value='';zero.textContent='NO GADGET';gd.append(zero);
+ for(const [id,g] of availableGadgets(profile)){const o=document.createElement('option');o.value=id;o.textContent=g.name+' / '+g.charges+' CHARGES';gd.append(o);}
+ if(!availableGadgets(profile).some(([id])=>id===selectedGadget))selectedGadget='';gd.value=selectedGadget;
+ const w=WEAPONS[selectedWeapon];$('weaponStats').textContent=w.damage+' BASE DAMAGE · '+w.mag+' ROUNDS · '+Math.round(1/w.rate*60)+' RPM';
+ $('gadgetStats').textContent=selectedGadget?GADGETS[selectedGadget].description:'Get your first gadget after the corner store.';
+ $('upgrades').innerHTML=Object.entries(UPGRADES).map(([id,u])=>{
+  const tier=profile.upgrades[id],cost=u.cost[tier],can=loadedName&&tier<3&&profileWallet()>=cost;
+  return `<div class="upgrade"><div><b>${u.icon} ${u.name} <span style="color:#9eeabe">LVL ${tier}/3</span></b><small>${u.desc}</small></div><button data-upgrade="${id}" ${can?'':'disabled'}>${tier>=3?'MAXED':cost?coins(cost):'—'}</button></div>`;
+ }).join('');
+ $('upgrades').querySelectorAll('[data-upgrade]').forEach(b=>b.onclick=()=>buyUpgrade(b.dataset.upgrade));
+}
+function buyUpgrade(id){
+ if(!loadedName||!UPGRADES[id])return;
+ const tier=profile.upgrades[id],cost=UPGRADES[id].cost[tier];if(tier>=3||profileWallet()<cost)return;
+ profile.upgrades[id]++;profile.spent+=cost;scheduleSave();refreshMenu();beep('purchase');
+}
+function sound(type){
+ if(muted)return;
+ try{
+  audio=audio||new (window.AudioContext||window.webkitAudioContext)();
+  if(audio.state==='suspended')audio.resume();
+  const t=audio.currentTime,o=audio.createOscillator(),gain=audio.createGain(),filter=audio.createBiquadFilter();
+  const presets={shoot:[115,50,.11,.055,'sawtooth'],hit:[790,220,.10,.08,'square'],hurt:[90,45,.18,.08,'sawtooth'],pickup:[440,880,.16,.05,'sine'],purchase:[600,950,.22,.07,'sine'],alarm:[400,220,.36,.04,'square'],reload:[330,230,.1,.015,'triangle']};
+  const [start,end,duration,volume,wave]=presets[type]||presets.pickup;
+  o.type=wave;o.frequency.setValueAtTime(start,t);o.frequency.exponentialRampToValueAtTime(end,t+duration);
+  filter.type='lowpass';filter.frequency.value=1800;
+  gain.gain.setValueAtTime(volume,t);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
+  o.connect(filter);filter.connect(gain);gain.connect(audio.destination);o.start(t);o.stop(t+duration+.01);
+ }catch{}
+}
+const beep=sound;
+function initView(){
+ if(view)return true;
+ try{view=new View($('stage'));view.canvas.tabIndex=0;
+  view.canvas.addEventListener('mousedown',e=>{
+   if(e.button===0){if(document.pointerLockElement!==view.canvas){void requestLock();}else controls.fire=true;}
+   if(e.button===2){controls.aim=true;e.preventDefault();}
+  });
+  view.canvas.addEventListener('contextmenu',e=>e.preventDefault());
+  view.canvas.addEventListener('mouseup',e=>{if(e.button===0)controls.fire=false;if(e.button===2)controls.aim=false;});
+  window.addEventListener('mouseup',e=>{if(e.button===0)controls.fire=false;if(e.button===2)controls.aim=false;});
+  document.addEventListener('pointerlockchange',()=>{
+   if(!view)return;
+   if(document.pointerLockElement!==view.canvas&&run?.phase==='play'&&!activeOverlay){showPause();}
+   if(document.pointerLockElement===view.canvas&&activeOverlay==='pause'){hideOverlay();softPaused=false;}
+  });
+  return true;
+ }catch(e){$('fatalText').textContent='3D graphics could not initialize: '+e.message;$('fatal').classList.remove('hidden');return false;}
+}
+function requestLock(){if(!view||run?.phase!=='play')return;try{const promise=view.canvas.requestPointerLock();if(promise?.catch)promise.catch(()=>status('CLICK THE GAME TO ENABLE MOUSE LOOK'));}catch{}}
+function enterScreen(){
+ $('menu').classList.add('hidden');$('gameScreen').classList.remove('hidden');
+ $('roomDisplay').textContent=mode==='solo'?'SOLO / OFFLINE':room;
+ $('networkDisplay').textContent=mode==='solo'?'LOCAL':'CONNECTED';
+ $('invite').classList.toggle('hidden',mode==='solo');
+ if(!initView())return false;view.resize();return true;
+}
+function returnMenu(){
+ if(document.pointerLockElement)document.exitPointerLock();
+ conn?.close();peer?.destroy();peer=null;conn=null;room='';mode='menu';host=true;run=null;softPaused=false;activeOverlay='';
+ $('gameScreen').classList.add('hidden');$('menu').classList.remove('hidden');history.replaceState(null,'',location.pathname);
+ if(view){view.dispose();view.canvas.remove();view=null;}
+ controls.fire=false;controls.interact=false;controls.gadget=false;status('');refreshMenu();
+}
+function showOverlay(tag,title,description,actionText,handler,stats=[]){
+ activeOverlay=tag;$('overlayTag').textContent=tag;$('overlayTitle').textContent=title;$('overlayText').textContent=description;
+ $('overlayAction').textContent=actionText||'';$('overlayAction').classList.toggle('hidden',!actionText);
+ $('overlayAction').onclick=handler||(()=>{});
+ $('overlayDetails').innerHTML=stats.map(([k,v])=>`<div class="detail"><span>${escapeText(k)}</span><b>${escapeText(v)}</b></div>`).join('');
+ $('centerOverlay').classList.remove('hidden');
+}
+function escapeText(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');}
+function hideOverlay(){activeOverlay='';$('centerOverlay').classList.add('hidden');}
+function showBrief(){
+ if(!run)return;const m=MISSIONS[run.mission];
+ showOverlay('CASE FILE / '+m.number,m.name,m.description,host?'BEGIN OPERATION ↗':'WAITING FOR THE HOST',host?()=>{run.phase='play';lastPhase='';hideOverlay();softPaused=false;sendState();requestLock();}:null,[['TARGET',m.site],['THREAT LEVEL',String(run.mission+1)+' / 5'],['EST. PAYOUT',coins(m.payout)]]);
+ if(!host)$('overlayAction').classList.add('hidden');
+}
+function showPause(){
+ softPaused=mode==='solo';controls.fire=false;
+ showOverlay('TACTICAL PAUSE',mode==='solo'?'TAKE A MOMENT':'MOUSE UNLOCKED',mode==='solo'?'The operation is paused. Resume when you are ready.':'The operation continues while your teammate is playing. Return to the action when ready.','RESUME OPERATION',()=>{hideOverlay();softPaused=false;requestLock();});
+}
+function showOutcome(){
+ if(!run)return;const m=MISSIONS[run.mission],won=run.phase==='won';
+ showOverlay(won?'CLEAN GETAWAY':'OPERATION FAILED',won?(run.mission===4?'LEGENDS NEVER RETIRE':'JOB COMPLETE'):'THE JOB WENT SIDEWAYS',
+  won?m.completion+' You earned '+coins(run.earned)+' on this run.':'The crew was eliminated. Regroup, rearm and try again.',
+  host?(won&&run.mission<4?'NEXT OPERATION ↗':'RETRY OPERATION ↗'):null,
+  host?()=>startBrief(won&&run.mission<4?run.mission+1:run.mission):null,
+  [['CREW ELIMINATIONS',run.kills],['TIME',formatTime(run.time)],['PAYOUT',won?coins(run.earned):coins(0)]]);
+}
+function formatTime(seconds){const t=Math.floor(seconds||0);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
+function onRunChange(){
+ if(!run)return;
+ if(run.runId!==lastRunId){lastRunId=run.runId;lastPhase='';lastShots=0;lastHits=0;lastHp=100;controls.yaw=-Math.PI/2;controls.pitch=0;view?.applyGun(run.players[host?0:1]?.weapon||'pistol');}
+ if(run.phase===lastPhase)return;
+ lastPhase=run.phase;
+ if(run.phase==='brief')showBrief();
+ else if(run.phase==='play'){hideOverlay();softPaused=false;}
+ else if(run.phase==='won'||run.phase==='lost'){if(run.phase==='won')awardMission(run);showOutcome();if(document.pointerLockElement)document.exitPointerLock();}
+}
+function awardMission(completedRun){
+ if(!loadedName||credited.has(completedRun.runId))return;
+ credited.add(completedRun.runId);const m=MISSIONS[completedRun.mission];
+ const first=!profile.cleared.includes(m.id);
+ const payout=first?completedRun.earned:Math.round(completedRun.earned*.42);
+ profile.earned=clamp(profile.earned+payout,0,9999999);
+ profile.unlocked=Math.max(profile.unlocked,Math.min(4,completedRun.mission+1));
+ profile.cleared=[...new Set([...profile.cleared,m.id])];if(completedRun.mission===4)profile.completed=true;
+ const current=profile.best[m.id];
+ if(!current||completedRun.time<current)profile.best[m.id]=Math.round(completedRun.time);
+ selectedMission=Math.min(profile.unlocked,completedRun.mission+1);
+ scheduleSave();refreshMenu();beep('purchase');
+}
+function startBrief(n){
+ if(!host)return;
+ const local=kit(),guest=remoteKit||{name:'PARTNER',weapon:'pistol',gadget:null,upgrades:{}};
+ run=makeRun(n,mode==='solo'?1:2,[local,guest]);
+ onRunChange();sendState();
+}
+async function startSolo(){
+ if(!await ensureProfile())return;
+ mode='solo';host=true;room='';if(!enterScreen())return;
+ startBrief(selectedMission);
+}
+function randomCode(){
+ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',buf=new Uint8Array(6);crypto.getRandomValues(buf);return Array.from(buf,b=>chars[b%chars.length]).join('');
+}
+function send(packet){if(conn?.open)try{conn.send(packet);}catch{}}
+function sendState(){if(host&&run)send({type:'state',run});}
+function connectionLost(){
+ if(mode==='menu')return;
+ $('networkDisplay').textContent='OFFLINE';
+ if(host&&run){
+  if(run.players.length===2)run.players.splice(1,1);
+  mode='solo';room='';$('roomDisplay').textContent='SOLO / PARTNER LEFT';$('invite').classList.add('hidden');sendState();
+  if(run.phase==='brief')showBrief();
+  else if(run.phase==='play')showOverlay('CONNECTION LOST','YOUR PARTNER LEFT','You can finish the mission solo. The operation has not been reset.','CONTINUE SOLO',()=>{hideOverlay();requestLock();});
+ }else showOverlay('CONNECTION LOST','CREW SEPARATED','The host disconnected. Your local profile is safe. Return to the safehouse and make a new room.',null,null);
+}
+function sanitizedInput(raw){
+ const safe={};for(const k of ['forward','back','left','right','sprint','fire','reload','interact','gadget','aim'])safe[k]=raw?.[k]===true;
+ safe.yaw=Number.isFinite(raw?.yaw)?clamp(raw.yaw,-2000,2000):-Math.PI/2;
+ safe.pitch=Number.isFinite(raw?.pitch)?clamp(raw.pitch,-1.35,1.35):0;return safe;
+}
+function setupConnection(c){
+ if(conn?.open){c.close();return;}
+ conn=c;
+ c.on('open',()=>{
+  $('networkDisplay').textContent='CONNECTED';
+  if(!host)send({type:'hello',kit:kit()});
+  else status('PARTNER CONNECTED');
+ });
+ c.on('data',packet=>{
+  if(!packet||typeof packet!=='object')return;
+  if(host){
+   if(packet.type==='hello'&&!run){
+    const k=packet.kit||{},w=WEAPONS[k.weapon]?k.weapon:'pistol',g=GADGETS[k.gadget]?k.gadget:null;
+    remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:w,gadget:g,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};
+    startBrief(selectedMission);
+   }
+   if(packet.type==='input')remoteInput=sanitizedInput(packet.input);
+  }else if(packet.type==='state'&&packet.run){
+   const previous=run?.runId;run=packet.run;onRunChange();if(previous!==run.runId)view?.build(run);
+  }
+ });
+ c.on('close',connectionLost);c.on('error',connectionLost);
+}
+async function startCoop(isHost,code){
+ if(!await ensureProfile())return;
+ if(typeof window.Peer!=='function'){status('REAL-TIME SERVICE DID NOT LOAD. CHECK YOUR CONNECTION.');return;}
+ mode='coop';host=isHost;room=code;remoteKit=null;remoteInput={};run=null;
+ if(!enterScreen()){mode='menu';return;}
+ $('roomDisplay').textContent=room;
+ $('networkDisplay').textContent='CONNECTING';
+ const id='getaway-club-v4-'+room;
+ peer=isHost?new window.Peer(id,{debug:0}):new window.Peer(undefined,{debug:0});
+ const timeout=setTimeout(()=>{if(mode==='coop'&&!conn?.open)showOverlay('NETWORK','COULD NOT CONNECT','Check the room code and verify that your partner has the room open.',null,null);},18000);
+ peer.on('open',()=>{
+  if(isHost){
+   history.replaceState(null,'',location.pathname+'?room='+room);
+   showOverlay('CO-OP ROOM / '+room,'AWAITING THE CREW','Share your invite link with one partner. The mission briefing loads when they connect.',null,null,[['ROOM CODE',room],['PLAYERS','1 / 2'],['SESSION','PRIVATE P2P']]);
+  }else{
+   showOverlay('CONNECTING','JOINING THE HEIST','Establishing a direct connection with your crew leader.',null,null);
+   setupConnection(peer.connect(id,{reliable:true,serialization:'json'}));
+  }
+ });
+ peer.on('connection',c=>{if(!host){c.close();return;}setupConnection(c);});
+ peer.on('error',e=>{
+  clearTimeout(timeout);
+  const message=e.type==='peer-unavailable'?'Room not found. Ask your partner to create a room.':e.type==='unavailable-id'?'That room code is in use. Try creating another.':'Realtime service unavailable. Check your internet connection.';
+  showOverlay('NETWORK ERROR','CONNECTION FAILED',message,null,null);
+ });
+}
+function updateHud(){
+ if(!run)return;
+ const mission=MISSIONS[run.mission],p=run.players[host?0:1]||run.players[0];if(!p)return;
+ $('hudMission').textContent=mission.name;$('hudSite').textContent=mission.site+' / '+mission.number;
+ const done=run.objectives.filter(o=>o.done).length,total=run.objectives.length;
+ const next=run.objectives.find(o=>objectiveReady(run,o));$('hudObjective').textContent=next?next.name.toUpperCase():'GET TO EXTRACTION';
+ $('objectiveProgress').textContent=done+' / '+total+' TASKS SECURED';
+ $('crew').innerHTML=run.players.map((player,i)=>`<div class="crewCard ${player.hp<=0?'downed':''}" style="border-color:${i===0?'#b7f7d4':'#8bd8ff'}"><div class="crewName">${escapeText(player.name.toUpperCase())}${i===(host?0:1)?' / YOU':''}</div><div class="crewHp">${player.hp>0?Math.ceil(player.hp)+' / '+player.maxHp+' HP':'DOWN — NEEDS REVIVE'}</div><div class="crewMiniBar"><div style="width:${Math.max(0,player.hp/player.maxHp*100)}%"></div></div></div>`).join('');
+ $('tasks').innerHTML=run.objectives.map(o=>`<div class="task ${o.done?'done':objectiveReady(run,o)?'':'locked'}"><span class="taskIcon">${o.done?'✓':objectiveReady(run,o)?'◇':'⊠'}</span><span>${escapeText(o.name)}</span></div>`).join('');
+ $('hpLabel').textContent=Math.ceil(p.hp)+' / '+p.maxHp;$('hpFill').style.width=(p.hp/p.maxHp*100)+'%';$('hpFill').style.background=p.hp/p.maxHp<.3?'#ff786c':'#b8f8d0';
+ $('staminaFill').style.width=p.stamina+'%';$('damage').style.opacity=p.hp>0?Math.max(0,(.33-p.hp/p.maxHp))*1.7:.8;
+ $('gunName').textContent=WEAPONS[p.weapon].name+ (p.reload>0?' · RELOADING':'');
+ $('ammoValue').innerHTML=p.ammo+' <em>/ '+p.reserve+'</em>';$('gadgetValue').textContent=p.gadget?(GADGETS[p.gadget].name+' × '+p.gadgets):'NO GADGET';
+ $('alarmFill').style.width=run.alarm+'%';$('alertName').textContent=run.alarm<32?'QUIET':run.alarm<65?'SUSPICIOUS':'LOCKDOWN';
+ $('alertName').style.color=run.alarm>=65?'#ff8b7c':run.alarm>=32?'#ffc77c':'#b7f7d4';
+ $('enemyCount').textContent=run.enemies.filter(e=>e.hp>0).length+' HOSTILES';
+ const task=nearbyTask(run,p),valid=task&&run.phase==='play'&&p.hp>0;
+ $('interaction').classList.toggle('hidden',!valid);
+ if(valid){$('interactionLabel').textContent=task.label+' · HOLD';$('interactionFill').style.width=clamp(p.interact/task.duration*100,0,100)+'%';}
+ if(run.toast&&run.toastUntil>run.time){$('toast').textContent=run.toast;$('toast').classList.remove('hidden');}
+ else $('toast').classList.add('hidden');
+ if(p.stats.shots!==lastShots){if(p.stats.shots>lastShots)beep('shoot');lastShots=p.stats.shots;}
+ if(p.stats.hits!==lastHits){$('hitMarker').style.opacity=1;lastHits=p.stats.hits;setTimeout(()=>$('hitMarker').style.opacity=0,110);}
+ if(p.hp<lastHp)beep('hurt');lastHp=p.hp;
+ drawMinimap(p);
+}
+function drawMinimap(player){
+ const c=$('minimap'),ctx=c.getContext('2d'),W=c.width,H=c.height;ctx.clearRect(0,0,W,H);
+ if(!run)return;const grid=run.grid,sx=W/grid[0].length,sz=H/grid.length;
+ for(let z=0;z<grid.length;z++)for(let x=0;x<grid[z].length;x++){ctx.fillStyle=grid[z][x]==='#'?'#53616b':'#142832';ctx.fillRect(x*sx,z*sz,sx-.4,sz-.4);}
+ for(const o of run.objectives)if(!o.done){ctx.fillStyle=objectiveReady(run,o)?'#ffce7a':'#576568';ctx.fillRect(o.x/CELL*sx-2,o.z/CELL*sz-2,4,4);}
+ ctx.fillStyle=run.objectives.every(o=>o.done)?'#91ffb3':'#36664f';ctx.fillRect(run.exit.x/CELL*sx-3,run.exit.z/CELL*sz-3,6,6);
+ for(const e of run.enemies)if(e.hp>0){ctx.fillStyle='#ff817d';ctx.beginPath();ctx.arc(e.x/CELL*sx,e.z/CELL*sz,1.6,0,Math.PI*2);ctx.fill();}
+ run.players.forEach((p,i)=>{ctx.fillStyle=i===0?'#b7ffd8':'#8bd8ff';ctx.beginPath();ctx.arc(p.x/CELL*sx,p.z/CELL*sz,3.5,0,Math.PI*2);ctx.fill();});
+}
+function frame(time){
+ requestAnimationFrame(frame);
+ const dt=Math.min(.05,Math.max(0,(time-last)/1000||0));last=time;
+ if(mode==='menu'||!view||!run)return;
+ if(host&&run.phase==='play'&&!softPaused){
+  stepRun(run,[controls,remoteInput],dt);
+  if(run.phase!==lastPhase)onRunChange();
+ }
+ if(!host&&run.phase!==lastPhase)onRunChange();
+ if(mode!=='solo'&&time-lastNetwork>85){
+  if(host)sendState();else send({type:'input',input:controls});lastNetwork=time;
+ }
+ view.update(run,host?0:1,controls,dt,controls);
+ if(time-lastHud>85){updateHud();lastHud=time;}
+}
+window.addEventListener('keydown',e=>{
+ if(mode==='menu')return;
+ const k=e.key.toLowerCase(),keys={'w':'forward','arrowup':'forward','s':'back','arrowdown':'back','a':'left','arrowleft':'left','d':'right','arrowright':'right','shift':'sprint','r':'reload','e':'interact','q':'gadget',' ':'fire'};
+ if(keys[k]){controls[keys[k]]=true;e.preventDefault();}
+ if(k==='escape'&&run?.phase==='play'&&!activeOverlay)showPause();
+ if(k==='m'&&!e.repeat){muted=!muted;localStorage.setItem('getaway-muted',String(muted));$('sound').textContent=muted?'♪̸':'♫';}
+});
+window.addEventListener('keyup',e=>{
+ const keys={'w':'forward','arrowup':'forward','s':'back','arrowdown':'back','a':'left','arrowleft':'left','d':'right','arrowright':'right','shift':'sprint','r':'reload','e':'interact','q':'gadget',' ':'fire'};const key=keys[e.key.toLowerCase()];if(key)controls[key]=false;
+});
+window.addEventListener('mousemove',e=>{
+ if(!view||document.pointerLockElement!==view.canvas)return;
+ controls.yaw-=e.movementX*.0021;controls.pitch=clamp(controls.pitch-e.movementY*.0018,-1.22,1.22);
+});
+window.addEventListener('blur',()=>{for(const k of ['forward','back','left','right','sprint','fire','reload','interact','gadget','aim'])controls[k]=false;});
+$('loadProfile').onclick=()=>void ensureProfile(true);
+$('playerName').oninput=()=>{if($('playerName').value.trim().toLowerCase()!==loadedName){profileStatus('PRESS LOAD TO ACCESS THIS OPERATOR');}};
+$('playerName').onkeydown=e=>{if(e.key==='Enter')void ensureProfile(true);};
+$('missionSelect').onchange=e=>{selectedMission=Number(e.target.value);refreshMenu();};
+$('weapon').onchange=e=>{selectedWeapon=e.target.value;persistLoadout();refreshMenu();};
+$('gadget').onchange=e=>{selectedGadget=e.target.value;persistLoadout();refreshMenu();};
+$('solo').onclick=()=>void startSolo();
+$('create').onclick=()=>void startCoop(true,randomCode());
+$('join').onclick=()=>{const code=$('roomCode').value.trim().toUpperCase();if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){status('ENTER A VALID 6-CHARACTER CODE');return;}void startCoop(false,code);};
+$('roomCode').onkeydown=e=>{if(e.key==='Enter')$('join').click();};
+$('overlayLeave').onclick=returnMenu;
+$('invite').onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname+'?room='+room);$('invite').textContent='✓';setTimeout(()=>$('invite').textContent='↗',1500);}catch{window.prompt('Copy invitation URL:',location.origin+location.pathname+'?room='+room);}};
+$('sound').onclick=()=>{muted=!muted;localStorage.setItem('getaway-muted',String(muted));$('sound').textContent=muted?'♪̸':'♫';beep('pickup');};
+$('pause').onclick=()=>{if(document.pointerLockElement)document.exitPointerLock();if(run?.phase==='play')showPause();};
+$('sound').textContent=muted?'♪̸':'♫';
+const invite=new URLSearchParams(location.search).get('room');
+if(invite&&/^[A-HJ-NP-Z2-9]{6}$/i.test(invite)){$('roomCode').value=invite.toUpperCase();status('INVITE DETECTED · ENTER YOUR NAME AND JOIN');}
+const remembered=localStorage.getItem('getaway-last-operator')||localStorage.getItem('getaway-profile-name');
+if(remembered&&/^[a-zA-Z0-9_-]{3,24}$/.test(remembered)){$('playerName').value=remembered;void ensureProfile();}
+else refreshMenu();
+window.addEventListener('beforeunload',()=>{peer?.destroy();});
+window.getawayReady=true;
+requestAnimationFrame(frame);
