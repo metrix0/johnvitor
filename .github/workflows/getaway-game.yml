@@ -32,5 +32,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: getaway-solo-screenshot
-          path: /tmp/getaway-smoke.png
+          path: |
+            /tmp/getaway-smoke.png
+            /tmp/getaway-menu.png
           if-no-files-found: ignore
