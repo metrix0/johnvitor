@@ -47,10 +47,10 @@ test('profile loading tolerates invalid and older profile shapes',()=>{
  assert.equal(p.name,'Crew');assert.equal(p.unlocked,4);assert.equal(p.earned,0);assert.equal(p.spent,0);assert.equal(p.upgrades.armor,3);assert.deepEqual(p.cleared,['bank']);
 });
 test('walls block both players and line of sight',()=>{
- const run=makeRun(0,1);run.enemies=[];run.phase='play';const p=run.players[0];p.x=CELL*6;p.z=CELL*3;
- const start=p.x;advance(run,[{...idle,forward:true}],2);
- assert.ok(p.x<CELL*7-CELL/2-.3,'walked through wall at x 7');
- assert.equal(lineClear(run,{x:CELL*6,z:CELL*3},{x:CELL*8,z:CELL*3}),false);
+ const run=makeRun(1,1);run.enemies=[];run.phase='play';const p=run.players[0];p.x=CELL*5;p.z=CELL*3;
+ advance(run,[{...idle,forward:true}],2);
+ assert.ok(p.x<CELL*6-CELL/2-.3,'walked through office wall at x 6');
+ assert.equal(lineClear(run,{x:CELL*5,z:CELL*3},{x:CELL*7,z:CELL*3}),false);
 });
 
 test('empty magazines start reload, but cannot reload without reserve ammunition',()=>{
