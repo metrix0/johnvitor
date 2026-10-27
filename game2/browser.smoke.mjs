@@ -37,7 +37,7 @@ try{
  assert.match(await page.locator('#ammoValue').innerText(),/15/);
  await page.keyboard.down(' ');await page.waitForTimeout(450);await page.keyboard.up(' ');
  await page.waitForTimeout(180);
- const ammunition=Number((await page.locator('#ammoValue').innerText()).match(/\\d+/)[0]);
+ const ammunition=Number((await page.locator('#ammoValue').innerText()).match(/\d+/)[0]);
  assert.ok(ammunition<15,'shooting should consume ammo: '+ammunition);
  await page.screenshot({path:'/tmp/getaway-smoke.png'});
  const fatal=await page.locator('#fatal').isVisible();
