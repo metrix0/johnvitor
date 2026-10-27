@@ -15,3 +15,6 @@
 
 [functions."imenu-health"]
   schedule = "* * * * *"
+
+[functions."engravida-health"]
+  schedule = "* * * * *"
