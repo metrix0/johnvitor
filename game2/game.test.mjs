@@ -111,3 +111,17 @@ test('level one side jobs are optional and guard routes reach every room',()=>{
   assert.ok(reachable(run,src,e),'unreachable guard '+i);
  }
 });
+
+test('the long first mission offers restock caches and one solo checkpoint retry',()=>{
+ const run=makeRun(0,1);run.enemies=[];run.phase='play';
+ assert.ok(run.pickups.filter(p=>p.type==='ammo').length>=4);
+ assert.ok(run.pickups.filter(p=>p.type==='med').length>=2);
+ const p=run.players[0];assert.equal(p.hp,125);
+ p.hp=0;p.down=true;p.bleed=15;
+ stepRun(run,[idle],.05);
+ assert.equal(run.phase,'play');assert.equal(run.continues,0);
+ assert.ok(p.hp>0);assert.ok(run.usedContinue);
+ p.hp=0;p.down=true;p.bleed=0;
+ stepRun(run,[idle],.05);
+ assert.equal(run.phase,'lost');
+});

@@ -68,14 +68,20 @@ export function spawnEnemy(run,type,at){
 }
 export function makeRun(n=0,count=1,loadouts=[]){
  const mission=MISSIONS[n],start=pos(mission.spawn);
- const run={mission:n,runId:Math.random().toString(36).slice(2),phase:'brief',time:0,alarm:0,grid:makeGrid(mission),serial:0,players:[],enemies:[],objectives:[],pickups:[],projectiles:[],tracers:[],toast:'',toastUntil:0,exit:pos(mission.exit),reinforce:mission.reinforce,lockdown:false,kills:0,shots:0,hitShots:0,earned:0,loot:[],secured:0,dropoff:pos(mission.dropoff||mission.exit),escapeAt:0,nextWave:0,escapeReady:false,camerasOff:false,cameraAlert:0,chapter:1,optionalBonus:0};
+ const run={mission:n,runId:Math.random().toString(36).slice(2),phase:'brief',time:0,alarm:0,grid:makeGrid(mission),serial:0,players:[],enemies:[],objectives:[],pickups:[],projectiles:[],tracers:[],toast:'',toastUntil:0,exit:pos(mission.exit),reinforce:mission.reinforce,lockdown:false,kills:0,shots:0,hitShots:0,earned:0,loot:[],secured:0,dropoff:pos(mission.dropoff||mission.exit),checkpoint:pos(mission.spawn),continues:n===0&&count===1?1:0,usedContinue:false,escapeAt:0,nextWave:0,escapeReady:false,camerasOff:false,cameraAlert:0,chapter:1,optionalBonus:0};
  for(let i=0;i<count;i++){
   const kit=loadouts[i]||{},wid=WEAPONS[kit.weapon]?kit.weapon:'pistol',gid=GADGETS[kit.gadget]?kit.gadget:null,w=WEAPONS[wid];
-  const maxHp=100+25*clamp(kit.upgrades?.armor||0,0,3),mag=Math.round(w.mag*(1+clamp(kit.upgrades?.mag||0,0,3)*.2));
+  const maxHp=(n===0?125:100)+25*clamp(kit.upgrades?.armor||0,0,3),mag=Math.round(w.mag*(1+clamp(kit.upgrades?.mag||0,0,3)*.2));
   run.players.push({bagId:null,id:i,name:String(kit.name||'CREW '+(i+1)).slice(0,24),x:start.x,z:start.z+(i?1.2:0),yaw:-Math.PI/2,pitch:0,hp:maxHp,maxHp,stamina:100,weapon:wid,gadget:gid,mag,ammo:mag,reserve:w.reserve,reload:0,cool:0,gadgets:gid?GADGETS[gid].charges:0,gadCool:0,damageTier:clamp(kit.upgrades?.damage||0,0,3),invuln:0,interact:0,interactId:'',bleed:0,down:false,stats:{kills:0,shots:0,hits:0},recoil:0});
  }
  run.objectives=mission.objectives.map(o=>({...o,x:o.at[0]*CELL,z:o.at[1]*CELL,requires:o.requires||[],done:false}));
- if(n===0){run.objectives.find(o=>o.id==='bags-secured').name=(count===1?'3':'4')+' loot bags secured';run.bagGoal=count===1?3:4;}
+ if(n===0){
+  run.objectives.find(o=>o.id==='bags-secured').name=(count===1?'3':'4')+' loot bags secured';
+  run.bagGoal=count===1?3:4;
+  for(const [x,z,type] of [[14,28,'ammo'],[35,29,'med'],[48,24,'ammo'],[55,36,'med'],[12,45,'ammo'],[65,42,'ammo']]){
+   const location=pos([x,z]);run.pickups.push({id:++run.serial,x:location.x,z:location.z,type,taken:false});
+  }
+ }
  for(const [x,z,type] of mission.enemies)spawnEnemy(run,type,[x,z]);
  return run;
 }
@@ -155,7 +161,7 @@ function tickPlayer(run,p,input,dt){
    if(task.kind==='deposit'){
     const bag=run.loot.find(x=>x.id===p.bagId);if(bag){bag.carrier=null;bag.secured=true;bag.x=run.dropoff.x;bag.z=run.dropoff.z;run.secured++;p.bagId=null;}
     const progress=run.objectives.find(x=>x.id==='bags-secured');
-    if(run.secured>=run.bagGoal&&!progress.done){progress.done=true;announce(run,'ALL BAGS SECURED · SIGNAL THE DRIVER');}
+    if(run.secured>=run.bagGoal&&!progress.done){progress.done=true;run.checkpoint={...run.dropoff};announce(run,'ALL BAGS SECURED · SIGNAL THE DRIVER');}
     else announce(run,'BAG SECURED · '+run.secured+' / '+run.bagGoal);
    }
    if(task.kind==='objective'){
@@ -165,6 +171,7 @@ function tickPlayer(run,p,input,dt){
     else if(run.mission===0){run.chapter=Math.max(run.chapter,(task.target.chapter||1)+1);}
     run.alarm=clamp(run.alarm+(task.target.optional?0:task.target.kind==='safe'?28:task.target.kind==='radio'?38:7),0,100);
     if(task.target.id==='safe'){
+     run.checkpoint={x:task.target.x-5,z:task.target.z-4};
      for(let j=0;j<run.bagGoal;j++){const dx=(j%2)*2.1-.9,dz=Math.floor(j/2)*1.9-.8;
       run.loot.push({id:++run.serial,x:task.target.x+dx,z:task.target.z+dz,carrier:null,secured:false});}
      announce(run,'SAFE BREACHED · CASH BAGS READY');
@@ -174,7 +181,7 @@ function tickPlayer(run,p,input,dt){
     }else announce(run,'SECURED: '+task.target.name.toUpperCase());
    }
    if(task.kind==='extract'){
-    if(run.players.every(m=>m.hp>0&&distance(m,run.exit)<3.5)){run.phase='won';run.earned=MISSIONS[run.mission].payout+Math.round(run.kills*14)+Math.max(0,Math.floor((100-run.alarm)*2))+run.optionalBonus+(run.mission===0&&run.alarm<35?350:0);}
+    if(run.players.every(m=>m.hp>0&&distance(m,run.exit)<3.5)){run.phase='won';run.earned=MISSIONS[run.mission].payout+Math.round(run.kills*14)+Math.max(0,Math.floor((100-run.alarm)*2))+run.optionalBonus+(run.mission===0&&run.alarm<35?350:0)-(run.usedContinue?175:0);}
     else announce(run,'ALL CREW MEMBERS MUST REACH EXTRACTION');
    }
    p.interact=0;p.interactId='';
@@ -270,6 +277,13 @@ export function stepRun(run,inputs,dt){
    }
    run.reinforce=m.reinforce;
   }
+ }
+ if(run.players.every(p=>p.hp<=0)&&run.continues>0){
+  run.continues--;run.usedContinue=true;
+  for(const p of run.players){p.hp=Math.round(p.maxHp*.67);p.down=false;p.bleed=0;p.invuln=6;p.x=run.checkpoint.x;p.z=run.checkpoint.z;p.stamina=100;}
+  run.alarm=clamp(run.alarm+20,0,100);
+  announce(run,'SECOND CHANCE · REDEPLOYED AT YOUR LAST SAFE POSITION');
+  return;
  }
  if(run.players.every(p=>p.hp<=0)||run.players.some(p=>p.hp<=0&&p.bleed<=0)){run.phase='lost';announce(run,'CREW ELIMINATED');}
 }
