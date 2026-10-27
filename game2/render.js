@@ -102,22 +102,38 @@ export class View{
    this.box(world,1.5*CELL,.03,z*CELL,1.2,.03,1.6,0x3d4c55);
    this.box(world,18.5*CELL,.04,z*CELL,1,.04,1.8,0x3d4c55);
   }
-  // The building is a series of architected wall strips rather than identical cubes.
+  // Thousands of metres of wall are batched into a handful of GPU instanced meshes.
+  // The previous per-segment BoxGeometry/Material approach stalled software WebGL.
+  const batches=new Map();
+  const batch=(color,x,y,z,sx,sy,sz)=>{
+   const key=String(color);if(!batches.has(key))batches.set(key,[]);
+   batches.get(key).push([x,y,z,sx,sy,sz]);
+  };
   for(let z=0;z<rows;z++){
    let x=0;
    while(x<cols){
     if(run.grid[z][x]!=='#'){x++;continue;}
     let end=x+1;
     while(end<cols&&run.grid[z][end]==='#')end++;
-    const mx=(x+end-1)*CELL/2, mz=z*CELL,len=(end-x)*CELL;
+    const mx=(x+end-1)*CELL/2,mz=z*CELL,len=(end-x)*CELL;
     const storefront=x>=19&&x<63&&z>10&&z<44;
     const col=storefront?0x625c58:z<12?0x46515d:0x45515b;
-    this.box(world,mx,2.28,mz,len,4.56,CELL,col,.1);
-    this.box(world,mx,.23,mz,len+.03,.46,CELL+.03,0x232b32,.15);
-    this.box(world,mx,4.51,mz,len+.03,.17,CELL+.03,storefront?0xc49f70:0x52687a,.4);
-    if(len>7&&storefront)this.box(world,mx,3.25,mz,len*.69,.06,CELL+.06,0xd1bc9a,.15);
+    batch(col,mx,2.28,mz,len,4.56,CELL);
+    batch(0x232b32,mx,.23,mz,len+.03,.46,CELL+.03);
+    batch(storefront?0xc49f70:0x52687a,mx,4.51,mz,len+.03,.17,CELL+.03);
+    if(len>7&&storefront)batch(0xd1bc9a,mx,3.25,mz,len*.69,.06,CELL+.06);
     x=end;
    }
+  }
+  const matrix=new THREE.Matrix4();
+  for(const [color,instances] of batches){
+   const mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),mat(Number(color),.25),instances.length);
+   for(let i=0;i<instances.length;i++){
+    const [x,y,z,sx,sy,sz]=instances[i];
+    matrix.compose(new THREE.Vector3(x,y,z),new THREE.Quaternion(),new THREE.Vector3(sx,sy,sz));
+    mesh.setMatrixAt(i,matrix);
+   }
+   mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;world.add(mesh);
   }
   // Neon canopy, facade columns, windows and warm light spilling onto pavement.
   this.box(world,20*CELL,3.64,25.6*CELL,.65,.17,11,0xf1b462,.55);
@@ -134,14 +150,14 @@ export class View{
   this.sign('FRONT ENTRY',19.6*CELL,4.2,26*CELL,Math.PI/2,'#ffffff',3.2);
   this.sign('NEON AVE',6*CELL,4.5,3*CELL,0,'#8de6ff',3.7);
   this.sign('BAY 03',68*CELL,3,43*CELL,0,'#fae3a4',3.5);
-  for(const at of [[11,19],[11,41],[65,8],[67,50],[40,50]]){
-   const lamp=new THREE.PointLight(at[0]<20?0xffc27d:0xb1d5ff,9,24,2);
-   lamp.position.set(at[0]*CELL,5,at[1]*CELL);world.add(lamp);this.lights.push(lamp);
+  // Keep only three physically evaluated point lights. The rest are cheap emissive fixtures.
+  for(const at of [[11,26],[53,33],[67,45]]){
+   const lamp=new THREE.PointLight(at[0]<20?0xffd199:0xb6d9ff,7,26,2);
+   lamp.position.set(at[0]*CELL,4,at[1]*CELL);world.add(lamp);this.lights.push(lamp);
   }
   for(const at of [[26,18],[39,34],[51,18],[57,37],[68,30]]){
-   const fixture=this.box(world,at[0]*CELL,4.55,at[1]*CELL,4.2,.13,.7,0xe9e7cd,.15);
-   fixture.material.emissive=new THREE.Color(0xf3ddac);fixture.material.emissiveIntensity=1.3;
-   const light=new THREE.PointLight(0xffdfab,7,16,2);light.position.set(at[0]*CELL,4.3,at[1]*CELL);world.add(light);this.lights.push(light);
+   const fixture=this.box(world,at[0]*CELL,4.55,at[1]*CELL,4.2,.13,.7,0xf4e7ca,.15);
+   fixture.material.emissive=new THREE.Color(0xffdb9c);fixture.material.emissiveIntensity=1.5;
   }
   // Billboard signs and alarms.
   for(const at of [[40,16],[55,19],[47,36]]){
