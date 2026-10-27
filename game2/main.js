@@ -317,6 +317,26 @@ function updateHud(){
  if(p.stats.shots!==lastShots){if(p.stats.shots>lastShots)beep('shoot');lastShots=p.stats.shots;}
  if(p.stats.hits!==lastHits){$('hitMarker').style.opacity=1;lastHits=p.stats.hits;setTimeout(()=>$('hitMarker').style.opacity=0,110);}
  if(p.hp<lastHp)beep('hurt');lastHp=p.hp;
+ if(run.mission===0){
+  let target=null,detail='';
+  const carrying=p.bagId!==null&&p.bagId!==undefined;
+  if(carrying){target=run.dropoff;detail='DELIVER BAG TO VAN';}
+  else if(run.loot.length&&run.secured<run.bagGoal){
+   target=run.loot.find(b=>!b.secured&&b.carrier===null);detail='COLLECT CASH BAG';
+  }else{
+   target=run.objectives.find(o=>!o.optional&&objectiveReady(run,o));
+   detail=target?target.name.toUpperCase():'REACH THE VAN';
+  }
+  if(!target)target=run.exit;
+  const dx=target.x-p.x,dz=target.z-p.z,d=Math.hypot(dx,dz);
+  const forward=-Math.sin(controls.yaw)*dx-Math.cos(controls.yaw)*dz;
+  const right=Math.cos(controls.yaw)*dx-Math.sin(controls.yaw)*dz;
+  const angle=Math.atan2(right,forward);
+  $('waypointArrow').textContent=Math.abs(angle)<.4?'↑':Math.abs(angle)>2.7?'↓':angle>0?'→':'←';
+  $('waypointTitle').textContent=detail;
+  $('waypointDistance').textContent=Math.round(d)+' M · '+(run.secured||0)+' / '+(run.bagGoal||3)+' BAGS';
+  $('waypoint').classList.remove('hidden');
+ }else $('waypoint').classList.add('hidden');
  drawMinimap(p);
 }
 function drawMinimap(player){
@@ -324,7 +344,7 @@ function drawMinimap(player){
  if(!run)return;const grid=run.grid,sx=W/grid[0].length,sz=H/grid.length;
  for(let z=0;z<grid.length;z++)for(let x=0;x<grid[z].length;x++){ctx.fillStyle=grid[z][x]==='#'?'#53616b':'#142832';ctx.fillRect(x*sx,z*sz,sx-.4,sz-.4);}
  for(const o of run.objectives)if(!o.done){ctx.fillStyle=objectiveReady(run,o)?'#ffce7a':'#576568';ctx.fillRect(o.x/CELL*sx-2,o.z/CELL*sz-2,4,4);}
- ctx.fillStyle=#91ffb3:'#36664f';ctx.fillRect(run.exit.x/CELL*sx-3,run.exit.z/CELL*sz-3,6,6);
+ ctx.fillStyle=run.objectives.every(o=>o.done||o.optional)?'#91ffb3':'#36664f';ctx.fillRect(run.exit.x/CELL*sx-3,run.exit.z/CELL*sz-3,6,6);
  if(run.mission===0){
   for(const bag of run.loot){
    if(bag.secured)continue;
