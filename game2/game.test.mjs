@@ -49,6 +49,13 @@ test('profile loading tolerates invalid and older profile shapes',()=>{
 test('walls block both players and line of sight',()=>{
  const run=makeRun(0,1);run.enemies=[];run.phase='play';const p=run.players[0];p.x=CELL*6;p.z=CELL*3;
  const start=p.x;advance(run,[{...idle,forward:true}],2);
- assert.ok(p.x<=start+.2,'walked through wall at x 7');
+ assert.ok(p.x<CELL*7-CELL/2-.3,'walked through wall at x 7');
  assert.equal(lineClear(run,{x:CELL*6,z:CELL*3},{x:CELL*8,z:CELL*3}),false);
+});
+
+test('empty magazines start reload, but cannot reload without reserve ammunition',()=>{
+ const run=makeRun(0,1);run.phase='play';run.enemies=[];const p=run.players[0];p.ammo=0;p.reserve=0;
+ advance(run,[{...idle,fire:true}],.5);assert.equal(p.reload,0);
+ p.reserve=15;advance(run,[{...idle,fire:true}],.1);assert.ok(p.reload>0);
+ advance(run,[idle],2);assert.ok(p.ammo>0);
 });

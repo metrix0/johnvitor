@@ -3,10 +3,7 @@ const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const unit=(x,z)=>{const d=Math.hypot(x,z)||1;return {x:x/d,z:z/d};};
 const T=(p)=>({x:Math.round(p.x/CELL),z:Math.round(p.z/CELL)});
 const rng=(a,b)=>a+Math.random()*(b-a);
-export function solid(run,x,z,r=.32){
- const points=[[x-r,z-r],[x+r,z-r],[x-r,z+r],[x+r,z+r]];
- return points.some(([a,b])=>{const tx=Math.round(a/CELL),tz=Math.round(b/CELL);return !run.grid[tz]||run.grid[tz][tx]!=='>';});
-}
+export function solid(run,x,z,r=.32){return isBlocked(run,x,z,r);}
 export function isBlocked(run,x,z,r=.32){
  const points=[[x-r,z-r],[x+r,z-r],[x-r,z+r],[x+r,z+r]];
  return points.some(([a,b])=>{const tx=Math.round(a/CELL),tz=Math.round(b/CELL);return !run.grid[tz]||run.grid[tz][tx]==='#'||run.grid[tz][tx]===undefined;});
@@ -82,7 +79,7 @@ function damageEnemy(run,e,amount,player){
 }
 function shoot(run,p){
  const w=WEAPONS[p.weapon];if(p.cool>0||p.reload>0||p.hp<=0)return;
- if(p.ammo<=0){p.reload=w.reload;return;}
+ if(p.ammo<=0){if(p.reserve>0)p.reload=w.reload;return;}
  p.ammo--;p.cool=w.rate;p.recoil=Math.min(1,p.recoil+.22);p.stats.shots++;run.shots++;run.alarm=clamp(run.alarm+2.3,0,100);
  const pellets=w.pellets,range=w.range;
  for(let i=0;i<pellets;i++){
@@ -193,6 +190,7 @@ export function stepRun(run,inputs,dt){
  run.pickups.forEach(p=>{if(p.ttl!==undefined)p.ttl-=dt;});
  run.pickups=run.pickups.filter(p=>!p.taken&&(p.ttl===undefined||p.ttl>0));
  for(let i=0;i<run.players.length;i++)tickPlayer(run,run.players[i],inputs[i]||{},dt);
+ if(run.phase!=='play')return;
  run.enemies.forEach(e=>tickEnemy(run,e,dt));
  run.projectiles.forEach(b=>tickProjectile(run,b,dt));run.projectiles=run.projectiles.filter(b=>b.life>0);
  if(run.alarm>62&&!run.lockdown){run.lockdown=true;announce(run,'LOCKDOWN — SECURITY REINFORCEMENTS INBOUND');}

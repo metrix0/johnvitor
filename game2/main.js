@@ -45,6 +45,20 @@ async function ensureProfile(force=false){
  let local=null;try{local=JSON.parse(localStorage.getItem(key(name))||'null')}catch{}
  // Older versions stored unlocked jobs under this key.
  try{const previous=JSON.parse(localStorage.getItem('getaway-profile-'+name.toLowerCase())||'null');if(previous)local=mergeProfiles(local,previous,name);}catch{}
+ if(local){
+  // Returning operators start instantly even when cloud storage is unreachable.
+  profile=normalizeProfile(local,name);loadedName=name.toLowerCase();saveLocal();
+  const cachedKit=readLoadout();selectedWeapon=cachedKit.weapon;selectedGadget=cachedKit.gadget;
+  selectedMission=Math.min(selectedMission,profile.unlocked);refreshMenu();
+  profileStatus('OPERATOR LOADED · LOCAL SAVE READY');
+  void getCloud(name).then(remote=>{
+   if(loadedName!==name.toLowerCase())return;
+   cloudAvailable=true;profile=mergeProfiles(profile,remote,name);saveLocal();refreshMenu();
+   profileStatus('OPERATOR LOADED · CLOUD SYNC ACTIVE');
+   if(profile.earned>(remote.earned||0)||profile.unlocked>(remote.unlocked||0))scheduleSave();
+  }).catch(()=>{if(loadedName===name.toLowerCase()){cloudAvailable=false;profileStatus('SAVED LOCALLY · CLOUD CURRENTLY OFFLINE');}});
+  return true;
+ }
  let remote=null;try{remote=await getCloud(name);cloudAvailable=true;}catch{cloudAvailable=false;}
  profile=mergeProfiles(local,remote,name);loadedName=name.toLowerCase();saveLocal();
  const kit=readLoadout();
@@ -181,6 +195,12 @@ function awardMission(completedRun){
  profile.earned=clamp(profile.earned+payout,0,9999999);
  profile.unlocked=Math.max(profile.unlocked,Math.min(4,completedRun.mission+1));
  profile.cleared=[...new Set([...profile.cleared,m.id])];if(completedRun.mission===4)profile.completed=true;
+ if(first){
+  selectedWeapon=availableWeapons(profile).at(-1)?.[0]||selectedWeapon;
+  selectedGadget=availableGadgets(profile).at(-1)?.[0]||selectedGadget;
+  persistLoadout();
+  if(!host)send({type:'kit-update',kit:kit()});
+ }
  const current=profile.best[m.id];
  if(!current||completedRun.time<current)profile.best[m.id]=Math.round(completedRun.time);
  selectedMission=Math.min(profile.unlocked,completedRun.mission+1);
@@ -234,6 +254,7 @@ function setupConnection(c){
     startBrief(selectedMission);
    }
    if(packet.type==='input')remoteInput=sanitizedInput(packet.input);
+   if(packet.type==='kit-update'&&packet.kit){const k=packet.kit;remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:WEAPONS[k.weapon]?k.weapon:'pistol',gadget:GADGETS[k.gadget]?k.gadget:null,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};}
   }else if(packet.type==='state'&&packet.run){
    const previous=run?.runId;run=packet.run;onRunChange();if(previous!==run.runId)view?.build(run);
   }
@@ -353,4 +374,5 @@ if(remembered&&/^[a-zA-Z0-9_-]{3,24}$/.test(remembered)){$('playerName').value=r
 else refreshMenu();
 window.addEventListener('beforeunload',()=>{peer?.destroy();});
 window.getawayReady=true;
+$('fatal').classList.add('hidden');
 requestAnimationFrame(frame);
