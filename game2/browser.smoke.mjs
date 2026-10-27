@@ -33,7 +33,7 @@ try{
  await page.waitForFunction(()=>document.getElementById('centerOverlay').classList.contains('hidden'),null,{timeout:15000});
  await page.waitForTimeout(1000);
  assert.match(await page.locator('#hudMission').innerText(),/AFTER HOURS/);
- assert.match(await page.locator('#hpLabel').innerText(),/100/);
+ assert.match(await page.locator('#hpLabel').innerText(),/125/);
  assert.match(await page.locator('#ammoValue').innerText(),/15/);
  await page.keyboard.down(' ');await page.waitForTimeout(450);await page.keyboard.up(' ');
  await page.waitForTimeout(180);
