@@ -8,9 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./style.css?v=13">
 <script defer src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-<script type="module" src="./main.js?v=20"></script>
+<script type="module" src="./main.js?v=21"></script>
 </head><body>
-<aside id="gameVersion" class="gameVersion" aria-label="Game version"><span>VERSION</span> v0.4.6</aside>
+<aside id="gameVersion" class="gameVersion" aria-label="Game version"><span>VERSION</span> v0.4.7</aside>
 <div id="menu" class="entryScreen">
  <div class="entryNoise"></div>
  <div class="entryForm">
@@ -30,7 +30,7 @@
   <button id="shMenuToggle" class="gameMenuToggle" type="button" aria-label="Open equipment menu" aria-expanded="false" aria-controls="safehousePanel">☰ <span>MENU</span></button>
   <div class="leftRail"><div class="railLabel">CREW STATUS</div><div id="shCrew" class="crew"></div></div>
   <div class="shWallet" aria-label="Available funds"><span>AVAILABLE FUNDS</span><strong id="shWalletAmount">₵ 0</strong></div>
-  <div class="rightRail"><div class="mapFrame"><canvas id="shMinimap" width="270" height="210"></canvas><div class="mapCaption"><span>TACTICAL MAP</span><span>0 HOSTILES</span></div></div></div>
+  <div class="rightRail"><div class="mapFrame"><canvas id="shMinimap" width="270" height="210"></canvas></div></div>
   <div class="crosshair" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <div id="shHoverCard" class="shHoverCard hidden" aria-live="polite"><small id="shHoverType">WEAPON</small><strong id="shHoverName">EQUIPMENT</strong><div class="shHoverMeta"><b id="shHoverPrice">₵ 0</b><span id="shHoverState">E TO INSPECT</span></div></div>
   <div id="safehousePrompt" class="interaction shInteraction hidden" aria-live="polite"><div class="interactText"><kbd>E</kbd><span id="shInteractionLabel">INSPECT EQUIPMENT</span></div></div>
@@ -98,7 +98,7 @@
   <div class="gameMenuActions"><button id="invite" type="button">COPY CO-OP INVITE</button><button id="sound" type="button">SOUND ON</button><button id="pause" type="button">RESUME OPERATION</button><button id="leaveOperation" type="button">RETURN TO SAFEHOUSE</button></div>
  </aside>
  <div class="leftRail"><div class="railLabel">CREW STATUS</div><div id="crew" class="crew"></div></div>
- <div class="rightRail"><div class="mapFrame"><canvas id="minimap" width="270" height="210"></canvas><div class="mapCaption"><span>TACTICAL MAP</span><span id="enemyCount">0 HOSTILES</span></div></div><div class="alarmPanel"><div class="alarmLine"><span>SECURITY ALERT</span><b id="alertName">QUIET</b></div><div class="alarmTrack"><div id="alarmFill"></div></div></div></div>
+ <div class="rightRail"><div class="mapFrame"><canvas id="minimap" width="270" height="210"></canvas></div><div class="alarmPanel"><div class="alarmLine"><span>SECURITY ALERT</span><b id="alertName">QUIET</b></div><div class="alarmTrack"><div id="alarmFill"></div></div></div></div>
  <div id="toast" class="toast hidden"></div>
  <svg id="damageIndicator" class="damageIndicator" viewBox="0 0 120 120" aria-hidden="true"><path d="M 33 19 A 49 49 0 0 1 87 19" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
  <div id="crosshair" class="crosshair"><span></span><span></span><span></span><span></span></div><div id="hitMarker" class="hitMarker"><span></span><span></span><span></span><span></span><b class="headshotLabel">HEADSHOT</b></div>

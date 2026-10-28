@@ -531,7 +531,6 @@ function updateHud(){
  $('ammoValue').innerHTML=p.ammo+' <em>/ '+p.reserve+'</em>';$('gadgetValue').textContent=p.gadget?(GADGETS[p.gadget].name+' × '+p.gadgets):'NO GADGET';
  $('alarmFill').style.width=run.alarm+'%';$('alertName').textContent=run.alarm<32?'QUIET':run.alarm<65?'SUSPICIOUS':'LOCKDOWN';
  $('alertName').style.color=run.alarm>=65?'#ff8b7c':run.alarm>=32?'#ffc77c':'#b7f7d4';
- $('enemyCount').textContent=run.enemies.filter(e=>e.hp>0).length+' HOSTILES';
  const task=nearbyTask(run,p),valid=task&&run.phase==='play'&&p.hp>0;
  $('interaction').classList.toggle('hidden',!valid);
  if(valid){$('interactionLabel').textContent=task.label+' · HOLD';$('interactionFill').style.width=clamp(p.interact/task.duration*100,0,100)+'%';}
