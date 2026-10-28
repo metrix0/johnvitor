@@ -5,6 +5,8 @@ import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=2';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
 const key=name=>'getaway-v3-'+name.toLowerCase();
+// Isolated one-click level-one run, without touching real operator saves.
+const quickTest=/^\/game2\/test\/?$/.test(location.pathname);
 let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
 let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
 let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set(),gearSettled=new Set();
@@ -223,6 +225,7 @@ function enterScreen(){
  if(!initView())return false;view.resize();return true;
 }
 function returnMenu(){
+ if(quickTest){location.assign('/game2/');return;}
  if(document.pointerLockElement)document.exitPointerLock();
  conn?.close();peer?.destroy();peer=null;conn=null;room='';mode='safehouse';host=true;run=null;softPaused=false;activeOverlay='';
  $('gameScreen').classList.add('hidden');$('centerOverlay').classList.add('hidden');history.replaceState(null,'',location.pathname);
@@ -258,8 +261,8 @@ function showOutcome(){
  if(!run)return;const m=MISSIONS[run.mission],won=run.phase==='won';
  showOverlay(won?'CLEAN GETAWAY':'OPERATION FAILED',won?(run.mission===4?'LEGENDS NEVER RETIRE':'JOB COMPLETE'):'THE JOB WENT SIDEWAYS',
   won?m.completion+' You earned '+coins(run.earned)+' on this run. Purchased weapons survive extraction; used gadget charges do not.':'The crew was eliminated. Deployed purchased weapons and gadget stock were lost. Return to the safehouse to rearm.',
-  host?(won&&run.mission<4?'NEXT OPERATION ↗':'RETRY OPERATION ↗'):null,
-  host?()=>startBrief(won&&run.mission<4?run.mission+1:run.mission):null,
+  host?(quickTest?'RESTART LEVEL 1 ↗':won&&run.mission<4?'NEXT OPERATION ↗':'RETRY OPERATION ↗'):null,
+  host?()=>startBrief(quickTest?0:won&&run.mission<4?run.mission+1:run.mission):null,
   [['CREW ELIMINATIONS',run.kills],['TIME',formatTime(run.time)],['PAYOUT',won?coins(run.earned):coins(0)]]);
 }
 function formatTime(seconds){const t=Math.floor(seconds||0);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
@@ -290,9 +293,21 @@ function awardMission(completedRun){
 function startBrief(n){
  if(!host)return;
  if($('gameScreen').classList.contains('hidden')&&!enterScreen())return;
- const local=kit(),guest=remoteKit||{name:'PARTNER',weapon:'pistol',gadget:null,upgrades:{}};
- run=makeRun(n,mode==='solo'?1:2,[local,guest]);
+ const local=quickTest?{name:'TEST OPERATOR',weapon:'pistol',gadget:null,upgrades:{}}:kit();
+ const guest=remoteKit||{name:'PARTNER',weapon:'pistol',gadget:null,upgrades:{}};
+ run=makeRun(quickTest?0:n,mode==='solo'?1:2,[local,guest]);
+ if(quickTest){
+  run.phase='play';
+  run.toast='TEST MODE · CLICK THE GAME TO ENABLE MOUSE LOOK';
+  run.toastUntil=8;
+ }
  onRunChange();sendState();
+}
+function launchQuickTest(){
+ // No cloud fetch, localStorage writes, purchases, or progression rewards.
+ profile=profileDefaults('TEST OPERATOR');loadedName='';
+ selectedMission=0;selectedWeapon='pistol';selectedGadget='';
+ mode='solo';host=true;room='';startBrief(0);
 }
 async function startSolo(){
  if(!await ensureProfile())return;
@@ -518,4 +533,5 @@ refreshMenu();
 window.addEventListener('beforeunload',()=>{peer?.destroy();});
 window.getawayReady=true;
 $('fatal').classList.add('hidden');
+if(quickTest)launchQuickTest();
 requestAnimationFrame(frame);
