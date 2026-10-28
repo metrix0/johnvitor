@@ -172,3 +172,11 @@
  .safehouse .gameBottom .vital{width:105px}
  .safehouse .shInteraction{bottom:29%;width:min(300px,85vw);padding:10px;font-size:10px}
 }
+
+
+/* The lobby's spendable balance stays visible outside the TAB armory. */
+.safehouse .shWallet{position:absolute;top:20px;right:23px;z-index:5;display:flex;align-items:center;gap:10px;padding:5px 11px;background:#0b1a20dc;border:1px solid #4e7b69;color:#b6f7d4;pointer-events:none;white-space:nowrap}
+.safehouse .shWallet span{font-size:9px;font-weight:800;letter-spacing:.11em;color:#9dbfb3}
+.safehouse .shWallet strong{font:800 19px/1 'Barlow Condensed',sans-serif;color:#d6ffde;font-variant-numeric:tabular-nums}
+@media(max-width:800px){.safehouse .shWallet{right:13px}}
+@media(max-width:520px){.safehouse .shWallet{right:9px;top:24px;padding:4px 7px;gap:6px}.safehouse .shWallet span{font-size:7px}.safehouse .shWallet strong{font-size:16px}}

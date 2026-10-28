@@ -286,6 +286,7 @@ function updateSafehouseHud(){
  const hp=125+25*(profile.upgrades?.armor||0);
  const mag=Math.round(w.mag*(1+(profile.upgrades?.mag||0)*.2));
  $('shCrew').innerHTML=`<div class="crewCard"><div class="crewName">${escapeText((loadedName?profile.name:'OPERATOR').toUpperCase())} / YOU</div><div class="crewHp">${hp} / ${hp} HP</div><div class="crewMiniBar"><div style="width:100%"></div></div></div>`;
+ $('shWalletAmount').textContent=coins(profileWallet());
  $('shHpLabel').textContent=hp+' / '+hp;
  $('shHpFill').style.width='100%';
  $('shGunName').textContent=w.name;
