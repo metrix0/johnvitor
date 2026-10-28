@@ -1,7 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
 import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js';
 import {LEVEL1_ZONES} from './level1.js';
-import {Visuals} from './visuals.js';
+import {Visuals} from './visuals.js?v=3';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
  office:{floor:0x303b44,wall:0x778998,accent:0x82d7fb,light:0xcce8ff,sky:0x101b2a},
@@ -333,13 +333,22 @@ export class View{
   this.box(this.irons,0,.115,.13,.22,.05,.14,0x182a2d,.5);
   this.optic=new THREE.Group();this.gunBody.add(this.optic);
   this.box(this.optic,0,.125,-.09,.13,.11,.18,0x1e292c,.6);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(.087,.012,8,24),new THREE.MeshStandardMaterial({color:0x333e42,metalness:.6,roughness:.35}));
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.087,.012,8,24),new THREE.MeshStandardMaterial({color:0x283237,metalness:.24,roughness:.78}));
   ring.position.set(0,this.sightHeight,-.09);this.optic.add(ring);
-  this.reticle=new THREE.Mesh(new THREE.SphereGeometry(.009,8,8),new THREE.MeshBasicMaterial({color:0xffd287,depthWrite:false}));
+  this.reticle=new THREE.Mesh(new THREE.SphereGeometry(.007,8,8),new THREE.MeshBasicMaterial({color:0xc9b58a,transparent:true,opacity:.85,depthWrite:false}));
   this.reticle.position.set(0,this.sightHeight,-.37);this.optic.add(this.reticle);
+  // Render the firearm on layer 1 with a soft, separate light rig.
+  this.camera.layers.enable(1);
+  this.gunBody.traverse(part=>part.layers.set(1));
+  this.weaponFill=new THREE.HemisphereLight(0xd8e2e1,0x34434b,.8);
+  this.weaponFill.layers.set(1);this.camera.add(this.weaponFill);
+  this.weaponKey=new THREE.DirectionalLight(0xe3e1d9,.78);
+  this.weaponKey.layers.set(1);this.weaponKey.position.set(-1,1.4,1.1);
+  this.weaponKey.target.position.set(0,0,-1);
+  this.camera.add(this.weaponKey,this.weaponKey.target);
   this.gunTarget=new THREE.Vector3();
   this.muzzle=new THREE.PointLight(0xffd187,0,4);this.muzzle.position.set(0,.06,-.8);this.gun.add(this.muzzle);
-  this.flash=new THREE.Mesh(new THREE.ConeGeometry(.15,.48,8),new THREE.MeshBasicMaterial({color:0xffd99a,transparent:true,opacity:.85,depthWrite:false}));this.flash.rotation.x=-Math.PI/2;this.flash.position.set(0,.07,-.8);this.gun.add(this.flash);this.flash.visible=false;
+  this.flash=new THREE.Mesh(new THREE.ConeGeometry(.15,.48,8),new THREE.MeshBasicMaterial({color:0xffd99a,transparent:true,opacity:.85,depthWrite:false}));this.flash.rotation.x=-Math.PI/2;this.flash.position.set(0,.07,-.8);this.gun.add(this.flash);this.flash.visible=false;this.flash.layers.set(1);
  }
  applyGun(weapon){
   const w=WEAPONS[weapon]||WEAPONS.pistol;
@@ -350,7 +359,12 @@ export class View{
   this.irons.visible=!this.optic.visible;
   this.cylinder.visible=weapon==='revolver';
   this.pump.visible=weapon==='shotgun';
-  this.gunBody.traverse(x=>{if(x.material?.color&&x!==this.reticle)x.material.color.lerp(new THREE.Color(w.color),.3);});
+  const sightParts=new Set();
+  this.optic.traverse(part=>sightParts.add(part));
+  this.irons.traverse(part=>sightParts.add(part));
+  this.gunBody.traverse(part=>{
+   if(part.material?.color&&!sightParts.has(part))part.material.color.lerp(new THREE.Color(w.color),.3);
+  });
  }
  update(run,playerIndex,angles,dt=0,input={}){
   if(!run)return;

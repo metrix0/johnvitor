@@ -10,6 +10,8 @@ export class Visuals {
   this.glows=[];
   this.lamps=[];
   this.flashlight=new THREE.SpotLight(0xe9f3ff,2.65,23,Math.PI/5,.82,1.65);
+  // The world flashlight must not illuminate the held weapon inches in front of it.
+  this.flashlight.layers.set(0);
   this.flashlight.position.set(0,-.12,-.14);
   this.flashlight.target.position.set(0,-.22,-10);
   view.camera.add(this.flashlight,this.flashlight.target);
@@ -22,26 +24,45 @@ export class Visuals {
   const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
   a.fillStyle=kind==='asphalt'?'#b1b3b8':kind==='metal'?'#b3bcc0':kind==='wood'?'#c3b5a0':'#c4c4c1';
   a.fillRect(0,0,size,size);
-  for(let i=0;i<2700;i++){
+  for(let i=0;i<3900;i++){
    const x=rand()*size,y=rand()*size,r=.35+rand()*2;
-   a.fillStyle=rand()>.52?'rgba(255,255,255,.10)':'rgba(9,18,25,.12)';
+   a.fillStyle=rand()>.52?'rgba(255,255,255,.19)':'rgba(9,18,25,.23)';
    a.fillRect(x,y,r,kind==='metal'?.25+rand()*.5:r);
   }
   if(kind==='tile'){
-   a.strokeStyle='rgba(20,28,32,.31)';a.lineWidth=2;
+   a.strokeStyle='rgba(20,28,32,.50)';a.lineWidth=2.5;
    for(let i=0;i<=4;i++){a.beginPath();a.moveTo(i*64,0);a.lineTo(i*64,256);a.stroke();a.beginPath();a.moveTo(0,i*64);a.lineTo(256,i*64);a.stroke();}
-   a.strokeStyle='rgba(255,255,255,.15)';a.lineWidth=1;
+   a.strokeStyle='rgba(255,255,255,.19)';a.lineWidth=1;
    for(let i=0;i<4;i++){a.strokeRect(i*64+3,3,59,250);}
   }else if(kind==='brick'||kind==='plaster'){
    a.lineWidth=kind==='brick'?3:1;
-   a.strokeStyle=kind==='brick'?'rgba(35,38,39,.28)':'rgba(55,59,60,.09)';
+   a.strokeStyle=kind==='brick'?'rgba(35,38,39,.35)':'rgba(42,53,60,.19)';
    for(let y=0;y<256;y+=kind==='brick'?42:65){
     a.beginPath();a.moveTo(0,y);a.lineTo(256,y);a.stroke();
     if(kind==='brick')for(let x=(y/42%2)*43;x<256;x+=86){a.beginPath();a.moveTo(x,y);a.lineTo(x,y+42);a.stroke();}
    }
+   if(kind==='plaster')for(let i=0;i<95;i++){
+    const x=rand()*size,y=rand()*size,w=5+rand()*34,h=2+rand()*20;
+    a.fillStyle=rand()>.48?'rgba(35,38,42,.10)':'rgba(255,255,255,.11)';
+    a.fillRect(x,y,w,h);
+   }
+  }else if(kind==='asphalt'||kind==='concrete'){
+   // Surface aggregate, worn patches and cracks remain legible under night lighting.
+   for(let i=0;i<120;i++){
+    const x=rand()*size,y=rand()*size,w=3+rand()*28,h=1+rand()*13;
+    a.fillStyle=rand()>.46?'rgba(24,33,39,.16)':'rgba(255,255,255,.08)';
+    a.fillRect(x,y,w,h);
+   }
+   for(let i=0;i<(kind==='asphalt'?24:13);i++){
+    let x=rand()*size,y=rand()*size;
+    a.strokeStyle=kind==='asphalt'?'rgba(23,27,31,.37)':'rgba(26,35,39,.28)';
+    a.lineWidth=.55+rand()*1.1;a.beginPath();a.moveTo(x,y);
+    for(let j=0;j<4;j++){x+=rand()*17-5;y+=rand()*18-4;a.lineTo(x,y);}
+    a.stroke();
+   }
   }else if(kind==='wood'){
    for(let i=0;i<65;i++){
-    a.strokeStyle=rand()>.5?'rgba(44,26,18,.12)':'rgba(255,238,198,.15)';
+    a.strokeStyle=rand()>.5?'rgba(44,26,18,.26)':'rgba(255,238,198,.19)';
     a.lineWidth=.35+rand()*1.5;const y=rand()*256;
     a.beginPath();a.moveTo(0,y);a.bezierCurveTo(90,y+rand()*5,175,y-5+rand()*10,256,y+rand()*6);a.stroke();
    }
@@ -72,7 +93,11 @@ export class Visuals {
  surface(kind,color,width=5,depth=5) {
   const tex=this.texture(kind,Math.max(1,width/3),Math.max(1,depth/3));
   const roughness=kind==='asphalt'?.57:kind==='metal'?.42:kind==='tile'?.45:.86;
-  const m=new THREE.MeshStandardMaterial({color,map:tex,roughness,metalness:kind==='metal'?.48:.06});
+  const m=new THREE.MeshStandardMaterial({
+   color,map:tex,roughness,metalness:kind==='metal'?.48:.06,
+   // One shared cached map gives subtle relief without more texture downloads.
+   bumpMap:tex,bumpScale:kind==='metal'?.012:kind==='wood'?.022:kind==='tile'?.018:.035
+  });
   if(kind==='asphalt'||kind==='tile')m.envMapIntensity=.8;
   return m;
  }
