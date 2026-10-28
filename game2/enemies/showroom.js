@@ -1,5 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
-import {View} from '../render.js?v=5';
+import {View} from '../render.js?v=6';
 import {ENEMY_ARCHETYPES} from '../simulation.js';
 
 const $=id=>document.getElementById(id);

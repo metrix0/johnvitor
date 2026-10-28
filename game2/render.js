@@ -292,7 +292,7 @@ export class View{
    this.box(g,0,2.05,0,.55,.23,.53,0x293840,.6);
    this.box(g,0,1.86,-.23,.53,.12,.14,kind==='sniper'?0x9e9fff:0x2b3034,.6);
    for(const s of [-1,1]){this.box(g,s*.22,.42,0,.27,.84,.35,0x222c32);this.box(g,s*.49,1.14,0,.21,.66,.34,tint);}
-   this.box(g,.15,1.27,-.54,.15,.16,1.06,0x212a30,.7);
+   // Weapons are assembled on the animated rig below (no duplicate fixed rifle).
   }
   const hpBack=this.box(g,0,kind==='drone'?2.65:2.49,0,1,.09,.05,0x17202a);
   const hpFill=this.box(g,-.49,kind==='drone'?2.65:2.49,.035,.98,.08,.045,0x8affbd);
@@ -301,11 +301,22 @@ export class View{
   // The same weapon rigs are shared with /game2/enemies.
   const rig=new THREE.Group();g.add(rig);
   const drone=kind==='drone',rusher=kind==='rusher',heavy=kind==='heavy',sniper=kind==='sniper';
-  rig.position.set(drone?0:.17,drone?1.99:1.30,drone?-.44:-.37);
+  rig.position.set(drone?0:rusher?.43:.17,drone?1.99:rusher?1.60:1.30,drone?-.44:rusher?-.24:-.37);
   if(rusher){
-   this.box(rig,.17,-.04,-.1,.25,.23,.35,0x343e43,.4);
-   this.box(rig,.16,-.08,-.45,.085,.12,.53,0xb8c6ca,.7);
-   this.box(rig,.16,-.08,-.74,.07,.07,.2,0xdce7e4,.5);
+   // The rusher is a MELEE attacker. Pivot the entire forearm and blade from
+   // shoulder height so the wind-up and slash are readable from a distance.
+   this.box(rig,0,-.21,-.08,.25,.47,.28,0x445057,.20);
+   this.box(rig,0,-.46,-.21,.22,.23,.26,0x29373c,.12);
+   this.box(rig,0,-.46,-.49,.14,.12,.47,0x30383b,.50);
+   const blade=this.box(rig,0,-.46,-.93,.10,.075,.69,0xb2c4cc,.38);
+   blade.material.roughness=.53;
+   this.box(rig,0,-.46,-.64,.29,.09,.07,0x57696d,.25);
+   const arc=new THREE.Mesh(
+    new THREE.TorusGeometry(.65,.025,5,32,Math.PI*.92),
+    new THREE.MeshBasicMaterial({color:0xffbd76,transparent:true,opacity:.64,depthWrite:false,side:THREE.DoubleSide})
+   );
+   arc.position.set(-.16,-.30,-.88);arc.rotation.z=-.52;arc.visible=false;rig.add(arc);
+   g.userData.slashArc=arc;
   }else{
    const dark=0x18242b,steel=heavy?0x59636b:sniper?0x627880:0x354951;
    this.box(rig,0,0,-.27,heavy?.65:sniper?.31:.37,heavy?.33:.23,heavy?.77:sniper?.85:.56,steel,.65);
@@ -329,31 +340,60 @@ export class View{
    }
   }
   const tip=drone?-.98:heavy?-1.45:sniper?-1.61:-1.07;
-  const flare=new THREE.Mesh(new THREE.ConeGeometry(heavy?.20:.135,heavy?.67:.48,8),
-   new THREE.MeshBasicMaterial({color:drone?0x89edff:0xffd596,transparent:true,opacity:.87,depthWrite:false,blending:THREE.AdditiveBlending}));
-  flare.rotation.x=-Math.PI/2;flare.position.set(0,.015,tip);
+  // Small, stationary muzzle flare. The old cone rotated every frame and
+  // appeared as a spinning white object after firing.
+  const flare=new THREE.Mesh(new THREE.SphereGeometry(heavy?.14:.10,8,6),
+   new THREE.MeshBasicMaterial({color:drone?0x77cfe2:0xffb06b,transparent:true,opacity:.65,depthWrite:false}));
+  flare.position.set(0,.015,tip);
   flare.visible=false;rig.add(flare);
   const slide=this.box(rig,0,.13,-.23,.17,.05,.22,0x8c9da0,.55);
-  const casing=this.cyl(rig,.27,.12,-.27,.048,.14,0xd9b578,8);
-  casing.rotation.z=Math.PI/2;casing.visible=false;
+  const casing=this.box(rig,.27,.12,-.27,.085,.06,.14,0xa88d5a,.25);
+  casing.visible=false;
   g.userData.weaponRig=rig;g.userData.flare=flare;g.userData.slide=slide;g.userData.casing=casing;
   g.userData.lastFireSeq=e.fireSeq||0;g.userData.fireTime=0;
   return g;
  }
- // Animate the same rig in missions and in the interactive enemy gallery.
+ // Shared attack animations for the real game and the enemy showroom.
  animateEnemy(model,e,dt=0){
   const u=model.userData;if(!u.weaponRig)return;
-  if((e.fireSeq||0)!==u.lastFireSeq){u.lastFireSeq=e.fireSeq||0;u.fireTime=.26;}
+  const melee=e.type==='rusher',duration=melee?.58:.24;
+  if((e.fireSeq||0)!==u.lastFireSeq){
+   u.lastFireSeq=e.fireSeq||0;
+   u.fireTime=duration;
+  }
   u.fireTime=Math.max(0,u.fireTime-Math.max(0,dt));
-  const kick=Math.min(1,u.fireTime/.21),melee=e.type==='rusher';
-  u.weaponRig.rotation.x=melee?-.68*kick:-.22*kick;
-  u.weaponRig.rotation.z=melee?-.16*kick:(e.type==='heavy'?.09*kick:0);
-  u.weaponRig.position.z=(e.type==='drone'?-.44:-.37)+kick*(melee?-.33:.15);
-  u.flare.visible=!melee&&u.fireTime>.10;
-  if(u.flare.visible){u.flare.scale.setScalar(.85+kick*.72);u.flare.rotation.z+=dt*20;}
-  u.slide.position.z=-.23+kick*.16;
-  u.casing.visible=!melee&&e.type!=='drone'&&u.fireTime>.055&&u.fireTime<.19;
-  if(u.casing.visible)u.casing.position.set(.27+(1-kick)*.32,.12+(1-kick)*.20,-.27+(1-kick)*.07);
+  const elapsed=duration-u.fireTime;
+  const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
+  if(melee){
+   const windup=smooth(elapsed/.16);
+   const strike=smooth((elapsed-.16)/.17);
+   const recover=smooth((elapsed-.37)/.21);
+   const lunge=strike*(1-recover);
+   // Wind back the arm, then make a quick shoulder-driven horizontal slash.
+   u.weaponRig.rotation.x=-.10-.28*windup+.82*strike-.44*recover;
+   u.weaponRig.rotation.z=-.10-.78*windup+1.85*strike-1.07*recover;
+   u.weaponRig.position.set(.43-.12*lunge,1.60-.13*lunge,-.24-.41*lunge);
+   if(u.slashArc){
+    u.slashArc.visible=elapsed>.17&&elapsed<.34;
+    u.slashArc.material.opacity=.52*(1-smooth((elapsed-.22)/.12));
+   }
+   model.rotation.x=.09*lunge;
+   u.flare.visible=false;
+   u.casing.visible=false;
+   u.slide.visible=false;
+  }else{
+   const recoil=u.fireTime>0?Math.sin(Math.PI*smooth(elapsed/duration)):.0;
+   u.weaponRig.rotation.x=-.20*recoil;
+   u.weaponRig.rotation.z=e.type==='heavy'?.07*recoil:0;
+   u.weaponRig.position.z=(e.type==='drone'?-.44:-.37)+.13*recoil;
+   // Flash only for the first ~70 ms. It never rotates or spins.
+   u.flare.visible=u.fireTime>duration-.07;
+   if(u.flare.visible)u.flare.scale.setScalar(1.0+.40*(1-elapsed/.07));
+   u.slide.position.z=-.23+.12*recoil;
+   u.casing.visible=e.type!=='drone'&&elapsed>.06&&elapsed<.17;
+   if(u.casing.visible)u.casing.position.set(.27+elapsed*.8,.12+elapsed*.44,-.27+elapsed*.18);
+   model.rotation.x=0;
+  }
   if(e.type==='drone')model.position.y=Math.sin(this.clock*3+(e.id||0))*.15;
   if(e.flinch>0)model.rotation.z=Math.sin(this.clock*45)*.06;
   else model.rotation.z=0;
