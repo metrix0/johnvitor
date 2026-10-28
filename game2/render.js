@@ -1,6 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
 import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js';
 import {LEVEL1_ZONES} from './level1.js';
+import {Visuals} from './visuals.js';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
  office:{floor:0x303b44,wall:0x778998,accent:0x82d7fb,light:0xcce8ff,sky:0x101b2a},
@@ -23,12 +24,13 @@ export class View{
   this.world=new THREE.Group();this.scene.add(this.world);
   this.ambient=new THREE.HemisphereLight(0xdfebff,0x1d2633,1.8);this.scene.add(this.ambient);
   this.sun=new THREE.DirectionalLight(0xffffff,1.55);this.sun.position.set(7,16,18);this.scene.add(this.sun);
+  this.visuals=new Visuals(this);
   this.mission=-1;this.currentRun='';this.enemies=new Map();this.allies=new Map();this.bags=new Map();this.objectives=new Map();this.pickups=new Map();this.lights=[];this.tracerMeshes=new Map();this.clock=0;this.lastShots=0;this.cameraReady=false;this.hitFlash=0;
   this.makeGun();this.resize();
   this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(container);
  }
  resize(){const w=this.el.clientWidth||960,h=this.el.clientHeight||520;this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}
- clear(){this.world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.dispose&&!Array.isArray(o.material))o.material.dispose();});this.world.clear();this.enemies.clear();this.allies.clear();this.bags.clear();this.objectives.clear();this.rain=null;this.pickups.clear();this.tracerMeshes.clear();this.lights=[];}
+ clear(){this.world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.dispose&&!Array.isArray(o.material))o.material.dispose();});this.world.clear();this.enemies.clear();this.allies.clear();this.bags.clear();this.objectives.clear();this.rain=null;this.pickups.clear();this.tracerMeshes.clear();this.lights=[];this.visuals.clear();}
  box(parent,x,y,z,w,h,d,color,metal=0){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),typeof color==='number'?mat(color,metal):color);m.position.set(x,y,z);parent.add(m);return m;}
  cyl(parent,x,y,z,r,depth,color,segments=12){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,depth,segments),mat(color,.25));m.position.set(x,y,z);parent.add(m);return m;}
  textTexture(text,fg='#e7f9ed',bg='#10181c',w=512,h=128){
@@ -45,10 +47,10 @@ export class View{
   const mission=MISSIONS[run.mission],p=palette[mission.theme];
   this.clear();this.mission=run.mission;this.currentRun=run.runId;this.cameraReady=false;this.scene.background=new THREE.Color(p.sky);this.scene.fog=new THREE.FogExp2(p.sky,.018);
   this.ambient.color.setHex(p.light);this.sun.color.setHex(p.light);
-  this.canvas.style.background='#0b141a';
+  this.canvas.style.background='#0b141a';this.visuals.setup(run,p);
   if(run.mission===0){this.buildCityBlock(run,p);return;}
   const world=this.world;
-  const ground=this.box(world,(WIDTH-1)*CELL/2,-.17,(HEIGHT-1)*CELL/2,WIDTH*CELL,.3,HEIGHT*CELL,p.floor);
+  const ground=this.box(world,(WIDTH-1)*CELL/2,-.17,(HEIGHT-1)*CELL/2,WIDTH*CELL,.3,HEIGHT*CELL,this.visuals.surface('tile',p.floor,WIDTH*CELL,HEIGHT*CELL));
   const tiles=mat(p.floor);const seam=mat(0x151d24);
   // Thin tile seams, safety-yellow aisle lines and architectural baseboards.
   for(let x=1;x<WIDTH-1;x++){this.box(world,x*CELL,-.008,(HEIGHT-1)*CELL/2,.024,.015,HEIGHT*CELL-.1,seam);}
@@ -59,7 +61,7 @@ export class View{
    wallCount++;
    const outside=x===0||z===0||x===WIDTH-1||z===HEIGHT-1;
    const base=outside?p.wall:p.wall;
-   this.box(world,x*CELL,1.65,z*CELL,CELL,3.3,CELL,base,.1);
+   this.box(world,x*CELL,1.65,z*CELL,CELL,3.3,CELL,this.visuals.surface('plaster',base,CELL,CELL));
    this.box(world,x*CELL,.13,z*CELL,CELL+.025,.26,CELL+.025,0x22282c,.2);
    this.box(world,x*CELL,3.24,z*CELL,CELL+.025,.13,CELL+.025,0x202a2b,.2);
    if((x+z)%3===0)this.box(world,x*CELL,2.65,z*CELL,CELL*.66,.045,CELL*.66,p.accent,.4);
@@ -81,16 +83,17 @@ export class View{
   const ring=new THREE.Mesh(new THREE.TorusGeometry(2.65,.1,8,48),new THREE.MeshBasicMaterial({color:0x67f6bb}));ring.rotation.x=Math.PI/2;ring.position.set(run.exit.x,.12,run.exit.z);world.add(ring);this.exitRing=ring;
   const beacon=new THREE.Mesh(new THREE.CylinderGeometry(1.8,1.8,3.3,24,1,true),new THREE.MeshBasicMaterial({color:0x4affbb,transparent:true,opacity:.06,side:THREE.DoubleSide,depthWrite:false}));beacon.position.set(run.exit.x,1.7,run.exit.z);world.add(beacon);this.exitBeacon=beacon;
   for(const obj of run.objectives){const g=this.objectiveMesh(obj,p);world.add(g);this.objectives.set(obj.id,g);}
+  this.visuals.decorate(run,p);
  }
  buildCityBlock(run,p){
   const mission=MISSIONS[0],world=this.world,cols=run.grid[0].length,rows=run.grid.length;
   const w=(cols-1)*CELL,h=(rows-1)*CELL;
   this.scene.background=new THREE.Color(0x0a1420);
   this.scene.fog=new THREE.FogExp2(0x0a1420,.0075);
-  this.ambient.intensity=1.25;this.sun.intensity=.3;
-  this.box(world,w/2,-.32,h/2,cols*CELL,.65,rows*CELL,0x182029);
+  this.ambient.intensity=.94;this.sun.intensity=.55;
+  this.box(world,w/2,-.32,h/2,cols*CELL,.65,rows*CELL,this.visuals.surface('asphalt',0x29343c,cols*CELL,rows*CELL));
   for(const zone of LEVEL1_ZONES){
-   this.box(world,(zone.x+zone.w/2)*CELL,-.03,(zone.z+zone.h/2)*CELL,zone.w*CELL,.085,zone.h*CELL,zone.floor);
+   this.box(world,(zone.x+zone.w/2)*CELL,-.03,(zone.z+zone.h/2)*CELL,zone.w*CELL,.085,zone.h*CELL,this.visuals.surface(zone.name==='NIGHTSHIFT MARKET'?'tile':zone.name==='STAFF OFFICES'?'wood':zone.name==='STOCKROOM'?'concrete':'asphalt',zone.floor,zone.w*CELL,zone.h*CELL));
   }
   // Street lanes, taxi bays, sidewalks and painted parking slots.
   for(let z=5;z<54;z+=5)this.box(world,7*CELL,.035,z*CELL,.16,.01,4.1,0xd1b275);
@@ -127,7 +130,7 @@ export class View{
   }
   const matrix=new THREE.Matrix4();
   for(const [color,instances] of batches){
-   const mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),mat(Number(color),.25),instances.length);
+   const mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),this.visuals.surface('plaster',Number(color),6,5),instances.length);
    for(let i=0;i<instances.length;i++){
     const [x,y,z,sx,sy,sz]=instances[i];
     matrix.compose(new THREE.Vector3(x,y,z),new THREE.Quaternion(),new THREE.Vector3(sx,sy,sz));
@@ -141,7 +144,7 @@ export class View{
   this.box(world,20*CELL,.07,26*CELL,5,.07,7,0xd6bd95,.2);
   for(const z of [16,19,33,37]){
    this.box(world,19.1*CELL,2.4,z*CELL,.11,2.4,2.3,0x253644,.6);
-   this.box(world,19*CELL,2.55,z*CELL,.05,1.55,1.75,0x70c0cc,.45);
+   this.box(world,19*CELL,2.55,z*CELL,.05,1.55,1.75,new THREE.MeshPhysicalMaterial({color:0x5b9ab1,metalness:.22,roughness:.14,clearcoat:.85,transparent:true,opacity:.83}));
   }
   for(const [x,z,kind] of mission.decor)this.prop(kind,x*CELL,z*CELL,p);
   // Fixed world landmarks and billboards; no downloaded textures/models.
@@ -150,7 +153,7 @@ export class View{
   this.sign('FRONT ENTRY',19.6*CELL,4.2,26*CELL,Math.PI/2,'#ffffff',3.2);
   this.sign('NEON AVE',6*CELL,4.5,3*CELL,0,'#8de6ff',3.7);
   this.sign('BAY 03',68*CELL,3,43*CELL,0,'#fae3a4',3.5);
-  // Keep only three physically evaluated point lights. The rest are cheap emissive fixtures.
+  // Keep the existing street lights lightweight; the visuals layer adds limited nearby accent/alarm lights.
   for(const at of [[11,26],[53,33],[67,45]]){
    const lamp=new THREE.PointLight(at[0]<20?0xffd199:0xb6d9ff,7,26,2);
    lamp.position.set(at[0]*CELL,4,at[1]*CELL);world.add(lamp);this.lights.push(lamp);
@@ -185,6 +188,7 @@ export class View{
   const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.BufferAttribute(pts,3));
   this.rain={mesh:new THREE.Points(geom,new THREE.PointsMaterial({color:0x9fbfd8,size:.045,transparent:true,opacity:.42,depthWrite:false})),speed:random};
   world.add(this.rain.mesh);
+  this.visuals.decorate(run,p);
  }
  prop(kind,x,z,p){
   const g=new THREE.Group();g.position.set(x,0,z);this.world.add(g);
@@ -253,6 +257,7 @@ export class View{
    this.box(g,0,.55,0,2,.95,1.45,0x65523a,.4);
    for(let i=0;i<5;i++)for(let j=0;j<2;j++)this.box(g,-.75+i*.36,1.1,j*.35-.2,.32,.18,.32,0xffc95b,.9);
   }
+  this.visuals.detailProp(g,kind);
  }
  objectiveMesh(o,p){
   const g=new THREE.Group();g.userData.kind=o.kind;
@@ -292,6 +297,7 @@ export class View{
   const hpBack=this.box(g,0,kind==='drone'?2.65:2.49,0,1,.09,.05,0x17202a);
   const hpFill=this.box(g,-.49,kind==='drone'?2.65:2.49,.035,.98,.08,.045,0x8affbd);
   g.userData.hpFill=hpFill;g.userData.hpBack=hpBack;
+  this.visuals.detailEnemy(g,e);
   return g;
  }
  makeGun(){
@@ -408,8 +414,9 @@ export class View{
    this.tracerMeshes.get(t.id).material.opacity=Math.max(0,t.ttl/.13);
   }
   for(const [id,mesh] of this.tracerMeshes)if(!activeTracers.has(id)){this.world.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();this.tracerMeshes.delete(id);}
+  this.visuals.update(run,this.clock);
   this.renderer.render(this.scene,camera);
  }
- dispose(){this.observer.disconnect();this.renderer.dispose();this.clear();}
+ dispose(){this.observer.disconnect();this.clear();this.visuals.dispose();this.renderer.dispose();}
 }
 function rnd(n){return Math.sin(n*12.9898)*.5;}

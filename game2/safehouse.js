@@ -1,4 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
+import {Visuals} from './visuals.js';
 
 // Physical stations, all reachable from the compact walkable safehouse.
 export const SAFEHOUSE_STATIONS = [
@@ -37,7 +38,8 @@ export class Safehouse {
   this.container.append(this.canvas);
   this.pos={x:0,z:-2.65};this.yaw=0;this.pitch=0;this.step=0;
   this.move={w:false,a:false,s:false,d:false,shift:false};
-  this.active=false;this.lights=[];this.meshes=[];
+  this.active=false;this.lights=[];this.meshes=[];this.elapsed=0;
+  this.visuals=new Visuals({camera:this.camera,renderer:this.renderer,world:this.scene,box:(parent,x,y,z,w,h,d,color)=>this.box(x,y,z,w,h,d,color,parent)});
   this.build();this.resize();
   this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(this.container);
   this.canvas.addEventListener('mousedown',()=>{if(this.active&&document.pointerLockElement!==this.canvas){
@@ -54,16 +56,18 @@ export class Safehouse {
   mesh.position.set(x,y,z);this.scene.add(mesh);return mesh;
  }
  build(){
-  const concrete=material(0x24323a),floor=material(0x1b2932,.15);
-  const metal=material(0x344652,.65),black=material(0x0b171c,.38);
+  const concrete=this.visuals.surface('plaster',0x374750,15,5),floor=this.visuals.surface('tile',0x263a44,15,15);
+  const metal=material(0x344652,.65),black=material(0x0b171c,.38),ceiling=this.visuals.surface('metal',0x465560,15,15);
   const mint=material(0x80f3c7,.12,.5),amber=material(0xf9bc70,.15,.3);
-  this.scene.add(new THREE.HemisphereLight(0xb6d8e9,0x111725,1.5));
+  this.scene.add(new THREE.HemisphereLight(0xb6d8e9,0x111725,1.1));
   this.box(0,-.22,0,15.4,.4,15.4,floor);
-  this.box(0,4.65,0,15.4,.3,15.4,concrete);
+  this.box(0,4.65,0,15.4,.3,15.4,ceiling);
   this.box(-7.65,2.25,0,.3,4.6,15.4,concrete);
   this.box(7.65,2.25,0,.3,4.6,15.4,concrete);
   this.box(0,2.25,-7.65,15.4,4.6,.3,concrete);
   this.box(0,2.25,7.65,15.4,4.6,.3,concrete);
+  // Pools of light anchor each station in the room, without shadow-map overhead.
+  for(const [x,z,color,diameter] of [[-5.3,-2.3,0x83c8ff,5],[5.3,-2.3,0x7de8c5,5],[-5.3,2.9,0xb99dff,5],[5.3,2.9,0x83d5ff,5],[0,-5.4,0xffd09a,6],[0,5.5,0xffa166,6]])this.visuals.pool(x,z,diameter,color,.24,.019);
   // Industrial floor grid, skirting and ceiling conduit.
   const lines=material(0x334953,.2);
   for(let x=-7;x<=7;x+=1.5)this.box(x,.007,0,.017,.014,15.1,lines);
@@ -87,7 +91,7 @@ export class Safehouse {
    for(const z of [-5.5,-4.7,4.8,5.6])this.cylinder(x,.28,z,.15,.15,.35,black);
   }
   // A compact planning table with paper dossiers, a glowing floor map and a radio.
-  this.box(0,.68,1.05,3.35,.12,2.05,metal);
+  this.box(0,.68,1.05,3.35,.12,2.05,this.visuals.surface('wood',0x637781,4,3));
   for(const x of [-1.43,1.43])for(const z of [.2,1.9])this.box(x,.3,z,.12,.6,.13,black);
   this.box(0,.754,.94,2.6,.016,1.46,material(0x203743,.2,.18));
   for(const x of [-.88,.05,.78])this.box(x,.77,1.1,.46,.018,.64,material(0x809ba7,.04));
@@ -173,8 +177,10 @@ export class Safehouse {
    this.pos.z=Math.max(-6.1,Math.min(6.1,this.pos.z+dz));
    if(forward||strafe)this.step+=dt*10;
   }
+  this.elapsed+=dt;
   this.camera.position.set(this.pos.x,1.73+(locked?.018*Math.sin(this.step):0),this.pos.z);
   this.camera.rotation.set(this.pitch,this.yaw,0,'YXZ');
+  this.visuals.update({mission:1,alarm:0},this.elapsed);
   this.renderer.render(this.scene,this.camera);
  }
  setActive(active){this.active=active;this.resetKeys();if(active)this.resize();}
@@ -186,6 +192,6 @@ export class Safehouse {
     mat.map?.dispose();mat.dispose();
    }}
   });
-  this.renderer.dispose();this.canvas.remove();
+  this.visuals.dispose();this.renderer.dispose();this.canvas.remove();
  }
 }
