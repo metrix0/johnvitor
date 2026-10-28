@@ -1,7 +1,7 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=5';
 import {View} from './render.js?v=6';
-import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=4';
+import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=5';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
 const key=name=>'getaway-v3-'+name.toLowerCase();
@@ -220,9 +220,12 @@ function showCabinFocus(target){
  const hover=$('shHoverCard'),prompt=$('safehousePrompt');
  if(!target){hover.classList.add('hidden');prompt.textContent='WASD MOVE · SHIFT QUIET WALK · E INTERACT · TAB OPEN MENU';return;}
  if(target.type==='station'){
-  hover.classList.add('hidden');
-  const station=SAFEHOUSE_STATIONS.find(s=>s.id===target.station);
-  prompt.textContent='[E] '+station.name+' · '+station.hint+'   /   [TAB] FULL MENU';
+  hover.classList.remove('hidden');
+  $('shHoverType').textContent='INTERACT';
+  $('shHoverName').textContent='[E] OPEN';
+  $('shHoverPrice').textContent='';
+  $('shHoverState').textContent='[TAB] MENU';
+  prompt.textContent='[E] INTERACT · [TAB] FULL MENU';
   return;
  }
  const state=cabinItemState(target);if(!state)return;

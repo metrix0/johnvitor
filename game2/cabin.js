@@ -8,23 +8,6 @@ const canvasTan=standard(0x958164),sage=standard(0x4b6758),cloth=standard(0x6d4e
 function box(parent,x,y,z,w,h,d,mat){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);parent.add(m);return m;}
 function cylinder(parent,x,y,z,r,h,mat,segments=12){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),mat);m.position.set(x,y,z);parent.add(m);return m;}
 function tube(parent,x,y,z,length,r,mat){const m=cylinder(parent,x,y,z,r,length,mat,10);m.rotation.z=Math.PI/2;return m;}
-function sign(title,subtitle,width=3.7){
- const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;
- const ctx=canvas.getContext('2d');ctx.fillStyle='#30271c';ctx.fillRect(0,0,1024,256);
- ctx.fillStyle='#c4a678';ctx.fillRect(21,18,982,3);ctx.fillRect(21,235,982,3);
- ctx.fillStyle='#ebd9b4';ctx.textAlign='center';ctx.font='bold 94px Georgia,serif';ctx.fillText(title,512,132);
- ctx.font='29px Georgia,serif';ctx.fillStyle='#b8a37f';ctx.fillText(subtitle,512,194);
- const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
- return new THREE.Mesh(new THREE.PlaneGeometry(width,.86),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));
-}
-function itemTag(name,cost,width=.77){
- const c=document.createElement('canvas');c.width=512;c.height=128;const a=c.getContext('2d');
- a.fillStyle='#bcaa83';a.fillRect(0,0,512,128);a.fillStyle='#33261d';a.fillRect(12,11,488,106);
- a.font='bold 32px Arial';a.textAlign='center';a.fillStyle='#f0dbb5';a.fillText(name.slice(0,22),256,56);
- a.font='bold 28px Arial';a.fillStyle='#ddbd7d';a.fillText(cost?('C '+cost):'ISSUED',256,97);
- const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
- return new THREE.Mesh(new THREE.PlaneGeometry(width,.19),new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide}));
-}
 function lantern(parent,x,y,z){
  const g=new THREE.Group();g.position.set(x,y,z);parent.add(g);
  box(g,0,.25,0,.2,.55,.2,iron);box(g,0,.24,.12,.14,.34,.015,standard(0xf4bb66,0,.34));
@@ -73,13 +56,13 @@ function gadgetModel(id){
 function createRack(house,station){
  const world=house.scene;
  const g=new THREE.Group();g.position.set(station.x,0,station.z);g.rotation.y=station.rot;world.add(g);
- const title={missions:'THE NEXT SCORE',weapons:'THE GUN WALL',gadgets:'TOOLS OF THE TRADE',upgrades:'ARMOR & SUPPLIES',crew:'THE RADIO',deploy:'THE WAY OUT'}[station.id];
- const descriptions={missions:'JOBS AND ROUTES',weapons:'FIREARMS FOR SALE',gadgets:'DEVICES AND CHARGES',upgrades:'PROTECTION & TRAINING',crew:'PRIVATE TWO-PERSON CREW',deploy:'READY WHEN YOU ARE'}[station.id];
- box(g,0,2.67,-.11,5.65,3.73,.27,darkWood);
- for(const x of [-2.68,2.68])box(g,x,2.65,.13,.12,3.8,.15,trimWood);
- for(const y of [1.02,4.43])box(g,0,y,.12,5.58,.13,.14,trimWood);
- const label=sign(title,descriptions,4.65);label.position.set(0,4.05,.07);g.add(label);
- const backing=box(g,0,2.55,.07,5.0,2.43,.04,plank);
+ // No names or subtitles on the cabin walls.
+ if(station.id!=='deploy'){
+  box(g,0,2.67,-.11,5.65,3.73,.27,darkWood);
+  for(const x of [-2.68,2.68])box(g,x,2.65,.13,.12,3.8,.15,trimWood);
+  for(const y of [1.02,4.43])box(g,0,y,.12,5.58,.13,.14,trimWood);
+  box(g,0,2.55,.07,5.0,2.43,.04,plank);
+ }
  // Scroll-free 3D merchandise wall: all weapons and gadgets are real individual catalogue items.
  if(station.id==='weapons'||station.id==='gadgets'){
   const data=station.id==='weapons'?WEAPONS:GADGETS,arr=Object.entries(data);
@@ -92,8 +75,6 @@ function createRack(house,station){
    icon.position.set(x,y,.47);
    const scale=station.id==='weapons'?.65:1.15;
    icon.scale.setScalar(scale);g.add(icon);
-   const name=item.name.split(' ').slice(-2).join(' ');
-   const price=itemTag(name,item.cost,cellWidth*.86);price.position.set(x,y-.41,.64);g.add(price);
    // The invisible display volume makes each actual 3D item individually inspectable.
    const pick=box(g,x,y,.6,cellWidth*.9,.75,.39,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
    pick.userData.focus={type:'item',station:station.id,kind:station.id==='weapons'?'weapon':'gadget',id};
@@ -119,12 +100,20 @@ function createRack(house,station){
   tube(g,1.2,3.1,.3,1.2,.04,steel);
   box(g,0,3.02,.19,2.2,.08,.3,trimWood);
  }else if(station.id==='deploy'){
-  box(g,0,2.23,.4,2.35,2.45,.25,darkWood);
-  for(const x of [-1.23,1.23])box(g,x,2.26,.56,.15,2.58,.19,iron);
-  for(const y of [1.1,3.45])box(g,0,y,.56,2.65,.13,.12,steel);
-  cylinder(g,.64,2.13,.64,.08,.09,brass);
+  // Door is floor-mounted in the opening of the real rear wall.
+  const z=-.69;
+  box(g,0,1.64,z,2.66,3.24,.17,darkWood);
+  for(const x of [-1.17,-.84,-.51,-.18,.15,.48,.81,1.14])box(g,x,1.64,z+.1,.305,3.11,.027,plank);
+  for(const x of [-1.45,1.45])box(g,x,1.7,z+.14,.21,3.4,.27,trimWood);
+  box(g,0,3.4,z+.14,3.12,.25,.31,trimWood);
+  for(const y of [.46,1.46,2.64])box(g,0,y,z+.15,2.43,.11,.065,iron);
+  box(g,.88,1.27,z+.23,.27,.34,.09,iron);
+  cylinder(g,.88,1.28,z+.34,.085,.13,brass);
+  box(g,0,.065,z+.27,3.05,.13,.54,steel);
  }
- const board=box(g,0,2.7,-.18,5.05,3.2,.13,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+ // Wider interaction zones for radio, armor and door; no painted 3D labels.
+ const interactive=['upgrades','crew','deploy'].includes(station.id);
+ const board=box(g,0,interactive?1.9:2.7,interactive?.32:-.18,station.id==='deploy'?3.25:5.05,interactive?3.65:3.2,interactive?1.06:.13,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
  board.userData.focus={type:'station',station:station.id};
  house.targets.push(board);return g;
 }
@@ -140,14 +129,24 @@ export function buildCabin(house,stations){
   if(Math.round((x+7.45)/.56)%3===0)box(scene,x,.041,-1,.012,.006,13.3,darkWood);
  }
  box(scene,0,4.6,0,15.35,.24,15.35,darkWood);
- for(const z of [-7.6,7.6])box(scene,0,2.26,z,15.35,4.5,.28,plank);
+ box(scene,0,2.26,-7.6,15.35,4.5,.28,plank);
+ for(const x of [-4.54,4.54])box(scene,x,2.26,7.6,6.28,4.5,.28,plank);
+ box(scene,0,3.97,7.6,2.8,1.08,.28,plank);
  for(const x of [-7.6,7.6])box(scene,x,2.26,0,.28,4.5,15.35,plank);
  // Individual horizontal logs and exposed vertical posts add cabin depth.
  for(let y=.28;y<=4.35;y+=.43){
-  for(const z of [-7.46,7.46])box(scene,0,y,z,15.1,.33,.23,(Math.round(y*10)%2?trimWood:plank));
+  for(const z of [-7.46,7.46]){
+   const mat=Math.round(y*10)%2?trimWood:plank;
+   if(z>0&&y<3.5)for(const x of [-4.525,4.525])box(scene,x,y,z,6.05,.33,.23,mat);
+   else box(scene,0,y,z,15.1,.33,.23,mat);
+  }
   for(const x of [-7.46,7.46])box(scene,x,y,0,.23,.33,15.0,(Math.round(y*10)%2?trimWood:plank));
  }
- for(const x of [-7.1,-3.55,0,3.55,7.1])for(const z of [-7.24,7.24])box(scene,x,2.3,z,.23,4.6,.3,darkWood);
+ for(const x of [-7.1,-3.55,0,3.55,7.1])for(const z of [-7.24,7.24]){
+  if(x===0&&z>0)continue;
+  box(scene,x,2.3,z,.23,4.6,.3,darkWood);
+ }
+ for(const x of [-1.54,1.54])box(scene,x,1.7,7.24,.22,3.4,.3,darkWood);
  for(const z of [-3.7,0,3.7])for(const x of [-7.28,7.28])box(scene,x,2.3,z,.3,4.6,.25,darkWood);
  for(const z of [-6.9,0,6.9])box(scene,0,4.39,z,15.0,.27,.25,darkWood);
  for(const x of [-5,0,5])box(scene,x,4.39,0,.22,.3,14.9,darkWood);
@@ -180,9 +179,5 @@ export function buildCabin(house,stations){
  const chimney=cylinder(scene,4.8,2.65,5.45,.17,2.15,iron);
  for(const x of [4.3,5.3])box(scene,x,.17,5.1,.14,.2,.13,iron);
  const fire=new THREE.PointLight(0xff7d36,2.3,5,2);fire.position.set(4.8,1.35,5.55);scene.add(fire);
- // Low shelves, loose bottles and paper parcels make this feel inhabited.
- for(const x of [-5.2,5.2]){
-  for(const z of [-.3,1.3]){const b=cylinder(scene,x,.62,z,.16,.6,standard(0x52654b,.16));cylinder(scene,x,.98,z,.08,.16,iron);}
- }
  for(const station of stations)createRack(house,station);
 }

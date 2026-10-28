@@ -1,29 +1,19 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
 import {Visuals} from './visuals.js?v=3';
-import {buildCabin} from './cabin.js';
+import {buildCabin} from './cabin.js?v=2';
 
 // Physical stations, all reachable from the compact walkable safehouse.
 export const SAFEHOUSE_STATIONS = [
- {id:'missions',name:'JOB BOARD',hint:'CHOOSE AN OPERATION',x:0,z:-6.55,rot:0,color:0xffd38c},
- {id:'weapons',name:'WEAPON RACK',hint:'CHOOSE YOUR FIREARM',x:-6.55,z:-2.3,rot:Math.PI/2,color:0x91cfff},
- {id:'gadgets',name:'TACTICAL BENCH',hint:'EQUIP A GADGET',x:6.55,z:-2.3,rot:-Math.PI/2,color:0x9df7cf},
- {id:'upgrades',name:'ARMOR LOCKER',hint:'BUY UPGRADES',x:-6.55,z:2.9,rot:Math.PI/2,color:0xd5b6ff},
- {id:'crew',name:'RADIO STATION',hint:'CREATE / JOIN A CREW',x:6.55,z:2.9,rot:-Math.PI/2,color:0x9bdfff},
- {id:'deploy',name:'EXIT AIRLOCK',hint:'BEGIN THE HEIST',x:0,z:6.55,rot:Math.PI,color:0xffb879}
+ {id:'missions',name:'JOBS',x:0,z:-6.55,rot:0,color:0xffd38c},
+ {id:'weapons',name:'WEAPONS',x:-6.55,z:-2.3,rot:Math.PI/2,color:0x91cfff},
+ {id:'gadgets',name:'GADGETS',x:6.55,z:-2.3,rot:-Math.PI/2,color:0x9df7cf},
+ {id:'upgrades',name:'UPGRADES',x:-6.55,z:2.9,rot:Math.PI/2,color:0xd5b6ff},
+ {id:'crew',name:'CREW',x:6.55,z:2.9,rot:-Math.PI/2,color:0x9bdfff},
+ {id:'deploy',name:'DEPLOY',x:0,z:6.55,rot:Math.PI,color:0xffb879}
 ];
 const material=(color,metalness=0,glow=0)=>new THREE.MeshStandardMaterial({
  color,metalness,roughness:.7,emissive:color,emissiveIntensity:glow
 });
-function placard(title,small,color){
- const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=320;
- const c=canvas.getContext('2d');c.fillStyle='#101c22';c.fillRect(0,0,1024,320);
- c.strokeStyle='#3c555e';c.lineWidth=12;c.strokeRect(9,9,1006,302);
- c.fillStyle='#'+color.toString(16).padStart(6,'0');c.fillRect(36,33,9,255);
- c.font='800 74px Arial';c.textAlign='left';c.fillText(title,79,154);
- c.font='bold 28px Arial';c.fillStyle='#a3bbc2';c.fillText(small,82,213);
- c.fillStyle='#6c8c96';c.font='21px monospace';c.fillText('G·C / UNDERGROUND HEADQUARTERS',82,261);
- const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;return tex;
-}
 export class Safehouse {
  constructor(container,interact){
   this.container=container;this.interact=interact;
@@ -66,14 +56,16 @@ export class Safehouse {
   if(mesh!==this.focusMesh){
    if(this.highlight){this.scene.remove(this.highlight);this.highlight.geometry.dispose();this.highlight.material.dispose();this.highlight=null;}
    this.focusMesh=mesh;
-   if(mesh){
+   if(mesh?.userData.focus?.type==='item'){
     this.scene.updateMatrixWorld(true);
     this.highlight=new THREE.BoxHelper(mesh,0xf5d6a0);
     this.highlight.material.transparent=true;this.highlight.material.opacity=.8;
     this.scene.add(this.highlight);
    }
   }
-  this.focused=mesh?.userData.focus||null;
+  // Allow a nearby station to be opened without perfect crosshair precision.
+  const nearby=mesh?null:this.nearest();
+  this.focused=mesh?.userData.focus||(nearby?{type:'station',station:nearby.id}:null);
  }
 
  resize(){
