@@ -6,11 +6,11 @@
 <title>GETAWAY CLUB — The Heist Campaign</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=5">
+<link rel="stylesheet" href="./style.css?v=6">
 <script defer src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-<script type="module" src="./main.js?v=7"></script>
+<script type="module" src="./main.js?v=8"></script>
 </head><body>
-<aside id="gameVersion" class="gameVersion" aria-label="Game version"><span>VERSION</span> v0.1.6</aside>
+<aside id="gameVersion" class="gameVersion" aria-label="Game version"><span>VERSION</span> v0.2.0</aside>
 <div id="menu" class="entryScreen">
  <div class="entryNoise"></div>
  <div class="entryForm">
@@ -28,12 +28,13 @@
  <div id="safehouseStage" class="safehouseStage"></div>
  <div class="shHud">
   <div class="shTop">
-   <div class="shBrand"><b>G·C</b><div><strong>THE SAFEHOUSE</strong><span>UNDERGROUND / OPERATIONS HUB</span></div></div>
-   <div class="shTopRight"><span class="shGreenDot">● SECURE</span><span id="safehouseName">OPERATOR</span><button id="changeOperator" type="button">SWITCH OPERATOR</button></div>
+   <div class="shBrand"><b>G·C</b><div><strong>THE HIDEOUT</strong><span>THE CREW'S BACKWOODS CABIN</span></div></div>
+   <div class="shTopRight"><span class="shGreenDot">● OFF THE GRID</span><span id="safehouseName">OPERATOR</span><button id="changeOperator" type="button">SWITCH OPERATOR</button></div>
   </div>
   <div class="shCrosshair" aria-hidden="true">+</div>
-  <div class="shPrompt" id="safehousePrompt" aria-live="polite">CLICK TO LOOK AROUND · WASD TO MOVE · E TO INTERACT</div>
-  <div class="shBottom"><div><b>HIDEOUT / 001</b><span>ONLY YOUR CREW KNOWS THIS LOCATION</span></div><div>W A S D <span>MOVE</span> · MOUSE <span>LOOK</span> · SHIFT <span>SILENT WALK</span> · E <span>INTERACT</span></div></div>
+  <div id="shHoverCard" class="shHoverCard hidden" aria-live="polite"><small id="shHoverType">WEAPON</small><strong id="shHoverName">EQUIPMENT</strong><div class="shHoverMeta"><b id="shHoverPrice">₵ 0</b><span id="shHoverState">E TO INSPECT</span></div></div>
+  <div class="shPrompt" id="safehousePrompt" aria-live="polite">CLICK TO LOOK · WASD MOVE · SHIFT WALK · E INSPECT · TAB OPEN MENU</div>
+  <div class="shBottom"><div><b>HIDEOUT / CABIN</b><span>KEEP THE LIGHTS LOW</span></div><div>W A S D <span>MOVE</span> · E <span>INSPECT</span> · TAB <span>GEAR & JOBS</span></div></div>
  </div>
  <div id="safehousePanel" class="shPanel hidden" aria-label="Safehouse station">
   <header class="shPanelHeader"><div><small>GETAWAY CLUB / SAFEHOUSE TERMINAL</small><h2 id="safehousePanelTitle">OPERATIONS</h2></div><button id="closeSafehouse" type="button" aria-label="Close station">×</button></header>
@@ -82,7 +83,7 @@
     <button class="btn btnOutline shAction" data-jump="crew" type="button">PLAY WITH A PARTNER →</button>
    </section>
   </div>
-  <footer class="shPanelFooter">EQUIPMENT AND PROGRESSION AUTO-SAVE TO YOUR OPERATOR</footer>
+  <footer class="shPanelFooter">TAB CLOSES THIS MENU · PURCHASES SAVE TO YOUR OPERATOR</footer>
  </div>
 </div>
 <div id="gameScreen" class="gameScreen hidden">

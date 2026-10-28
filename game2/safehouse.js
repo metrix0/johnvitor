@@ -1,5 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
 import {Visuals} from './visuals.js?v=3';
+import {buildCabin} from './cabin.js';
 
 // Physical stations, all reachable from the compact walkable safehouse.
 export const SAFEHOUSE_STATIONS = [
@@ -39,6 +40,7 @@ export class Safehouse {
   this.pos={x:0,z:-2.65};this.yaw=0;this.pitch=0;this.step=0;
   this.move={w:false,a:false,s:false,d:false,shift:false};
   this.active=false;this.lights=[];this.meshes=[];this.elapsed=0;
+  this.targets=[];this.raycaster=new THREE.Raycaster();this.focused=null;this.focusMesh=null;this.highlight=null;
   this.visuals=new Visuals({camera:this.camera,renderer:this.renderer,world:this.scene,box:(parent,x,y,z,w,h,d,color)=>this.box(x,y,z,w,h,d,color,parent)});
   this.build();this.resize();
   this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(this.container);
@@ -55,92 +57,25 @@ export class Safehouse {
   const mesh=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,height,12),mat);
   mesh.position.set(x,y,z);this.scene.add(mesh);return mesh;
  }
- build(){
-  const concrete=this.visuals.surface('plaster',0x374750,15,5),floor=this.visuals.surface('tile',0x263a44,15,15);
-  const metal=material(0x344652,.65),black=material(0x0b171c,.38),ceiling=this.visuals.surface('metal',0x465560,15,15);
-  const mint=material(0x80f3c7,.12,.5),amber=material(0xf9bc70,.15,.3);
-  this.scene.add(new THREE.HemisphereLight(0xb6d8e9,0x111725,1.1));
-  this.box(0,-.22,0,15.4,.4,15.4,floor);
-  this.box(0,4.65,0,15.4,.3,15.4,ceiling);
-  this.box(-7.65,2.25,0,.3,4.6,15.4,concrete);
-  this.box(7.65,2.25,0,.3,4.6,15.4,concrete);
-  this.box(0,2.25,-7.65,15.4,4.6,.3,concrete);
-  this.box(0,2.25,7.65,15.4,4.6,.3,concrete);
-  // Pools of light anchor each station in the room, without shadow-map overhead.
-  for(const [x,z,color,diameter] of [[-5.3,-2.3,0x83c8ff,5],[5.3,-2.3,0x7de8c5,5],[-5.3,2.9,0xb99dff,5],[5.3,2.9,0x83d5ff,5],[0,-5.4,0xffd09a,6],[0,5.5,0xffa166,6]])this.visuals.pool(x,z,diameter,color,.24,.019);
-  // Industrial floor grid, skirting and ceiling conduit.
-  const lines=material(0x334953,.2);
-  for(let x=-7;x<=7;x+=1.5)this.box(x,.007,0,.017,.014,15.1,lines);
-  for(let z=-7;z<=7;z+=1.5)this.box(0,.008,z,15.1,.014,.017,lines);
-  for(const v of [-7.25,7.25]){
-   this.box(v,.17,0,.14,.34,15,metal);this.box(0,.17,v,15,.34,.14,metal);
-   this.box(v,4.43,0,.18,.12,15,metal);this.box(0,4.43,v,15,.12,.18,metal);
-  }
-  for(const x of [-5.5,0,5.5]){
-   this.box(x,4.32,0,3.7,.08,.24,mint);
-   const lamp=new THREE.PointLight(0x88ffda,4,12,2);lamp.position.set(x,3.8,0);this.scene.add(lamp);this.lights.push(lamp);
-  }
-  for(const z of [-6.4,6.4]){
-   const lamp=new THREE.PointLight(0xffba77,4,9,2);lamp.position.set(0,2.9,z);this.scene.add(lamp);this.lights.push(lamp);
-  }
-  // Emergency ventilation and pipes reinforce the hidden bunker look.
-  for(const z of [-6.8,6.8]){
-   for(const y of [3.75,4.04])this.box(0,y,z,10,.1,.15,metal);
-  }
-  for(const x of [-5.9,5.9]){
-   for(const z of [-5.5,-4.7,4.8,5.6])this.cylinder(x,.28,z,.15,.15,.35,black);
-  }
-  // A compact planning table with paper dossiers, a glowing floor map and a radio.
-  this.box(0,.68,1.05,3.35,.12,2.05,this.visuals.surface('wood',0x637781,4,3));
-  for(const x of [-1.43,1.43])for(const z of [.2,1.9])this.box(x,.3,z,.12,.6,.13,black);
-  this.box(0,.754,.94,2.6,.016,1.46,material(0x203743,.2,.18));
-  for(const x of [-.88,.05,.78])this.box(x,.77,1.1,.46,.018,.64,material(0x809ba7,.04));
-  this.box(-1.2,.82,.3,.5,.21,.37,black);
-  this.box(-1.2,.95,.3,.22,.08,.08,mint);
-  // Every station has a readable in-world sign, glowing trim and identifiable furniture.
-  for(const s of SAFEHOUSE_STATIONS){
-   const group=new THREE.Group();group.position.set(s.x,0,s.z);group.rotation.y=s.rot;this.scene.add(group);
-   const frame=new THREE.Mesh(new THREE.BoxGeometry(5.2,2.7,.26),metal);frame.position.set(0,2.6,-.07);group.add(frame);
-   const glow=new THREE.Mesh(new THREE.BoxGeometry(5.0,.045,.16),material(s.color,.15,.65));glow.position.set(0,1.33,.13);group.add(glow);
-   const label=new THREE.Mesh(new THREE.PlaneGeometry(4.72,1.48),new THREE.MeshBasicMaterial({map:placard(s.name,s.hint,s.color),side:THREE.DoubleSide}));
-   label.position.set(0,2.95,.105);group.add(label);
-   const bumper=new THREE.Mesh(new THREE.BoxGeometry(4.95,.12,.32),black);bumper.position.set(0,1.21,.17);group.add(bumper);
-   if(s.id==='weapons'){
-    for(const t of [-1.55,-.5,.6,1.65]){
-     const gun=new THREE.Group();
-     const body=new THREE.Mesh(new THREE.BoxGeometry(.78,.13,.13),black);body.position.set(t,1.84,.32);gun.add(body);
-     const barrel=new THREE.Mesh(new THREE.BoxGeometry(.5,.07,.065),metal);barrel.position.set(t+.48,1.84,.32);gun.add(barrel);
-     const grip=new THREE.Mesh(new THREE.BoxGeometry(.14,.3,.09),black);grip.position.set(t-.19,1.67,.32);gun.add(grip);
-     group.add(gun);
-    }
-   }else if(s.id==='gadgets'){
-    for(const x of [-1.7,-.8,.1,1,1.7]){
-     const c=new THREE.Mesh(new THREE.BoxGeometry(.53,.43,.43),black);c.position.set(x,1.68,.39);group.add(c);
-     const light=new THREE.Mesh(new THREE.BoxGeometry(.32,.045,.05),mint);light.position.set(x,1.86,.63);group.add(light);
-    }
-   }else if(s.id==='upgrades'){
-    for(const x of [-1.2,0,1.2]){
-     const plate=new THREE.Mesh(new THREE.BoxGeometry(.9,.62,.2),material(0x566573,.55));plate.position.set(x,1.76,.38);group.add(plate);
-     const stripe=new THREE.Mesh(new THREE.BoxGeometry(.12,.62,.23),amber);stripe.position.set(x,1.76,.51);group.add(stripe);
-    }
-   }else if(s.id==='crew'){
-    for(const x of [-1.4,.1,1.5]){
-     const radio=new THREE.Mesh(new THREE.BoxGeometry(.8,.52,.35),black);radio.position.set(x,1.78,.36);group.add(radio);
-     const screen=new THREE.Mesh(new THREE.BoxGeometry(.46,.18,.025),mint);screen.position.set(x,1.85,.56);group.add(screen);
-    }
-   }else if(s.id==='missions'){
-    for(let x=-1.8;x<2;x+=.9){const pin=new THREE.Mesh(new THREE.BoxGeometry(.43,.1,.08),amber);pin.position.set(x,1.8,.27);group.add(pin);}
-   }else if(s.id==='deploy'){
-    const door=new THREE.Mesh(new THREE.BoxGeometry(2.4,2.4,.16),black);door.position.set(0,1.35,.3);group.add(door);
-    const strip=new THREE.Mesh(new THREE.BoxGeometry(.12,2.4,.18),amber);strip.position.set(-1.1,1.35,.4);group.add(strip);
-    const strip2=strip.clone();strip2.position.x=1.1;group.add(strip2);
+ build(){buildCabin(this,SAFEHOUSE_STATIONS);}
+ focus(){return this.focused;}
+ pick(){
+  this.raycaster.setFromCamera({x:0,y:0},this.camera);
+  const hit=this.raycaster.intersectObjects(this.targets,false).find(({distance})=>distance<6.4);
+  const mesh=hit?.object||null;
+  if(mesh!==this.focusMesh){
+   if(this.highlight){this.scene.remove(this.highlight);this.highlight.geometry.dispose();this.highlight.material.dispose();this.highlight=null;}
+   this.focusMesh=mesh;
+   if(mesh){
+    this.scene.updateMatrixWorld(true);
+    this.highlight=new THREE.BoxHelper(mesh,0xf5d6a0);
+    this.highlight.material.transparent=true;this.highlight.material.opacity=.8;
+    this.scene.add(this.highlight);
    }
   }
-  // Crates and fuse boxes sit against the walls, leaving a clear walkable center.
-  for(const [x,z] of [[-6.5,-5.5],[6.5,-5.5],[-6.5,5.7],[6.5,5.7]]){
-   this.box(x,.38,z,1.1,.75,.9,black);this.box(x,.77,z,1.13,.1,.93,metal);
-  }
+  this.focused=mesh?.userData.focus||null;
  }
+
  resize(){
   const w=this.container.clientWidth||900,h=this.container.clientHeight||600;
   this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();
@@ -182,11 +117,13 @@ export class Safehouse {
   this.camera.position.set(this.pos.x,1.73+(locked?(this.move.shift?.008:.018)*Math.sin(this.step):0),this.pos.z);
   this.camera.rotation.set(this.pitch,this.yaw,0,'YXZ');
   this.visuals.update({mission:1,alarm:0},this.elapsed);
+  this.pick();
   this.renderer.render(this.scene,this.camera);
  }
  setActive(active){this.active=active;this.resetKeys();if(active)this.resize();}
  dispose(){
   this.observer.disconnect();
+  if(this.highlight){this.scene.remove(this.highlight);this.highlight.geometry.dispose();this.highlight.material.dispose();}
   this.scene.traverse(obj=>{
    obj.geometry?.dispose();
    if(obj.material){for(const mat of (Array.isArray(obj.material)?obj.material:[obj.material])){

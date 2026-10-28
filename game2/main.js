@@ -1,7 +1,7 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js';
 import {View} from './render.js?v=4';
-import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=3';
+import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=4';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
 const key=name=>'getaway-v3-'+name.toLowerCase();
@@ -10,7 +10,7 @@ const quickTest=/^\/game2\/test\/?$/.test(location.pathname);
 let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
 let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
 let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set(),gearSettled=new Set();
-let safehouse=null,activeStation='',lastSafehousePrompt=0;
+let safehouse=null,activeStation='',lastSafehousePrompt=0,lastStation='missions';
 let selectedMission=0,selectedWeapon='pistol',selectedGadget='',last=0,lastNetwork=0,lastHud=0,lastFoot=0,lastShots=0,lastHits=0,lastHeadshots=0,lastHp=100,lastToast='',lastToastUntil=0,hitMarkerTimer=null;
 const controls={forward:false,back:false,left:false,right:false,walk:false,fire:false,reload:false,interact:false,gadget:false,aim:false,yaw:-Math.PI/2,pitch:0};
 let audio=null,muted=localStorage.getItem('getaway-muted')==='true';
@@ -32,7 +32,6 @@ function mergeProfiles(local,remote,name){
  merged.weapons=[...gear.weapons];merged.gadgetStock={...gear.gadgetStock};
  merged.gearRev=gear.gearRev;merged.gearUpdatedAt=gear.gearUpdatedAt;
  return merged;
- renderArmoryShop();
 }
 async function getCloud(name){
  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),3800);
@@ -100,7 +99,7 @@ function renderArmoryShop(){
   const stocked=kind==='gadget'&&(profile.gadgetStock[id]||0)+item.charges>30;
   const affordable=loadedName&&unlocked&&item.cost>0&&profileWallet()>=item.cost&&!stocked&&!(kind==='weapon'&&owned);
   const action=!unlocked?'JOB '+(item.unlock+1)+' REQUIRED':kind==='weapon'&&owned?'IN INVENTORY':stocked?'STOCK FULL':item.cost===0?'FREE ISSUE':'BUY '+coins(item.cost);
-  return `<article class="shopCard ${unlocked?'':'shopLocked'}"><div class="shopMeta">${item.class||'TACTICAL GEAR'} · ${unlocked?'AVAILABLE':'LOCKED'}${qty}</div><h3>${item.name}</h3><p>${item.description}</p><div class="shopFoot"><b>${item.cost?coins(item.cost):'FREE'}</b><button data-buy-kind="${kind}" data-buy-id="${id}" ${affordable?'':'disabled'}>${action}</button></div></article>`;
+  return `<article data-display-kind="${kind}" data-display-id="${id}" class="shopCard ${unlocked?'':'shopLocked'}"><div class="shopMeta">${item.class||'TACTICAL GEAR'} · ${unlocked?'AVAILABLE':'LOCKED'}${qty}</div><h3>${item.name}</h3><p>${item.description}</p><div class="shopFoot"><b>${item.cost?coins(item.cost):'FREE'}</b><button data-buy-kind="${kind}" data-buy-id="${id}" ${affordable?'':'disabled'}>${action}</button></div></article>`;
  }).join('');
  weaponShop.innerHTML=`<div class="shopHeading">PURCHASED WEAPONS <small>OWNED GUNS SURVIVE SUCCESS · DEPLOYED GUNS ARE LOST ON FAILURE</small></div><div class="shopCards">${catalog('weapon',WEAPONS)}</div>`;
  gadgetShop.innerHTML=`<div class="shopHeading">TACTICAL SUPPLIES <small>BUY CHARGE PACKS · USED CHARGES ARE SPENT · DEPLOYED STOCK IS LOST ON FAILURE</small></div><div class="shopCards">${catalog('gadget',GADGETS)}</div>`;
@@ -145,6 +144,7 @@ function refreshMenu(){
   return `<div class="upgrade"><div><b>${u.icon} ${u.name} <span style="color:#9eeabe">LVL ${tier}/3</span></b><small>${u.desc}</small></div><button data-upgrade="${id}" ${can?'':'disabled'}>${tier>=3?'MAXED':cost?coins(cost):'—'}</button></div>`;
  }).join('');
  $('upgrades').querySelectorAll('[data-upgrade]').forEach(b=>b.onclick=()=>buyUpgrade(b.dataset.upgrade));
+ renderArmoryShop();
  $('safehouseName').textContent=loadedName?profile.name.toUpperCase():'OPERATOR';
  $('shDeployMission').textContent=MISSIONS[selectedMission].name+' / '+MISSIONS[selectedMission].site;
  $('shDeployKit').textContent=WEAPONS[selectedWeapon].name+' · '+(selectedGadget?GADGETS[selectedGadget].name:'NO GADGET')+' · '+coins(profileWallet())+' AVAILABLE';
@@ -191,13 +191,13 @@ function requestLock(){if(!view||run?.phase!=='play')return;try{const promise=vi
 function safehouseIsVisible(){return !$('safehouse').classList.contains('hidden');}
 function openStation(id){
  if(!SAFEHOUSE_STATIONS.some(s=>s.id===id)||!safehouseIsVisible())return;
- activeStation=id;safehouse?.setActive(false);
+ activeStation=id;lastStation=id;safehouse?.setActive(false);
  if(document.pointerLockElement===safehouse?.canvas)document.exitPointerLock();
  $('safehousePanelTitle').textContent=SAFEHOUSE_STATIONS.find(s=>s.id===id).name;
  $('safehousePanel').classList.remove('hidden');
  for(const button of document.querySelectorAll('.shTabs [data-station]'))button.classList.toggle('selected',button.dataset.station===id);
  for(const section of document.querySelectorAll('.shStation'))section.classList.toggle('hidden',section.id!=='station-'+id);
- $('safehousePrompt').classList.add('hidden');
+ $('safehousePrompt').classList.add('hidden');$('shHoverCard').classList.add('hidden');
  refreshMenu();
 }
 function closeStation(){
@@ -205,8 +205,52 @@ function closeStation(){
  safehouse?.setActive(true);
  try{const promise=safehouse?.canvas.requestPointerLock();promise?.catch?.(()=>{});}catch{}
 }
+function cabinItemState(target){
+ const {kind,id}=target,item=(kind==='weapon'?WEAPONS:GADGETS)[id];
+ if(!item)return null;
+ const unlock=item.unlock<=profile.unlocked,owned=kind==='weapon'?canEquipWeapon(profile,id):canEquipGadget(profile,id);
+ const equipped=kind==='weapon'?selectedWeapon===id:selectedGadget===id;
+ const stock=kind==='gadget'?(profile.gadgetStock[id]||0):0;
+ const full=kind==='gadget'&&stock+item.charges>30;
+ const price=item.cost===0?'FREE':coins(item.cost);
+ const note=equipped?'EQUIPPED · E TO INSPECT':owned?'OWNED · E TO EQUIP':!unlock?'UNLOCK AFTER JOB '+item.unlock:full?'INVENTORY FULL':profileWallet()<item.cost?'NEED '+coins(item.cost-profileWallet())+' MORE':'E TO INSPECT / BUY';
+ return {item,price,note,owned,unlock,equipped,stock};
+}
+function showCabinFocus(target){
+ const hover=$('shHoverCard'),prompt=$('safehousePrompt');
+ if(!target){hover.classList.add('hidden');prompt.textContent='WASD MOVE · SHIFT QUIET WALK · E INTERACT · TAB OPEN MENU';return;}
+ if(target.type==='station'){
+  hover.classList.add('hidden');
+  const station=SAFEHOUSE_STATIONS.find(s=>s.id===target.station);
+  prompt.textContent='[E] '+station.name+' · '+station.hint+'   /   [TAB] FULL MENU';
+  return;
+ }
+ const state=cabinItemState(target);if(!state)return;
+ hover.classList.remove('hidden');
+ $('shHoverName').textContent=state.item.name;
+ $('shHoverType').textContent=(target.kind==='weapon'?state.item.class:'TACTICAL GADGET')+(target.kind==='gadget'?' · '+state.stock+' CHARGES OWNED':'');
+ $('shHoverPrice').textContent=state.price;
+ $('shHoverState').textContent=state.note;
+ prompt.textContent='[E] '+(state.owned?'EQUIP / VIEW':'INSPECT')+' · [TAB] OPEN FULL MENU';
+}
+function inspectCabin(target){
+ if(!target)return;
+ if(target.type==='station'){openStation(target.station);return;}
+ const state=cabinItemState(target);if(!state)return;
+ if(state.owned&&!state.equipped){
+  if(target.kind==='weapon')selectedWeapon=target.id;else selectedGadget=target.id;
+  persistLoadout();refreshMenu();beep('purchase');return;
+ }
+ openStation(target.kind==='weapon'?'weapons':'gadgets');
+ const card=[...document.querySelectorAll('.shopCard')].find(el=>el.dataset.displayKind===target.kind&&el.dataset.displayId===target.id);
+ if(card){
+  card.scrollIntoView({block:'center',behavior:'auto'});
+  card.classList.add('shFocusedItem');
+  card.querySelector('button[data-buy-id]')?.focus({preventScroll:true});
+ }
+}
 function enterSafehouse(){
- $('menu').classList.add('hidden');$('gameScreen').classList.add('hidden');$('safehouse').classList.remove('hidden');
+ $('menu').classList.add('hidden');$('gameScreen').classList.add('hidden');$('safehouse').classList.remove('hidden');$('shHoverCard').classList.add('hidden');
  if(!safehouse){
   try{safehouse=new Safehouse($('safehouseStage'),id=>openStation(id));safehouse.pos.z=-3.15;}
   catch(e){$('fatalText').textContent='Could not load the 3D safehouse: '+e.message;$('fatal').classList.remove('hidden');return false;}
@@ -218,7 +262,7 @@ function enterSafehouse(){
 function enterScreen(){
  if(document.pointerLockElement===safehouse?.canvas)document.exitPointerLock();
  safehouse?.setActive(false);
- $('menu').classList.add('hidden');$('safehouse').classList.add('hidden');$('gameScreen').classList.remove('hidden');
+ $('menu').classList.add('hidden');$('safehouse').classList.add('hidden');$('shHoverCard').classList.add('hidden');$('gameScreen').classList.remove('hidden');
  $('roomDisplay').textContent=mode==='solo'?'SOLO / OFFLINE':room;
  $('networkDisplay').textContent=mode==='solo'?'LOCAL':'CONNECTED';
  $('invite').classList.toggle('hidden',mode==='solo');
@@ -470,9 +514,8 @@ function frame(time){
  const dt=Math.min(.05,Math.max(0,(time-last)/1000||0));last=time;
  if(safehouse&&safehouseIsVisible()){
   safehouse.update(dt);
-  if(!activeStation&&time-lastSafehousePrompt>120){
-   const station=safehouse.nearest(),locked=document.pointerLockElement===safehouse.canvas;
-   $('safehousePrompt').innerHTML=station?'<b>E</b> '+escapeText(station.name)+' · '+escapeText(station.hint):locked?'WASD TO MOVE · LOOK TOWARD A STATION · E TO INTERACT':'CLICK TO LOOK AROUND · WASD TO MOVE · E TO INTERACT';
+  if(!activeStation&&time-lastSafehousePrompt>100){
+   showCabinFocus(safehouse.focus());
    lastSafehousePrompt=time;
   }
   return;
@@ -493,11 +536,12 @@ window.addEventListener('keydown',e=>{
  if(mode==='menu')return;
  const k=e.key.toLowerCase();
  if(safehouseIsVisible()){
+  if(k==='tab'){e.preventDefault();if(!e.repeat){if(activeStation)closeStation();else openStation(lastStation);}return;}
   if(k==='escape'&&activeStation){closeStation();e.preventDefault();return;}
   if(activeStation||e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement)return;
-  if(k==='e'&&!e.repeat){const station=safehouse?.nearest();if(station)openStation(station.id);}
+  if(k==='e'&&!e.repeat){e.preventDefault();inspectCabin(safehouse?.focus());return;}
   safehouse?.key(k,true);
-  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift','e'].includes(k))e.preventDefault();
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(k))e.preventDefault();
   return;
  }
  const keys={'w':'forward','arrowup':'forward','s':'back','arrowdown':'back','a':'left','arrowleft':'left','d':'right','arrowright':'right','shift':'walk','r':'reload','e':'interact','q':'gadget',' ':'fire'};
