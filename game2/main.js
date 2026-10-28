@@ -2,11 +2,12 @@ import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,avail
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js';
 import {View} from './render.js';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js';
+import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
 const key=name=>'getaway-v3-'+name.toLowerCase();
 let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
 let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
-let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set();
+let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set(),gearSettled=new Set();
 let safehouse=null,activeStation='',lastSafehousePrompt=0;
 let selectedMission=0,selectedWeapon='pistol',selectedGadget='',last=0,lastNetwork=0,lastHud=0,lastFoot=0,lastShots=0,lastHits=0,lastHeadshots=0,lastHp=100,lastToast='',lastToastUntil=0;
 const controls={forward:false,back:false,left:false,right:false,walk:false,fire:false,reload:false,interact:false,gadget:false,aim:false,yaw:-Math.PI/2,pitch:0};
@@ -25,7 +26,11 @@ function mergeProfiles(local,remote,name){
  for(const k of Object.keys(UPGRADES))merged.upgrades[k]=Math.max(a.upgrades[k],b.upgrades[k]);
  merged.cleared=[...new Set([...a.cleared,...b.cleared])];
  merged.best={...b.best,...a.best};
+ const gear=chooseGearSnapshot(a,b);
+ merged.weapons=[...gear.weapons];merged.gadgetStock={...gear.gadgetStock};
+ merged.gearRev=gear.gearRev;merged.gearUpdatedAt=gear.gearUpdatedAt;
  return merged;
+ renderArmoryShop();
 }
 async function getCloud(name){
  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),3800);
@@ -75,7 +80,46 @@ function readLoadout(){
  try{return JSON.parse(localStorage.getItem('getaway-kit-'+loadedName)||'null')||{weapon:'pistol',gadget:''};}catch{return {weapon:'pistol',gadget:''};}
 }
 function persistLoadout(){if(loadedName)try{localStorage.setItem('getaway-kit-'+loadedName,JSON.stringify({weapon:selectedWeapon,gadget:selectedGadget}));}catch{}}
-function kit(){return {name:profile.name,weapon:selectedWeapon,gadget:selectedGadget||null,upgrades:profile.upgrades};}
+function kit(){return {name:profile.name,...equippedKit(profile,selectedWeapon,selectedGadget),upgrades:profile.upgrades};}
+function renderArmoryShop(){
+ const weaponMount=$('station-weapons')||$('weapon')?.closest('.loadoutWrap');
+ const gadgetMount=$('station-gadgets')||weaponMount;
+ if(!weaponMount)return;
+ const mountShop=(mount,id)=>{
+  let root=$(id);if(!root){root=document.createElement('div');root.id=id;root.className='armoryShop';mount.append(root);}
+  return root;
+ };
+ const weaponShop=mountShop(weaponMount,'armoryWeapons');
+ const gadgetShop=mountShop(gadgetMount,'armoryGadgets');
+ const catalog=(kind,items)=>Object.entries(items).map(([id,item])=>{
+  const unlocked=item.unlock<=profile.unlocked;
+  const owned=kind==='weapon'?canEquipWeapon(profile,id):(profile.gadgetStock[id]||0)>0;
+  const qty=kind==='gadget'?' · '+(profile.gadgetStock[id]||0)+' CHARGES':'';
+  const stocked=kind==='gadget'&&(profile.gadgetStock[id]||0)+item.charges>30;
+  const affordable=loadedName&&unlocked&&item.cost>0&&profileWallet()>=item.cost&&!stocked&&!(kind==='weapon'&&owned);
+  const action=!unlocked?'JOB '+(item.unlock+1)+' REQUIRED':kind==='weapon'&&owned?'IN INVENTORY':stocked?'STOCK FULL':item.cost===0?'FREE ISSUE':'BUY '+coins(item.cost);
+  return `<article class="shopCard ${unlocked?'':'shopLocked'}"><div class="shopMeta">${item.class||'TACTICAL GEAR'} · ${unlocked?'AVAILABLE':'LOCKED'}${qty}</div><h3>${item.name}</h3><p>${item.description}</p><div class="shopFoot"><b>${item.cost?coins(item.cost):'FREE'}</b><button data-buy-kind="${kind}" data-buy-id="${id}" ${affordable?'':'disabled'}>${action}</button></div></article>`;
+ }).join('');
+ weaponShop.innerHTML=`<div class="shopHeading">PURCHASED WEAPONS <small>OWNED GUNS SURVIVE SUCCESS · DEPLOYED GUNS ARE LOST ON FAILURE</small></div><div class="shopCards">${catalog('weapon',WEAPONS)}</div>`;
+ gadgetShop.innerHTML=`<div class="shopHeading">TACTICAL SUPPLIES <small>BUY CHARGE PACKS · USED CHARGES ARE SPENT · DEPLOYED STOCK IS LOST ON FAILURE</small></div><div class="shopCards">${catalog('gadget',GADGETS)}</div>`;
+ for(const root of [weaponShop,gadgetShop])root.querySelectorAll('[data-buy-id]').forEach(button=>button.onclick=()=>{
+  const kind=button.dataset.buyKind,id=button.dataset.buyId;
+  if(!purchaseGear(profile,kind,id))return;
+  if(kind==='weapon')selectedWeapon=id;else selectedGadget=id;
+  persistLoadout();scheduleSave();refreshMenu();beep('purchase');
+ });
+}
+function settleDeployedGear(completedRun){
+ if(!loadedName||gearSettled.has(completedRun.runId))return;
+ gearSettled.add(completedRun.runId);
+ const p=completedRun.players[host?0:1]||completedRun.players[0];
+ if(settleGear(profile,p,completedRun.phase==='lost')){
+  if(!canEquipWeapon(profile,selectedWeapon))selectedWeapon='pistol';
+  if(!canEquipGadget(profile,selectedGadget))selectedGadget='';
+  persistLoadout();scheduleSave();refreshMenu();
+ }
+ if(!host)send({type:'kit-update',kit:kit()});
+}
 function refreshMenu(){
  $('wallet').textContent=coins(profileWallet());$('cleared').textContent=String(profile.cleared.length).padStart(2,'0')+' / 05';$('operator').textContent=loadedName?profile.name.toUpperCase():'GUEST';
  $('progressText').textContent=profile.cleared.length+' / 5 JOBS';$('progressBar').style.width=(profile.cleared.length*20)+'%';
@@ -86,14 +130,14 @@ function refreshMenu(){
  selectedMission=Math.min(selectedMission,profile.unlocked);select.value=selectedMission;$('missionNumber').textContent=String(selectedMission+1).padStart(2,'0')+' / 05';
  $('jobBoard').innerHTML=MISSIONS.map((m,i)=>`<button class="jobCard ${i>profile.unlocked?'locked':''} ${selectedMission===i?'selected':''}" data-job="${i}" ${i>profile.unlocked?'disabled':''}><div class="jobState">${i>profile.unlocked?'▣ CLASSIFIED':profile.cleared.includes(m.id)?'✓ CLEARED':'◈ AVAILABLE'}</div><div class="jobIndex">${m.number}</div><h3>${m.name}</h3><p>${m.site} / ${m.type}</p><div class="jobReward">${coins(m.payout)} + COMBAT BONUS</div></button>`).join('');
  $('jobBoard').querySelectorAll('[data-job]').forEach(button=>button.onclick=()=>{selectedMission=Number(button.dataset.job);refreshMenu();});
- const available=availableWeapons(profile),weap=$('weapon');weap.replaceChildren();
+ const available=availableWeapons(profile).filter(([id])=>canEquipWeapon(profile,id)),weap=$('weapon');weap.replaceChildren();
  for(const [id,w] of available){const o=document.createElement('option');o.value=id;o.textContent=w.name+' / '+w.class;weap.append(o);}
  if(!available.some(([id])=>id===selectedWeapon))selectedWeapon='pistol';weap.value=selectedWeapon;
  const gd=$('gadget');gd.replaceChildren();const zero=document.createElement('option');zero.value='';zero.textContent='NO GADGET';gd.append(zero);
- for(const [id,g] of availableGadgets(profile)){const o=document.createElement('option');o.value=id;o.textContent=g.name+' / '+g.charges+' CHARGES';gd.append(o);}
- if(!availableGadgets(profile).some(([id])=>id===selectedGadget))selectedGadget='';gd.value=selectedGadget;
+ for(const [id,g] of availableGadgets(profile).filter(([id])=>canEquipGadget(profile,id))){const o=document.createElement('option');o.value=id;o.textContent=g.name+' / '+g.charges+' CHARGES';gd.append(o);}
+ if(!canEquipGadget(profile,selectedGadget))selectedGadget='';gd.value=selectedGadget;
  const w=WEAPONS[selectedWeapon];$('weaponStats').textContent=w.damage+' BASE DAMAGE · '+w.mag+' ROUNDS · '+Math.round(1/w.rate*60)+' RPM';
- $('gadgetStats').textContent=selectedGadget?GADGETS[selectedGadget].description:'Get your first gadget after the corner store.';
+ $('gadgetStats').textContent=selectedGadget?GADGETS[selectedGadget].description+' · '+profile.gadgetStock[selectedGadget]+' CHARGES OWNED':'Purchase a gadget below to prepare for your next mission.';
  $('upgrades').innerHTML=Object.entries(UPGRADES).map(([id,u])=>{
   const tier=profile.upgrades[id],cost=u.cost[tier],can=loadedName&&tier<3&&profileWallet()>=cost;
   return `<div class="upgrade"><div><b>${u.icon} ${u.name} <span style="color:#9eeabe">LVL ${tier}/3</span></b><small>${u.desc}</small></div><button data-upgrade="${id}" ${can?'':'disabled'}>${tier>=3?'MAXED':cost?coins(cost):'—'}</button></div>`;
@@ -213,7 +257,7 @@ function showPause(){
 function showOutcome(){
  if(!run)return;const m=MISSIONS[run.mission],won=run.phase==='won';
  showOverlay(won?'CLEAN GETAWAY':'OPERATION FAILED',won?(run.mission===4?'LEGENDS NEVER RETIRE':'JOB COMPLETE'):'THE JOB WENT SIDEWAYS',
-  won?m.completion+' You earned '+coins(run.earned)+' on this run.':'The crew was eliminated. Regroup, rearm and try again.',
+  won?m.completion+' You earned '+coins(run.earned)+' on this run. Purchased weapons survive extraction; used gadget charges do not.':'The crew was eliminated. Deployed purchased weapons and gadget stock were lost. Return to the safehouse to rearm.',
   host?(won&&run.mission<4?'NEXT OPERATION ↗':'RETRY OPERATION ↗'):null,
   host?()=>startBrief(won&&run.mission<4?run.mission+1:run.mission):null,
   [['CREW ELIMINATIONS',run.kills],['TIME',formatTime(run.time)],['PAYOUT',won?coins(run.earned):coins(0)]]);
@@ -226,7 +270,7 @@ function onRunChange(){
  lastPhase=run.phase;
  if(run.phase==='brief')showBrief();
  else if(run.phase==='play'){hideOverlay();softPaused=false;}
- else if(run.phase==='won'||run.phase==='lost'){if(run.phase==='won')awardMission(run);showOutcome();if(document.pointerLockElement)document.exitPointerLock();}
+ else if(run.phase==='won'||run.phase==='lost'){if(run.phase==='won')awardMission(run);settleDeployedGear(run);showOutcome();if(document.pointerLockElement)document.exitPointerLock();}
 }
 function awardMission(completedRun){
  if(!loadedName||credited.has(completedRun.runId))return;
@@ -236,12 +280,8 @@ function awardMission(completedRun){
  profile.earned=clamp(profile.earned+payout,0,9999999);
  profile.unlocked=Math.max(profile.unlocked,Math.min(4,completedRun.mission+1));
  profile.cleared=[...new Set([...profile.cleared,m.id])];if(completedRun.mission===4)profile.completed=true;
- if(first){
-  selectedWeapon=availableWeapons(profile).at(-1)?.[0]||selectedWeapon;
-  selectedGadget=availableGadgets(profile).at(-1)?.[0]||selectedGadget;
-  persistLoadout();
-  if(!host)send({type:'kit-update',kit:kit()});
- }
+ // Clearing a job unlocks catalog entries; it does not give away purchased gear.
+ // The guest sends the finalized kit after used charges have been settled.
  const current=profile.best[m.id];
  if(!current||completedRun.time<current)profile.best[m.id]=Math.round(completedRun.time);
  selectedMission=Math.min(profile.unlocked,completedRun.mission+1);
@@ -294,11 +334,11 @@ function setupConnection(c){
   if(host){
    if(packet.type==='hello'&&!run){
     const k=packet.kit||{},w=WEAPONS[k.weapon]?k.weapon:'pistol',g=GADGETS[k.gadget]?k.gadget:null;
-    remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:w,gadget:g,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};
+    remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:w,gadget:g,charges:g?clamp(Number(k.charges)||0,0,GADGETS[g].charges):0,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};
     startBrief(selectedMission);
    }
    if(packet.type==='input')remoteInput=sanitizedInput(packet.input);
-   if(packet.type==='kit-update'&&packet.kit){const k=packet.kit;remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:WEAPONS[k.weapon]?k.weapon:'pistol',gadget:GADGETS[k.gadget]?k.gadget:null,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};}
+   if(packet.type==='kit-update'&&packet.kit){const k=packet.kit;remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:WEAPONS[k.weapon]?k.weapon:'pistol',gadget:GADGETS[k.gadget]?k.gadget:null,charges:GADGETS[k.gadget]?clamp(Number(k.charges)||0,0,GADGETS[k.gadget].charges):0,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};}
   }else if(packet.type==='state'&&packet.run){
    if($('gameScreen').classList.contains('hidden')&&!enterScreen())return;
    const previous=run?.runId;run=packet.run;run.grid=makeGrid(MISSIONS[run.mission]);onRunChange();if(previous!==run.runId)view?.build(run);

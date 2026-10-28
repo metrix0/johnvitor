@@ -40,7 +40,7 @@ export function allRequiredDone(run){return run.objectives.every(o=>o.done||o.op
 export function nearbyTask(run,p){
  if(!p)return null;
  for(const mate of run.players){if(mate!==p&&mate.hp<=0&&distance(p,mate)<2.6)return {kind:'revive',target:mate,label:'REVIVE PARTNER',duration:3};}
- const pickup=run.pickups.find(k=>!k.taken&&k.type!=='smoke'&&distance(p,k)<2.4);
+ const pickup=run.pickups.find(k=>!k.taken&&(k.type==='med'||k.type==='ammo')&&distance(p,k)<2.4);
  if(pickup)return {kind:'pickup',target:pickup,label:pickup.type==='med'?'TAKE FIELD MEDICINE':'TAKE AMMO',duration:.4};
  if(run.mission===0&&run.objectives.find(o=>o.id==='safe')?.done){
   if(p.bagId!==null&&p.bagId!==undefined&&distance(p,run.dropoff)<3.6)
@@ -68,11 +68,12 @@ export function spawnEnemy(run,type,at){
 }
 export function makeRun(n=0,count=1,loadouts=[]){
  const mission=MISSIONS[n],start=pos(mission.spawn);
- const run={mission:n,runId:Math.random().toString(36).slice(2),phase:'brief',time:0,alarm:0,grid:makeGrid(mission),serial:0,players:[],enemies:[],objectives:[],pickups:[],projectiles:[],tracers:[],toast:'',toastUntil:0,exit:pos(mission.exit),reinforce:mission.reinforce,lockdown:false,kills:0,shots:0,hitShots:0,earned:0,loot:[],secured:0,dropoff:pos(mission.dropoff||mission.exit),checkpoint:pos(mission.spawn),continues:n===0&&count===1?1:0,usedContinue:false,escapeAt:0,nextWave:0,escapeReady:false,camerasOff:false,cameraAlert:0,chapter:1,optionalBonus:0};
+ const run={mission:n,runId:Math.random().toString(36).slice(2),phase:'brief',time:0,alarm:0,grid:makeGrid(mission),serial:0,players:[],enemies:[],objectives:[],pickups:[],projectiles:[],tracers:[],toast:'',toastUntil:0,exit:pos(mission.exit),reinforce:mission.reinforce,lockdown:false,kills:0,shots:0,hitShots:0,earned:0,loot:[],secured:0,dropoff:pos(mission.dropoff||mission.exit),checkpoint:pos(mission.spawn),continues:n===0&&count===1?1:0,usedContinue:false,jamUntil:0,empUntil:0,escapeAt:0,nextWave:0,escapeReady:false,camerasOff:false,cameraAlert:0,chapter:1,optionalBonus:0};
  for(let i=0;i<count;i++){
   const kit=loadouts[i]||{},wid=WEAPONS[kit.weapon]?kit.weapon:'pistol',gid=GADGETS[kit.gadget]?kit.gadget:null,w=WEAPONS[wid];
   const maxHp=(n===0?125:100)+25*clamp(kit.upgrades?.armor||0,0,3),mag=Math.round(w.mag*(1+clamp(kit.upgrades?.mag||0,0,3)*.2));
-  run.players.push({bagId:null,id:i,name:String(kit.name||'CREW '+(i+1)).slice(0,24),x:start.x,z:start.z+(i?1.2:0),yaw:-Math.PI/2,pitch:0,hp:maxHp,maxHp,stamina:100,noise:0,noiseUntil:0,bloom:0,weapon:wid,gadget:gid,mag,ammo:mag,reserve:w.reserve,reload:0,cool:0,gadgets:gid?GADGETS[gid].charges:0,gadCool:0,damageTier:clamp(kit.upgrades?.damage||0,0,3),invuln:0,interact:0,interactId:'',bleed:0,down:false,stats:{kills:0,shots:0,hits:0},recoil:0});
+  const gadgetStart=gid?clamp(Number.isFinite(kit.charges)?kit.charges:GADGETS[gid].charges,0,GADGETS[gid].charges):0;
+  run.players.push({bagId:null,id:i,name:String(kit.name||'CREW '+(i+1)).slice(0,24),x:start.x,z:start.z+(i?1.2:0),yaw:-Math.PI/2,pitch:0,hp:maxHp,maxHp,stamina:100,noise:0,noiseUntil:0,bloom:0,weapon:wid,gadget:gid,mag,ammo:mag,reserve:w.reserve,reload:0,cool:0,gadgets:gadgetStart,gadgetStart,gadCool:0,shieldUntil:0,damageTier:clamp(kit.upgrades?.damage||0,0,3),invuln:0,interact:0,interactId:'',bleed:0,down:false,stats:{kills:0,shots:0,hits:0},recoil:0});
  }
  run.objectives=mission.objectives.map(o=>({...o,x:o.at[0]*CELL,z:o.at[1]*CELL,requires:o.requires||[],done:false}));
  if(n===0){
@@ -88,7 +89,7 @@ export function makeRun(n=0,count=1,loadouts=[]){
 function announce(run,msg){run.toast=msg;run.toastUntil=run.time+3.3;}
 function damagePlayer(run,p,dmg){
  if(p.hp<=0||p.invuln>0)return;
- p.hp=Math.max(0,p.hp-dmg);p.invuln=.28;p.recoil=Math.min(1,p.recoil+.18);
+ p.hp=Math.max(0,p.hp-Math.max(1,Math.round(dmg*(p.shieldUntil>run.time?.35:1))));p.invuln=.28;p.recoil=Math.min(1,p.recoil+.18);
  if(p.hp===0){p.down=true;p.bleed=28;if(p.bagId!==null){const bag=run.loot.find(x=>x.id===p.bagId);if(bag){bag.carrier=null;bag.x=p.x;bag.z=p.z;}p.bagId=null;}announce(run,p.name+' IS DOWN — REVIVE THEM');}
 }
 function damageEnemy(run,e,amount,player){
@@ -100,12 +101,13 @@ function damageEnemy(run,e,amount,player){
 function shoot(run,p){
  const w=WEAPONS[p.weapon];if(p.cool>0||p.reload>0||p.hp<=0)return;
  if(p.ammo<=0){if(p.reserve>0)p.reload=w.reload;return;}
- p.ammo--;p.cool=w.rate;p.recoil=Math.min(1,p.recoil+.25);p.stats.shots++;run.shots++;
- p.noiseUntil=run.time+1.1;p.noise=30;run.alarm=clamp(run.alarm+2.3,0,100);
+ const rounds=Math.min(w.burst||1,p.ammo);
+ p.ammo-=rounds;p.cool=w.rate;p.recoil=Math.min(1,p.recoil+.25);p.stats.shots+=rounds;run.shots+=rounds;
+ p.noiseUntil=run.time+1.1;p.noiseGun=w.noise?3:30;p.noise=p.noiseGun;run.alarm=clamp(run.alarm+(w.noise??2.3),0,100);
  const precision=(p.aiming?.34:1)*(p.walking?.68:p.moving?1.3:.78);
  const spread=w.spread*(.65+p.bloom)*precision;
  p.bloom=Math.min(1.6,p.bloom+(w.pellets>1?.31:.20));
- for(let i=0;i<w.pellets;i++){
+ for(let i=0;i<w.pellets*rounds;i++){
   const yaw=p.yaw+rng(-spread,spread),pitch=p.pitch+rng(-spread*.8,spread*.8);
   const dx=-Math.sin(yaw)*Math.cos(pitch),dz=-Math.cos(yaw)*Math.cos(pitch),dy=Math.sin(pitch);
   const planar=dx*dx+dz*dz;
@@ -124,11 +126,31 @@ function shoot(run,p){
   }
   run.tracers.push({id:++run.serial,x:p.x,y:1.64,z:p.z,tx:p.x+dx*minT,ty:1.67+dy*minT,tz:p.z+dz*minT,owner:p.id,ttl:.13,hit:!!hit});
   if(hit){
-   damageEnemy(run,hit,Math.round(w.damage*(1+p.damageTier*.13)*(headshot?1.65:1)),p);
+   const armorScale=hit.type==='heavy'?.70+(w.armorPen||0)*.30:1;
+   damageEnemy(run,hit,Math.round(w.damage*(1+p.damageTier*.13)*armorScale*(headshot?1.65:1)),p);
    p.stats.hits++;run.hitShots++;
    if(headshot)p.stats.headshots=(p.stats.headshots||0)+1;
   }
  }
+}
+function throwPoint(run,p,range){
+ const dx=-Math.sin(p.yaw),dz=-Math.cos(p.yaw);
+ let point={x:p.x,z:p.z};
+ for(let t=.5;t<=range;t+=.45){
+  const x=p.x+dx*t,z=p.z+dz*t;
+  if(isBlocked(run,x,z,.12))break;
+  point={x,z};
+ }
+ return point;
+}
+function blast(run,point,player,damage,radius){
+ run.pickups.push({id:++run.serial,type:'blast',x:point.x,z:point.z,ttl:.35,taken:false});
+ for(const e of run.enemies){
+  if(e.hp<=0)continue;
+  const d=distance(point,e);
+  if(d<radius&&lineClear(run,point,e)){damageEnemy(run,e,Math.round(damage*(1-.65*d/radius)),player);e.stun=Math.max(e.stun,.9);}
+ }
+ run.alarm=clamp(run.alarm+12,0,100);
 }
 function enemyFire(run,e,target){
  if(e.type==='rusher')return;
@@ -153,14 +175,43 @@ function tickPlayer(run,p,input,dt){
  const dz=(-Math.cos(p.yaw)*f-Math.sin(p.yaw)*s)*spd*dt/norm;
  move(run,p,dx,dz,.36);
  p.walking=walking;p.moving=moving;p.aiming=!!input?.aim;
- p.stamina=100;p.noise=Math.max(moving?(walking?1.5:11):0,run.time<(p.noiseUntil||0)?30:0);
+ p.stamina=100;p.noise=Math.max(moving?(walking?1.5:11):0,run.time<(p.noiseUntil||0)?(p.noiseGun||30):0);
  if(input?.reload&&p.reload===0&&p.ammo<p.mag&&p.reserve>0)p.reload=WEAPONS[p.weapon].reload;
  if(input?.fire&&p.reload===0)shoot(run,p);
  if(input?.gadget&&p.gadgets>0&&p.gadCool===0){
   p.gadgets--;p.gadCool=1;
-  if(p.gadget==='med'){p.hp=Math.min(p.maxHp,p.hp+65);announce(run,'FIELD MEDICINE APPLIED');}
-  else if(p.gadget==='smoke'){run.pickups.push({id:++run.serial,type:'smoke',x:p.x,z:p.z,ttl:8,taken:false});announce(run,'SMOKE DEPLOYED');}
-  else if(p.gadget==='emp'){for(const e of run.enemies)if(e.type==='drone'&&distance(e,p)<14)e.stun=6;run.empUntil=run.time+6;announce(run,'EMP DISCHARGE');}
+  const target=throwPoint(run,p,8);
+  if(p.gadget==='med'){
+   const ally=run.players.filter(a=>a.hp>0&&distance(a,p)<4).sort((a,b)=>(a.hp/a.maxHp)-(b.hp/b.maxHp))[0]||p;
+   const patient=ally.hp/ally.maxHp<p.hp/p.maxHp?ally:p;
+   patient.hp=Math.min(patient.maxHp,patient.hp+65);announce(run,'TRAUMA KIT · '+patient.name.toUpperCase()+' HEALED');
+  }else if(p.gadget==='smoke'){
+   run.pickups.push({id:++run.serial,type:'smoke',x:target.x,z:target.z,ttl:8,taken:false});announce(run,'SMOKE DEPLOYED');
+  }else if(p.gadget==='flash'){
+   let stunned=0;
+   for(const e of run.enemies)if(e.hp>0&&distance(e,target)<9&&lineClear(run,target,e)){e.stun=Math.max(e.stun,4.2);e.alert=true;stunned++;}
+   run.pickups.push({id:++run.serial,type:'flash',x:target.x,z:target.z,ttl:.35,taken:false});
+   announce(run,'FLASHBANG · '+stunned+' HOSTILES BLINDED');
+  }else if(p.gadget==='frag'){
+   blast(run,target,p,125,7);announce(run,'FRAG DETONATED');
+  }else if(p.gadget==='ammo'){
+   for(const ally of run.players)if(ally.hp>0&&distance(ally,p)<7){
+    const cap=WEAPONS[ally.weapon].reserve;
+    ally.reserve=Math.min(cap,ally.reserve+Math.round(WEAPONS[ally.weapon].mag*2));
+   }
+   announce(run,'AMMUNITION RESTOCKED');
+  }else if(p.gadget==='emp'){
+   for(const e of run.enemies)if(e.type==='drone'&&e.hp>0&&distance(e,p)<17)e.stun=Math.max(e.stun,6);
+   run.empUntil=Math.max(run.empUntil||0,run.time+6);run.cameraAlert=0;announce(run,'EMP · DRONES AND CAMERAS DISABLED');
+  }else if(p.gadget==='jammer'){
+   run.jamUntil=Math.max(run.jamUntil||0,run.time+12);run.cameraAlert=0;announce(run,'JAMMER · SECURITY NETWORK SUPPRESSED');
+  }else if(p.gadget==='shield'){
+   p.shieldUntil=run.time+8;announce(run,'ARMOR PLATE · 65% DAMAGE REDUCTION');
+  }else if(p.gadget==='decoy'){
+   run.pickups.push({id:++run.serial,type:'decoy',x:target.x,z:target.z,ttl:11,taken:false});announce(run,'SOUND DECOY ACTIVE');
+  }else if(p.gadget==='mine'){
+   run.pickups.push({id:++run.serial,type:'mine',x:target.x,z:target.z,ttl:90,taken:false,owner:p.id});announce(run,'TRIP MINE ARMED');
+  }
  }
  const task=nearbyTask(run,p);
  if(task&&input?.interact&&task.kind!=='wait'){
@@ -215,14 +266,15 @@ function tickEnemy(run,e,dt){
  const heard=!smoked&&d<(p.noise||0);
  if(seen||heard){e.alert=true;e.alertUntil=run.time+13;e.lastKnown={x:p.x,z:p.z};}
  else if(e.alertUntil>0&&run.time>e.alertUntil)e.alert=false;
- const target=e.alert&&!smoked?(sight?p:e.lastKnown||p):{x:e.patrolX,z:e.patrolZ};
+ const decoy=run.pickups.find(s=>s.type==='decoy'&&s.ttl>0&&distance(s,e)<19);
+ const target=decoy?decoy:e.alert&&!smoked?(sight?p:e.lastKnown||p):{x:e.patrolX,z:e.patrolZ};
  const range=e.type==='sniper'?16:e.type==='heavy'?9:e.type==='rusher'?1.3:e.type==='drone'?9:7;
- if(e.alert&&!smoked&&seen&&d<e.range&&e.cool===0){
+ if(!decoy&&e.alert&&!smoked&&seen&&d<e.range&&e.cool===0){
   if(e.type==='rusher'&&d<1.7){damagePlayer(run,p,e.damage);e.cool=1.2;}
   else enemyFire(run,e,p);
  }
  const pursue=e.type==='rusher'?d>1.5:d>range;
- if((e.alert&&pursue)||(!e.alert&&distance(e,target)>1.5)){
+ if((decoy&&distance(e,decoy)>1.4)||(e.alert&&pursue)||(!e.alert&&distance(e,target)>1.5)){
   e.pathTimer-=dt;
   if(e.pathTimer<=0){e.path=path(run,e,target);e.pathTimer=.7+rng(0,.25);}
   let goal=e.path?.[0]||target;
@@ -257,15 +309,20 @@ export function stepRun(run,inputs,dt){
  if(!run||run.phase!=='play')return;
  dt=clamp(dt,0,.05);run.time+=dt;
  const m=MISSIONS[run.mission];
- run.alarm=clamp(run.alarm+dt*m.alarmRate,0,100);
+ if(run.time>run.jamUntil)run.alarm=clamp(run.alarm+dt*m.alarmRate,0,100);
  run.tracers.forEach(t=>t.ttl-=dt);run.tracers=run.tracers.filter(t=>t.ttl>0);
  run.pickups.forEach(p=>{if(p.ttl!==undefined)p.ttl-=dt;});
  run.pickups=run.pickups.filter(p=>!p.taken&&(p.ttl===undefined||p.ttl>0));
  for(let i=0;i<run.players.length;i++)tickPlayer(run,run.players[i],inputs[i]||{},dt);
+ for(const mine of run.pickups){
+  if(mine.type!=='mine'||mine.taken)continue;
+  const enemy=run.enemies.find(e=>e.hp>0&&distance(mine,e)<2.7);
+  if(enemy){mine.taken=true;const owner=run.players.find(p=>p.id===mine.owner)||run.players[0];blast(run,mine,owner,175,6);}
+ }
  if(run.phase!=='play')return;
  if(run.mission===0){
   // The security network spots exposed intruders. Sabotage CCTV to shut this down.
-  if(!run.camerasOff){
+  if(!run.camerasOff&&run.time>run.empUntil&&run.time>run.jamUntil){
    const cameras=[[39,16],[55,19],[47,36]].map(at=>pos(at));
    for(const cam of cameras)for(const p of run.players){
     if(p.hp>0&&distance(cam,p)<14&&lineClear(run,cam,p)){run.cameraAlert+=dt;break;}
@@ -294,7 +351,7 @@ export function stepRun(run,inputs,dt){
  run.enemies.forEach(e=>tickEnemy(run,e,dt));
  run.projectiles.forEach(b=>tickProjectile(run,b,dt));run.projectiles=run.projectiles.filter(b=>b.life>0);
  if(run.alarm>62&&!run.lockdown){run.lockdown=true;announce(run,'LOCKDOWN — SECURITY REINFORCEMENTS INBOUND');}
- if(run.alarm>32){
+ if(run.alarm>32&&run.time>run.jamUntil){
   run.reinforce-=dt;
   if(run.reinforce<=0){
    const alive=run.enemies.filter(e=>e.hp>0).length;

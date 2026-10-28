@@ -313,7 +313,9 @@ export class View{
   this.flash=new THREE.Mesh(new THREE.ConeGeometry(.15,.48,8),new THREE.MeshBasicMaterial({color:0xffd99a,transparent:true,opacity:.85,depthWrite:false}));this.flash.rotation.x=-Math.PI/2;this.flash.position.set(0,.07,-.8);this.gun.add(this.flash);this.flash.visible=false;
  }
  applyGun(weapon){
-  const w=WEAPONS[weapon]||WEAPONS.pistol;this.gunBody.scale.set(weapon==='shotgun'?1.35:weapon==='smg'?.9:1,1,weapon==='dmr'?1.55:weapon==='rifle'?1.35:weapon==='shotgun'?1.45:1);
+  const w=WEAPONS[weapon]||WEAPONS.pistol;
+  const shotgun=w.pellets>1,long=['rifle','lmg','dmr','sniper','burst'].includes(weapon),compact=['smg','silenced'].includes(weapon);
+  this.gunBody.scale.set(shotgun?1.35:weapon==='lmg'?1.5:compact?.94:1,1,weapon==='sniper'?1.9:long?1.5:shotgun?1.4:compact?1.2:1);
   this.gunBody.traverse(x=>{if(x.material?.color&&x!==this.flash)x.material.color.lerp(new THREE.Color(w.color),.3);});
  }
  update(run,playerIndex,angles,dt=0,input={}){
@@ -399,9 +401,19 @@ export class View{
    if(item.type==='smoke'){
     if(!this.pickups.has(item.id)){const mesh=new THREE.Mesh(new THREE.SphereGeometry(3.8,16,12),new THREE.MeshBasicMaterial({color:0x9dbdbd,transparent:true,opacity:.17,depthWrite:false}));this.world.add(mesh);this.pickups.set(item.id,mesh);}
    }else if(!this.pickups.has(item.id)){
-    const mesh=this.box(this.world,item.x,.45,item.z,.55,.55,.55,item.type==='med'?0x86edb0:0xe5ca8f);this.pickups.set(item.id,mesh);
+    let mesh;
+    if(item.type==='blast'||item.type==='flash'){
+     mesh=new THREE.Mesh(new THREE.SphereGeometry(item.type==='blast'?2.8:3.6,12,8),new THREE.MeshBasicMaterial({color:item.type==='blast'?0xff994c:0xf4faff,transparent:true,opacity:.34,depthWrite:false}));
+     this.world.add(mesh);
+    }else{
+     const tint={med:0x86edb0,ammo:0xe5ca8f,mine:0xff776a,decoy:0x82d5ff}[item.type]||0xe5ca8f;
+     mesh=this.box(this.world,item.x,.45,item.z,item.type==='mine'?.8:.55,.55,item.type==='mine'?.8:.55,tint);
+    }
+    this.pickups.set(item.id,mesh);
    }
-   available.add(item.id);const mesh=this.pickups.get(item.id);mesh.position.set(item.x,item.type==='smoke'?1.5:.55+Math.sin(this.clock*3)*.12,item.z);
+   available.add(item.id);const mesh=this.pickups.get(item.id);
+   if(item.type==='blast'||item.type==='flash'){mesh.material.opacity=.34*Math.min(1,(item.ttl||0)*5);mesh.scale.setScalar(1+(1-(item.ttl||0)/.35)*.2);}
+   mesh.position.set(item.x,item.type==='smoke'?1.5:item.type==='blast'||item.type==='flash'?1.45:.55+Math.sin(this.clock*3)*.12,item.z);
   }
   for(const [id,mesh] of this.pickups)if(!available.has(id)){this.world.remove(mesh);this.pickups.delete(id);}
   const activeTracers=new Set();

@@ -4,16 +4,30 @@ export const CELL = 2;
 export const WIDTH = 27;
 export const HEIGHT = 19;
 export const WEAPONS = {
-  pistol: {name:'M9 SIDEARM',class:'SIDEARM',unlock:0,damage:29,rate:.24,mag:15,reserve:90,reload:1.25,spread:.022,range:35,pellets:1,color:0xb8c1b8},
-  smg: {name:'VECTOR 9',class:'SMG',unlock:1,damage:17,rate:.085,mag:32,reserve:192,reload:1.65,spread:.050,range:29,pellets:1,color:0xd1c0a1},
-  shotgun: {name:'BREACHER 12',class:'SHOTGUN',unlock:2,damage:14,rate:.72,mag:8,reserve:56,reload:2,spread:.16,range:19,pellets:8,color:0xcaa474},
-  rifle: {name:'MK18 CARBINE',class:'ASSAULT',unlock:3,damage:34,rate:.145,mag:30,reserve:150,reload:1.9,spread:.026,range:50,pellets:1,color:0xbac9d1},
-  dmr: {name:'GHOST DMR',class:'MARKSMAN',unlock:4,damage:78,rate:.68,mag:12,reserve:72,reload:2.2,spread:.008,range:68,pellets:1,color:0xe3d8c3}
+  pistol: {name:'M9 SIDEARM',class:'SIDEARM',unlock:0,cost:0,damage:29,rate:.24,mag:15,reserve:90,reload:1.25,spread:.022,range:35,pellets:1,color:0xb8c1b8,description:'Free issued backup. Reliable, but no match for upgraded gear.'},
+  compact: {name:'KITE .45',class:'SIDEARM',unlock:0,cost:150,damage:40,rate:.28,mag:12,reserve:72,reload:1.15,spread:.026,range:32,pellets:1,color:0xe4c49b,description:'Hard-hitting close-range sidearm.'},
+  revolver: {name:'JUDGE .357',class:'HAND CANNON',unlock:0,cost:260,damage:78,rate:.56,mag:6,reserve:48,reload:1.8,spread:.013,range:44,pellets:1,armorPen:.5,color:0xccc3b1,description:'Six precise rounds; punches through heavy armor.'},
+  smg: {name:'VECTOR 9',class:'SMG',unlock:1,cost:390,damage:17,rate:.085,mag:32,reserve:192,reload:1.65,spread:.050,range:29,pellets:1,color:0xd1c0a1,description:'Rapid room-clearing fire with high ammo capacity.'},
+  silenced: {name:'WHISPER MP5',class:'SUPPRESSED',unlock:1,cost:460,damage:23,rate:.11,mag:28,reserve:168,reload:1.5,spread:.023,range:38,pellets:1,noise:.16,color:0x83999a,description:'Low signature fire; keeps the security alarm down.'},
+  burst: {name:'KRAIT-3',class:'BURST CARBINE',unlock:1,cost:510,damage:21,rate:.32,mag:27,reserve:162,reload:1.75,spread:.025,range:47,pellets:1,burst:3,color:0x9dbbb9,description:'Three rounds per trigger cycle for controlled bursts.'},
+  shotgun: {name:'BREACHER 12',class:'SHOTGUN',unlock:2,cost:590,damage:14,rate:.72,mag:8,reserve:56,reload:2,spread:.16,range:19,pellets:8,color:0xcaa474,description:'Eight damaging pellets devastate nearby targets.'},
+  autoshotgun: {name:'MAULER AUTO',class:'AUTO SHOTGUN',unlock:2,cost:790,damage:10,rate:.28,mag:12,reserve:72,reload:2.45,spread:.19,range:17,pellets:7,color:0xd3ad87,description:'Fast repeated blasts with wide room coverage.'},
+  rifle: {name:'MK18 CARBINE',class:'ASSAULT',unlock:3,cost:820,damage:34,rate:.145,mag:30,reserve:150,reload:1.9,spread:.026,range:50,pellets:1,armorPen:.2,color:0xbac9d1,description:'Balanced range, control and medium armor penetration.'},
+  lmg: {name:'HAMMER LMG',class:'SUPPORT',unlock:3,cost:1130,damage:31,rate:.125,mag:72,reserve:216,reload:3.5,spread:.056,range:45,pellets:1,armorPen:.25,color:0x999d79,description:'Sustained fire with massive magazines and slow reloads.'},
+  dmr: {name:'GHOST DMR',class:'MARKSMAN',unlock:4,cost:1080,damage:78,rate:.68,mag:12,reserve:72,reload:2.2,spread:.008,range:68,pellets:1,armorPen:.7,color:0xe3d8c3,description:'Accurate long-range stopping power.'},
+  sniper: {name:'LANCER .50',class:'ANTI-MATERIEL',unlock:4,cost:1420,damage:160,rate:1.35,mag:5,reserve:35,reload:2.9,spread:.002,range:95,pellets:1,armorPen:1,color:0xe9d6ba,description:'Single-shot eliminations and full heavy armor penetration.'}
 };
 export const GADGETS = {
-  smoke:{name:'SMOKE',unlock:1,charges:2,description:'Break sightlines for eight seconds.'},
-  med:{name:'MED KIT',unlock:2,charges:2,description:'Restore health to yourself or a nearby teammate.'},
-  emp:{name:'EMP',unlock:3,charges:2,description:'Disable drones, turrets and cameras for six seconds.'}
+  smoke:{name:'SMOKE GRENADE',unlock:0,cost:120,charges:2,description:'Two clouds block enemy sightlines for eight seconds.'},
+  med:{name:'TRAUMA KIT',unlock:0,cost:145,charges:2,description:'Heal yourself or a nearby wounded teammate by 65 HP.'},
+  flash:{name:'FLASHBANG',unlock:0,cost:160,charges:2,description:'Blind nearby enemies, stopping them for four seconds.'},
+  frag:{name:'FRAG GRENADE',unlock:1,cost:230,charges:2,description:'High explosive damages groups of enemies in cover-free range.'},
+  ammo:{name:'AMMO SATCHEL',unlock:1,cost:170,charges:2,description:'Refill ammunition for yourself and nearby teammates.'},
+  emp:{name:'EMP CHARGE',unlock:2,cost:250,charges:2,description:'Disable nearby drones and security sensors for six seconds.'},
+  jammer:{name:'SIGNAL JAMMER',unlock:2,cost:215,charges:2,description:'Suppress alarm growth and surveillance for 12 seconds.'},
+  shield:{name:'ARMOR PLATE',unlock:3,cost:275,charges:2,description:'Reduce incoming damage by 65% for eight seconds.'},
+  decoy:{name:'SOUND DECOY',unlock:3,cost:185,charges:2,description:'Pull guards away from your position for ten seconds.'},
+  mine:{name:'TRIP MINE',unlock:4,cost:310,charges:2,description:'Set a proximity mine that explodes when enemies approach.'}
 };
 export const UPGRADES = {
   armor:{name:'BALLISTIC VEST',desc:'+25 maximum health per tier',cost:[200,350,550],icon:'◈'},
@@ -55,7 +69,7 @@ export function makeGrid(mission){
   return grid;
 }
 export const pos=([x,z])=>({x:x*CELL,z:z*CELL});
-export function profileDefaults(name){return {name,unlocked:0,completed:false,earned:0,spent:0,upgrades:{armor:0,damage:0,mag:0},cleared:[],best:{}};}
+export function profileDefaults(name){return {name,unlocked:0,completed:false,earned:0,spent:0,upgrades:{armor:0,damage:0,mag:0},weapons:['pistol'],gadgetStock:{},gearRev:0,gearUpdatedAt:0,cleared:[],best:{}};}
 export function normalizeProfile(raw,name){
  const p=profileDefaults(name),r=raw&&typeof raw==='object'?raw:{};
  p.unlocked=clamp(Math.floor(Number(r.unlocked)||0),0,4);
@@ -63,6 +77,10 @@ export function normalizeProfile(raw,name){
  p.earned=clamp(Math.floor(Number(r.earned)||0),0,9999999);
  p.spent=clamp(Math.floor(Number(r.spent)||0),0,p.earned);
  for(const k of Object.keys(UPGRADES))p.upgrades[k]=clamp(Math.floor(Number(r.upgrades?.[k])||0),0,3);
+ p.weapons=['pistol',...new Set((Array.isArray(r.weapons)?r.weapons:[]).filter(id=>id!=='pistol'&&WEAPONS[id]))];
+ for(const id of Object.keys(GADGETS)){const qty=clamp(Math.floor(Number(r.gadgetStock?.[id])||0),0,30);if(qty>0)p.gadgetStock[id]=qty;}
+ p.gearRev=clamp(Math.floor(Number(r.gearRev)||0),0,999999999);
+ p.gearUpdatedAt=clamp(Math.floor(Number(r.gearUpdatedAt)||0),0,9999999999999);
  p.cleared=Array.isArray(r.cleared)?r.cleared.filter(v=>MISSIONS.some(m=>m.id===v)).slice(0,5):[];
  p.best=r.best&&typeof r.best==='object'?r.best:{};
  return p;

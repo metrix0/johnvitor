@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MISSIONS,WEAPONS,CELL,makeGrid,normalizeProfile} from './data.js';
+import {MISSIONS,WEAPONS,GADGETS,CELL,makeGrid,normalizeProfile,profileDefaults} from './data.js';
+import {purchaseGear,settleGear,equippedKit,canEquipWeapon,canEquipGadget,chooseGearSnapshot} from './armory.js';
 import {makeRun,stepRun,isBlocked,nearbyTask,lineClear,objectiveReady} from './simulation.js';
 const idle={yaw:-Math.PI/2,pitch:0};
 function advance(run,inputs,time){for(let i=0;i<Math.ceil(time/.05)&&run.phase==='play';i++)stepRun(run,inputs,.05);}
@@ -151,4 +152,87 @@ test('enemies hear running farther than Shift silent walking',()=>{
  const e={id:101,x:4,z:11,type:'guard',hp:80,maxHp:80,speed:0,damage:0,range:0,cadence:3,dir:Math.PI,cool:4,path:[],pathTimer:999,stun:0,flinch:0,alert:false,alertUntil:0,lastKnown:null,patrolX:4,patrolZ:11};
  run.enemies.push(e);stepRun(run,[{...idle,forward:true,walk}],.05);return e.alert;};
  assert.equal(setup(false),true);assert.equal(setup(true),false);
+});
+
+test('purchased weapons persist on extraction and are forfeited when the mission fails',()=>{
+ const profile=profileDefaults('Buyer');profile.earned=1500;
+ assert.equal(purchaseGear(profile,'weapon','revolver'),true);
+ const paid=profile.spent;
+ assert.equal(purchaseGear(profile,'weapon','revolver'),false,'cannot buy duplicate guns');
+ assert.equal(profile.spent,paid);
+ const kit=equippedKit(profile,'revolver','');
+ assert.equal(kit.weapon,'revolver');
+ const success=makeRun(0,1,[kit]);
+ assert.equal(settleGear(profile,success.players[0],false),false);
+ assert.equal(canEquipWeapon(profile,'revolver'),true);
+ const failed=makeRun(0,1,[kit]);
+ assert.equal(settleGear(profile,failed.players[0],true),true);
+ assert.equal(canEquipWeapon(profile,'revolver'),false);
+ assert.equal(profile.spent,paid,'losing gear does not refund credits');
+ assert.equal(equippedKit(profile,'revolver','').weapon,'pistol','starter sidearm prevents softlocks');
+ assert.equal(purchaseGear(profile,'weapon','revolver'),true,'lost gun may be repurchased');
+});
+test('gadget packs are paid, spent charges persist across missions, and failure loses deployed stock',()=>{
+ const profile=profileDefaults('Tester');profile.earned=1600;
+ assert.equal(purchaseGear(profile,'gadget','flash'),true);
+ assert.equal(profile.gadgetStock.flash,GADGETS.flash.charges);
+ let run=makeRun(1,1,[equippedKit(profile,'pistol','flash')]);
+ assert.equal(run.players[0].gadgetStart,2);
+ run.players[0].gadgets=1;
+ assert.equal(settleGear(profile,run.players[0],false),true);
+ assert.equal(profile.gadgetStock.flash,1);
+ assert.equal(purchaseGear(profile,'gadget','flash'),true);
+ assert.equal(profile.gadgetStock.flash,3);
+ run=makeRun(1,1,[equippedKit(profile,'pistol','flash')]);
+ assert.equal(run.players[0].gadgetStart,2,'mission carries limited charges, not entire stash');
+ settleGear(profile,run.players[0],true);
+ assert.equal(canEquipGadget(profile,'flash'),false);
+ assert.equal(equippedKit(profile,'pistol','flash').gadget,null);
+});
+test('catalog purchase eligibility, old saves and gear revisions stay consistent',()=>{
+ const p=normalizeProfile({unlocked:1,earned:280,spent:0,gearRev:4,weapons:['pistol','revolver','fake'],gadgetStock:{smoke:3,absent:90}},'Op');
+ assert.deepEqual(p.weapons,['pistol','revolver']);assert.equal(p.gadgetStock.smoke,3);
+ assert.equal(p.gadgetStock.absent,undefined);
+ assert.equal(purchaseGear(p,'weapon','sniper'),false,'future weapon locked');
+ assert.equal(purchaseGear(p,'gadget','mine'),false,'future gadget locked');
+ assert.equal(purchaseGear(p,'weapon','compact'),true);
+ assert.equal(purchaseGear(p,'weapon','smg'),false,'unaffordable gear rejected');
+ const older=normalizeProfile({...p,gearRev:3,weapons:['pistol','sniper']},'Op');
+ assert.equal(chooseGearSnapshot(p,older),p,'an obsolete cloud snapshot cannot resurrect lost gear');
+ assert.equal(normalizeProfile(JSON.parse(JSON.stringify(p)),'Op').gearRev,p.gearRev);
+});
+test('flash, frag, mines, signal jammers and armor plates have simulation effects',()=>{
+ const flash=makeRun(1,1,[{weapon:'pistol',gadget:'flash'}]);flash.enemies=[flash.enemies[0]];flash.phase='play';
+ let p=flash.players[0],e=flash.enemies[0];e.x=p.x+7;e.z=p.z;e.hp=80;
+ stepRun(flash,[{...idle,gadget:true}],.05);
+ assert.ok(e.stun>=4,'flash should disable a nearby guard');assert.equal(p.gadgets,1);
+ const frag=makeRun(1,1,[{gadget:'frag'}]);frag.phase='play';frag.enemies=[frag.enemies[0]];
+ p=frag.players[0];e=frag.enemies[0];e.x=p.x+7;e.z=p.z;
+ const old=e.hp;stepRun(frag,[{...idle,gadget:true}],.05);
+ assert.ok(e.hp<old,'frag must cause real enemy damage');
+ const mine=makeRun(1,1,[{gadget:'mine'}]);mine.phase='play';mine.enemies=[mine.enemies[0]];
+ p=mine.players[0];e=mine.enemies[0];e.x=p.x+7;e.z=p.z;
+ stepRun(mine,[{...idle,gadget:true}],.05);
+ assert.ok(e.hp<e.maxHp,'proximity mine should trigger on enemy');
+ const jam=makeRun(1,1,[{gadget:'jammer'}]);jam.phase='play';jam.enemies=[];
+ advance(jam,[{...idle,gadget:true}],1);
+ assert.ok(jam.jamUntil>jam.time,'jammer activates');
+ assert.ok(jam.alarm<.03,'jammer suppresses security alert growth');
+ const shield=makeRun(1,1,[{gadget:'shield'}]);shield.phase='play';shield.enemies=[];
+ p=shield.players[0];stepRun(shield,[{...idle,gadget:true}],.05);
+ const initial=p.hp;
+ shield.projectiles.push({id:42,x:p.x,z:p.z,y:1.3,dx:0,dz:0,damage:60,speed:0,life:1,type:'guard'});
+ stepRun(shield,[idle],.05);
+ assert.ok(initial-p.hp<=22,'armor plate reduces actual damage');
+});
+test('purchased guns differ in their actual combat behavior against heavy armor',()=>{
+ function damageWith(weapon){
+  const run=makeRun(1,1,[{weapon}]);run.phase='play';run.enemies=[run.enemies[0]];
+  const p=run.players[0],e=run.enemies[0];e.type='heavy';e.hp=245;e.maxHp=245;
+  e.x=p.x+6;e.z=p.z;
+  stepRun(run,[{...idle,fire:true}],.05);
+  return e.maxHp-e.hp;
+ }
+ assert.ok(damageWith('revolver')>damageWith('pistol'),'armor penetration must be effective');
+ assert.ok(damageWith('sniper')>damageWith('revolver'),'sniper must deal more damage');
 });

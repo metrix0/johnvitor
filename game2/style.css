@@ -81,3 +81,21 @@
  .shPanel{top:10px;right:9px;bottom:10px;width:calc(100vw - 18px)}.shPanelHeader{padding:14px}.shTabs{padding:8px}.shTabs button{padding:8px 6px}.shPanelContent{padding:16px}
  .shJobs .jobCard{min-height:145px}.shJobs .jobCard h3{font-size:16px}
 }
+
+/* Purchased equipment catalog: mounts alongside existing loadout UI (including safehouse layouts). */
+.armoryShop{grid-column:1/-1;min-width:0;padding:18px 0 0}
+.shopHeading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font:800 26px 'Barlow Condensed',sans-serif;letter-spacing:.04em;color:#eaf8ef;border-top:1px solid #40545b;padding-top:22px}
+.shopHeading small{max-width:520px;text-align:right;font:700 9px/1.6 'DM Sans',sans-serif;letter-spacing:.07em;color:#a8c1b4}
+.shopCategory{font:800 11px 'DM Sans',sans-serif;letter-spacing:.14em;color:#9ef2c7;margin:22px 0 12px}
+.shopCards{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:10px}
+.shopCard{min-width:0;display:flex;flex-direction:column;padding:17px;border:1px solid #41565c;background:linear-gradient(155deg,#23373b,#14242b);color:#e4f3eb}
+.shopCard.shopLocked{opacity:.55}
+.shopMeta{font-size:9px;letter-spacing:.11em;color:#a2c0b9;font-weight:800}
+.shopCard h3{font:800 24px 'Barlow Condensed',sans-serif;letter-spacing:.025em;margin:10px 0 5px}
+.shopCard p{font:500 11px/1.6 'DM Sans',sans-serif;color:#a7b9b7;margin:0 0 18px;flex:1}
+.shopFoot{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid #354a50;padding-top:11px}
+.shopFoot b{font:800 13px 'DM Sans',sans-serif;color:#d1f5df;white-space:nowrap}
+.shopFoot button{border:1px solid #84a998;background:#25473b;color:#c3f7d7;padding:9px 11px;font:800 10px 'DM Sans',sans-serif;letter-spacing:.04em}
+.shopFoot button:disabled{opacity:.65}
+@media(max-width:800px){.shopHeading{display:block}.shopHeading small{display:block;text-align:left;margin-top:7px}}
+@media(max-width:520px){.shopCards{grid-template-columns:repeat(auto-fit,minmax(155px,1fr))}.shopCard{padding:12px}.shopFoot{flex-wrap:wrap}.shopFoot button{width:100%}}
