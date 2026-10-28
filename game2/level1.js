@@ -36,16 +36,9 @@ const fixtures=[
  [49,10,'dumpster'],[51,22,'dumpster'],[50,33,'dumpster'],[53,16,'pallet'],
  [4,8,'container'],[5,37,'barrier'],[52,39,'barrier']
 ];
+// A single physical storefront sign replaces all hovering location labels.
 const accents=[
- {text:'NIGHTSHIFT MARKET',x:28,z:33.35,y:3.6,size:6.2,rot:Math.PI,color:'#f0d5a4'},
- {text:'24 HOURS',x:37,z:33.31,y:2.8,size:2.3,rot:Math.PI,color:'#9deaff'},
- {text:'EMPLOYEES ONLY',x:44.27,z:12,y:2.5,size:3.1,rot:-Math.PI/2,color:'#f2d8aa'},
- {text:'DELIVERIES',x:11.72,z:12,y:2.5,size:3,rot:Math.PI/2,color:'#f4cb8a'},
- {text:'STOCKROOM',x:19,z:15.72,y:2.5,size:2.8,rot:Math.PI,color:'#f2d9b5'},
- {text:'MANAGER',x:30.2,z:15.72,y:2.5,size:2.4,rot:Math.PI,color:'#f2d9b5'},
- {text:'RESTROOM',x:40,z:15.72,y:2.5,size:2.3,rot:Math.PI,color:'#d5ecf2'},
- {text:'COLD DRINKS',x:14.6,z:21.9,y:3,size:2.8,rot:Math.PI/2,color:'#91ddfb'},
- {text:'SIDE EXIT',x:46.8,z:17.6,y:2.3,size:2.7,rot:Math.PI/2,color:'#f0d2b4'}
+ {text:'NIGHTSHIFT MARKET',x:28,z:33.84,y:3.62,size:6.7,rot:0,color:'#f5e4ca'}
 ];
 export const LEVEL1={
  id:'bodega',number:'01',name:'NIGHTSHIFT MARKET',site:'NIGHTSHIFT MARKET',type:'LATE-NIGHT STORE ROBBERY',tag:'THE FIRST SCORE',
@@ -66,6 +59,13 @@ export const LEVEL1={
  ],
  completion:'Your first successful store robbery is in the books. The crew is ready for its next job.'
 };
+// These tiles must block movement but NOT render as ceiling-height masonry.
+// Their own shelf, carton, bathroom and dumpster meshes are authored in decor.
+export const LEVEL1_PROP_CELLS=new Set([
+ ...[19,24,29,34,39].flatMap(x=>[20,21,24,25].map(z=>x+','+z)),
+ ...[[18,9,1,2],[21,9,1,2],[40,9,1,2],[49,10,2,1],[51,22,2,1],[50,33,2,1],[4,8,3,3]].flatMap(([x,z,w,h])=>
+  Array.from({length:w*h},(_,i)=>(x+i%w)+','+(z+Math.floor(i/w))))
+]);
 export function makeLevel1Grid(){
  const {width,height}=LEVEL1_SIZE;
  const grid=Array.from({length:height},(_,z)=>Array.from({length:width},(_,x)=>x===0||z===0||x===width-1||z===height-1?'#':'.'));

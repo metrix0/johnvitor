@@ -22,6 +22,32 @@ export class Visuals {
   const a=c.getContext('2d'),size=256;
   let seed=kind.split('').reduce((n,ch)=>n*31+ch.charCodeAt(0),11)>>>0;
   const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  // Clean commercial interior materials, distinct from scratched street textures.
+  if(kind==='market-tile'||kind==='market-ceiling'){
+   const ceiling=kind==='market-ceiling',grout=ceiling?'#d5d7d1':'#a49f94';
+   a.fillStyle=grout;a.fillRect(0,0,256,256);
+   for(let zz=0;zz<4;zz++)for(let xx=0;xx<4;xx++){
+    const shade=ceiling?Math.round(226+rand()*9):Math.round(222+rand()*12);
+    a.fillStyle=ceiling?'rgb('+shade+','+shade+','+(shade-6)+')':'rgb('+shade+','+(shade-5)+','+(shade-17)+')';
+    a.fillRect(xx*64+(ceiling?1:3),zz*64+(ceiling?1:3),ceiling?62:58,ceiling?62:58);
+    a.strokeStyle='rgba(255,255,255,.16)';a.lineWidth=.65;if(!ceiling)a.strokeRect(xx*64+5,zz*64+5,54,54);
+   }
+   for(let i=0;i<(ceiling?90:195);i++){
+    a.fillStyle=rand()>.48?'rgba(45,43,36,.06)':'rgba(255,255,255,.10)';
+    a.fillRect(rand()*256,rand()*256,.4+rand()*1.5,.4+rand()*1.5);
+   }
+   this.canvases.set(kind,c);return c;
+  }
+  if(kind==='market-wall'){
+   a.fillStyle='#dad5c9';a.fillRect(0,0,256,256);
+   for(let i=0;i<350;i++){
+    a.fillStyle=rand()>.5?'rgba(67,64,57,.033)':'rgba(255,255,255,.055)';
+    a.fillRect(rand()*256,rand()*256,1+rand()*3,.2+rand()*2);
+   }
+   a.fillStyle='rgba(111,119,118,.28)';a.fillRect(0,237,256,19);
+   a.fillStyle='rgba(255,255,255,.17)';a.fillRect(0,235,256,2);
+   this.canvases.set(kind,c);return c;
+  }
   a.fillStyle=kind==='asphalt'?'#b1b3b8':kind==='metal'?'#b3bcc0':kind==='wood'?'#c3b5a0':'#c4c4c1';
   a.fillRect(0,0,size,size);
   for(let i=0;i<3900;i++){
@@ -92,11 +118,11 @@ export class Visuals {
  }
  surface(kind,color,width=5,depth=5) {
   const tex=this.texture(kind,Math.max(1,width/3),Math.max(1,depth/3));
-  const roughness=kind==='asphalt'?.57:kind==='metal'?.42:kind==='tile'?.45:.86;
+  const roughness=kind==='market-tile'?.67:kind==='market-ceiling'?.92:kind==='market-wall'?.85:kind==='asphalt'?.57:kind==='metal'?.42:kind==='tile'?.45:.86;
   const m=new THREE.MeshStandardMaterial({
    color,map:tex,roughness,metalness:kind==='metal'?.48:.06,
    // One shared cached map gives subtle relief without more texture downloads.
-   bumpMap:tex,bumpScale:kind==='metal'?.012:kind==='wood'?.022:kind==='tile'?.018:.035
+   bumpMap:tex,bumpScale:kind==='market-tile'?.004:kind==='market-ceiling'?.002:kind==='market-wall'?.005:kind==='metal'?.012:kind==='wood'?.022:kind==='tile'?.018:.035
   });
   if(kind==='asphalt'||kind==='tile')m.envMapIntensity=.8;
   return m;

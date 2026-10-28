@@ -1,7 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
-import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=4';
-import {LEVEL1_ZONES} from './level1.js?v=4';
-import {Visuals} from './visuals.js?v=4';
+import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=5';
+import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=5';
+import {Visuals} from './visuals.js?v=5';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
  office:{floor:0x303b44,wall:0x778998,accent:0x82d7fb,light:0xcce8ff,sky:0x101b2a},
@@ -93,7 +93,7 @@ export class View{
   this.ambient.intensity=.94;this.sun.intensity=.55;
   this.box(world,w/2,-.32,h/2,cols*CELL,.65,rows*CELL,this.visuals.surface('asphalt',0x29343c,cols*CELL,rows*CELL));
   for(const zone of LEVEL1_ZONES){
-   this.box(world,(zone.x+zone.w/2)*CELL,-.03,(zone.z+zone.h/2)*CELL,zone.w*CELL,.085,zone.h*CELL,this.visuals.surface(zone.name==='SHOP FLOOR'||zone.name==='RESTROOM'?'tile':zone.name==='BACK OFFICE'?'wood':zone.name==='STOCKROOM'?'concrete':'asphalt',zone.floor,zone.w*CELL,zone.h*CELL));
+   this.box(world,(zone.x+zone.w/2)*CELL,-.03,(zone.z+zone.h/2)*CELL,zone.w*CELL,.085,zone.h*CELL,this.visuals.surface(zone.name==='SHOP FLOOR'||zone.name==='RESTROOM'?'market-tile':zone.name==='BACK OFFICE'?'wood':zone.name==='STOCKROOM'?'concrete':'asphalt',zone.name==='SHOP FLOOR'?0xe7dfcf:zone.floor,zone.w*CELL,zone.h*CELL));
   }
   // Parking bays, pedestrian sidewalk, front threshold and delivery hazard paint.
   this.box(world,28*CELL,.038,35*CELL,70,.08,4.2,0x989994,.08);
@@ -112,25 +112,27 @@ export class View{
    const key=String(color);if(!batches.has(key))batches.set(key,[]);
    batches.get(key).push([x,y,z,sx,sy,sz]);
   };
+  // Decorative shelf / fixture collisions must not render as full-height masonry.
+  // Window collision remains solid, but the corresponding façade is transparent.
+  const isWindow=(x,z)=>z===33&&((x>=14&&x<=24)||(x>=34&&x<=43));
+  const visibleWall=(x,z)=>x>0&&z>0&&x<cols-1&&z<rows-1&&run.grid[z][x]==='#'&&!LEVEL1_PROP_CELLS.has(x+','+z)&&!isWindow(x,z);
   for(let z=0;z<rows;z++){
    let x=0;
    while(x<cols){
-    if(run.grid[z][x]!=='#'){x++;continue;}
-    let end=x+1;
-    while(end<cols&&run.grid[z][end]==='#')end++;
+    if(!visibleWall(x,z)){x++;continue;}
+    let end=x+1;while(end<cols&&visibleWall(end,z))end++;
     const mx=(x+end-1)*CELL/2,mz=z*CELL,len=(end-x)*CELL;
-    const storefront=x>=12&&x<=44&&z>=7&&z<=33;
-    const col=storefront?(z===33?0x5b5b58:0x878078):0x43505b;
-    batch(col,mx,2.28,mz,len,4.56,CELL);
-    batch(0x232b32,mx,.23,mz,len+.03,.46,CELL+.03);
-    batch(storefront?0xd2b99b:0x52687a,mx,4.51,mz,len+.03,.17,CELL+.03);
-    if(len>7&&storefront)batch(0xd1bc9a,mx,3.25,mz,len*.69,.06,CELL+.06);
+    const indoors=x>=12&&x<=44&&z>=7&&z<=33;
+    const color=indoors?(z===33?0x857469:0xd6d0c4):0x454f55;
+    batch(color,mx,2.28,mz,len,4.56,CELL);
+    batch(indoors?0x655f56:0x263038,mx,.23,mz,len+.03,.46,CELL+.03);
+    batch(indoors?0xe4ded1:0x647177,mx,4.51,mz,len+.03,.17,CELL+.03);
     x=end;
    }
   }
   const matrix=new THREE.Matrix4();
   for(const [color,instances] of batches){
-   const mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),this.visuals.surface('plaster',Number(color),6,5),instances.length);
+   const mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),this.visuals.surface(Number(color)===0xd6d0c4?'market-wall':'brick',Number(color),6,5),instances.length);
    for(let i=0;i<instances.length;i++){
     const [x,y,z,sx,sy,sz]=instances[i];
     matrix.compose(new THREE.Vector3(x,y,z),new THREE.Quaternion(),new THREE.Vector3(sx,sy,sz));
@@ -138,6 +140,14 @@ export class View{
    }
    mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;world.add(mesh);
   }
+  // Acoustic commercial ceiling hides the sky above the store and rear rooms.
+  for(const zone of LEVEL1_ZONES.filter(z=>['SHOP FLOOR','STOCKROOM','BACK OFFICE','RESTROOM'].includes(z.name))){
+   const ceiling=this.visuals.surface('market-ceiling',0xf3f0e7,zone.w*CELL,zone.h*CELL);
+   ceiling.emissive.setHex(0x98988d);ceiling.emissiveIntensity=.25;
+   this.box(world,(zone.x+zone.w/2)*CELL,4.78,(zone.z+zone.h/2)*CELL,zone.w*CELL,.24,zone.h*CELL,ceiling);
+  }
+  for(const x of [13,20,27,34,41])this.box(world,x*CELL,4.62,25*CELL,.055,.055,33*CELL,0x9ba3a2,.31);
+  for(const z of [17,23,29])this.box(world,28*CELL,4.62,z*CELL,33*CELL,.055,.065,0x9ba3a2,.31);
   // A recognizable south-facing 24-hour storefront with windows and lit awning.
   for(const x of [15,17,19,21,23,34,36,38,40,42]){
    this.box(world,x*CELL,2.32,33.9*CELL,2.5,2.65,.1,0x263a42,.62);
@@ -151,8 +161,7 @@ export class View{
   for(const [x,z,kind] of mission.decor)this.prop(kind,x*CELL,z*CELL,p);
   // Fixed world landmarks and billboards; no downloaded textures/models.
   for(const sign of mission.signs)this.sign(sign.text,sign.x*CELL,sign.y,sign.z*CELL,sign.rot,sign.color,sign.size);
-  this.sign('OPEN / 24H',22*CELL,3.2,33.98*CELL,Math.PI,'#a3e9c9',2.8);
-  this.sign('PARKING',35*CELL,2.2,42*CELL,Math.PI,'#95d7eb',3.1);
+  // Only the market fascia carries a wordmark; no hovering location labels.
 
   // Keep the existing street lights lightweight; the visuals layer adds limited nearby accent/alarm lights.
   for(const [x,z,color] of [[9,16,0xffd199],[10,40,0xffcf91],[45,40,0xffc68c],[50,11,0xffb876],[23,23,0xffedce],[36,23,0xffefdf],[30,11,0xffe2b7],[16,22,0x91cce8]]){
@@ -194,6 +203,9 @@ export class View{
  }
  prop(kind,x,z,p){
   const g=new THREE.Group();g.position.set(x,0,z);this.world.add(g);
+  if(this.mission===0&&['shelf','fridge','counter','desk','filing','crate','pallet'].includes(kind)){
+   this.marketProp(g,kind);return;
+  }
   if(kind==='car'||kind==='van'){
    const van=kind==='van',body=van?0x819ca0:0x51667e;
    this.box(g,0,.75,0,van?3.4:2.7,van?1.5:.85,van?6.2:4.5,body,.7);
@@ -201,7 +213,7 @@ export class View{
    this.box(g,0,van?1.75:1.49,-1.48,van?2.7:2.1,.72,.06,0x83b8c7,.7);
    for(const xx of [-1.5,1.5])for(const zz of [-1.8,1.8]){const wheel=this.cyl(g,xx,.45,zz,.48,.24,0x121920,14);wheel.rotation.z=Math.PI/2;}
    for(const xx of [-1,1])this.box(g,xx,.8,-(van?3.15:2.3),.47,.21,.09,0xfff4cc,.4);
-   if(van){this.sign('GETAWAY',x,2.8,z+3.25,Math.PI,'#b7ffe3',3);}
+   if(van&&this.mission!==0){this.sign('GETAWAY',x,2.8,z+3.25,Math.PI,'#b7ffe3',3);}
   }else if(kind==='streetlamp'){
    this.cyl(g,0,2.65,0,.11,5.3,0x59656d,10);
    this.box(g,0,5.25,.5,.18,.16,1.3,0x6f8490,.6);
@@ -260,6 +272,85 @@ export class View{
    for(let i=0;i<5;i++)for(let j=0;j<2;j++)this.box(g,-.75+i*.36,1.1,j*.35-.2,.32,.18,.32,0xffc95b,.9);
   }
   this.visuals.detailProp(g,kind);
+ }
+ marketProp(g,kind){
+  // Distinct real-looking store fixtures; the collision grid is handled in level1.js.
+  const shell=0x3b4346,metal=0x637077,light=0xd4d6c9,wood=0x846b52;
+  if(kind==='shelf'){
+   // Freestanding gondola shelves with metal uprights, stocked products and price rails.
+   for(const x of [-1.23,1.23])this.box(g,x,1.03,0,.075,2.04,.94,shell,.55);
+   for(const y of [.29,.81,1.34,1.87]){
+    this.box(g,0,y,0,2.55,.095,1.03,metal,.55);
+    this.box(g,0,y-.075,-.52,2.4,.048,.055,0xe7d0a3,.25);
+    this.box(g,0,y-.075,.52,2.4,.048,.055,0xe7d0a3,.25);
+   }
+   this.box(g,0,2.13,0,2.6,.09,1.08,shell,.56);
+   const count=60,geom=new THREE.BoxGeometry(.27,.33,.34);
+   const packaging=new THREE.InstancedMesh(geom,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.81}),count);
+   const accents=new THREE.InstancedMesh(new THREE.BoxGeometry(.25,.08,.014),new THREE.MeshStandardMaterial({color:0xe9dfce,roughness:.77}),count);
+   const matrix=new THREE.Matrix4(),v=new THREE.Vector3(),q=new THREE.Quaternion(),scale=new THREE.Vector3(1,1,1);
+   const palette=[0xba6a4c,0xe0c66f,0x7196a3,0x8da179,0xd69b72,0x9680a2,0x5c867e,0xc4b39a];
+   let i=0;
+   for(let tier=0;tier<4;tier++)for(let side=0;side<2;side++)for(let ix=0;ix<7;ix++){
+    const xx=-1.02+ix*.34,yy=.39+tier*.525,zz=side?-.22:.22;
+    matrix.compose(v.set(xx,yy,zz),q,scale.set(.88+(ix%3)*.07,.89+(tier%2)*.12,.94));
+    packaging.setMatrixAt(i,matrix);packaging.setColorAt(i,new THREE.Color(palette[(ix+tier*2+side*3)%palette.length]));
+    matrix.compose(v.set(xx,yy,zz+(side?-.18:.18)),q,scale.set(.86,.7,1));
+    accents.setMatrixAt(i,matrix);i++;
+   }
+   packaging.count=accents.count=i;packaging.instanceMatrix.needsUpdate=true;accents.instanceMatrix.needsUpdate=true;
+   if(packaging.instanceColor)packaging.instanceColor.needsUpdate=true;
+   g.add(packaging,accents);
+  }else if(kind==='fridge'){
+   // Glass-front beverage cabinet with lit interior and distinguishable cans.
+   this.box(g,0,1.35,0,1.62,2.69,1.15,shell,.7);
+   this.box(g,0,1.32,.60,1.4,2.35,.075,0x17333c,.6);
+   this.box(g,0,2.61,.6,1.48,.13,.15,0x89e6f5,.4);
+   for(const y of [.45,.88,1.3,1.73,2.16]){
+    this.box(g,0,y,.43,1.43,.055,.75,light,.3);
+    for(let k=0;k<5;k++){
+     const c=this.cyl(g,-.52+k*.26,y+.16,.27,.1,.31,[0xab3832,0xbfa24e,0x4c9bbb,0x589b73,0xbe8a75][(k+Math.floor(y*5))%5],9);
+     this.box(g,c.position.x,y+.31,.28,.18,.02,.16,0xe8e4d5);
+    }
+   }
+   const glass=this.box(g,0,1.34,.655,1.36,2.31,.03,new THREE.MeshPhysicalMaterial({color:0xc1e6ee,roughness:.14,metalness:.07,transparent:true,opacity:.19,depthWrite:false}));
+   this.box(g,-.71,1.32,.68,.06,2.39,.08,0xa7bdc3,.5);this.box(g,.71,1.32,.68,.06,2.39,.08,0xa7bdc3,.5);
+   this.box(g,.03,1.4,.71,.042,.65,.06,0xc7d3d5,.4);
+  }else if(kind==='counter'){
+   this.box(g,0,.54,0,2.78,1.09,1.25,0x64594f,.24);
+   this.box(g,0,1.10,0,2.93,.16,1.4,0xb8ae99,.24);
+   this.box(g,0,.48,.66,2.56,.46,.05,0x3c4e55,.33);
+   for(const x of [-.82,0,.82])this.box(g,x,.48,.69,.45,.26,.025,0x8b9695,.42);
+   const gx=g.position.x/CELL;
+   if(gx>26&&gx<32){
+    this.box(g,0,1.36,-.15,.74,.43,.56,0x25353d,.5);
+    const panel=this.box(g,0,1.39,.15,.58,.21,.035,0x89b9ac,.1);
+    panel.material.emissive.setHex(0x51796f);panel.material.emissiveIntensity=.28;
+    this.box(g,.82,1.24,.22,.32,.09,.46,0x313d40,.4);
+   }else{for(let x=-1.0;x<=1.01;x+=.48)this.box(g,x,1.24,-.15,.34,.1,.42,0x8e9773);}
+  }else if(kind==='desk'){
+   this.box(g,0,.86,0,2.5,.16,1.3,wood,.19);
+   for(const x of [-1.1,1.1])this.box(g,x,.44,0,.12,.87,1.12,shell,.4);
+   this.box(g,0,1.22,-.24,1.05,.69,.08,0x212a2f,.5);
+   this.box(g,0,1.22,-.19,.92,.55,.025,0x59979c);
+   this.box(g,0,1.01,.18,1.0,.035,.34,0x485359);
+   this.box(g,.92,1.0,.25,.31,.03,.27,0xd4c7ad);
+  }else if(kind==='filing'){
+   this.box(g,0,1.14,0,1.0,2.25,1.05,0x899394,.58);
+   for(const y of [.42,.97,1.52,2.06]){
+    this.box(g,0,y,.54,.81,.47,.028,0x9ca5a5,.48);
+    this.box(g,0,y,.58,.32,.055,.035,0x3f4a4c,.62);
+   }
+  }else if(kind==='crate'||kind==='pallet'){
+   const stack=kind==='pallet';
+   this.box(g,0,.18,0,stack?2.4:1.42,.22,stack?1.85:1.42,wood,.12);
+   const colors=[0xa99070,0xc0aa8e,0x947c5f];
+   for(let y=0;y<(stack?2:1);y++)for(let x=-1;x<=1;x++){
+    const xx=x*(stack?.67:.34),yy=.48+y*.67;
+    this.box(g,xx,yy,0,stack?.58:.38,.57,stack?1.46:.95,colors[(x+3+y)%3],.05);
+    this.box(g,xx,yy,.74*(stack?1:.7),stack?.26:.19,.13,.025,0xd4c7b4);
+   }
+  }
  }
  objectiveMesh(o,p){
   const g=new THREE.Group();g.userData.kind=o.kind;

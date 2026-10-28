@@ -1,6 +1,6 @@
-import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=4';
-import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=9';
-import {View} from './render.js?v=8';
+import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=5';
+import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=10';
+import {View} from './render.js?v=9';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=6';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
@@ -421,6 +421,9 @@ function startBrief(n){
  const local=quickTest?{name:'TEST OPERATOR',weapon:'pistol',gadget:null,upgrades:{}}:kit();
  const guest=remoteKit||{name:'PARTNER',weapon:'pistol',gadget:null,upgrades:{}};
  run=makeRun(quickTest?0:n,mode==='solo'?1:2,[local,guest]);
+ // Face the market entrance instead of looking along the parking lot on spawn.
+ if(run.mission===0){controls.yaw=0;controls.pitch=0;for(const player of run.players){player.yaw=0;player.pitch=0;}}
+
  if(quickTest){
   run.phase='play';
   run.toast='TEST MODE · CLICK THE GAME TO ENABLE MOUSE LOOK';
