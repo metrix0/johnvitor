@@ -21,3 +21,63 @@
 .waypoint strong{display:block;color:#e8f8ee;font-size:10px;font-weight:800;letter-spacing:.08em;line-height:1.5}
 .waypoint small{display:block;color:#8eaeac;margin-top:2px;font-size:9px;font-weight:800;letter-spacing:.12em}
 @media(max-width:800px){.waypoint{top:96px;min-width:140px;max-width:45vw;padding:5px 9px}.waypointArrow{font-size:21px}.waypoint strong{font-size:8px}}
+
+
+/* GETAWAY CLUB — diegetic underground safehouse and minimal operator entry */
+.entryScreen{min-height:100vh;position:relative;display:grid;place-items:center;padding:28px;overflow:hidden;background:radial-gradient(ellipse at 52% 14%,#183a3c 0%,transparent 55%),linear-gradient(140deg,#071014 4%,#14242b 54%,#081015 100%);}
+.entryScreen:before,.entryScreen:after{content:"";position:absolute;inset:0;pointer-events:none}
+.entryScreen:before{opacity:.13;background:repeating-linear-gradient(90deg,transparent 0 110px,#a9d9c2 111px 112px),repeating-linear-gradient(0deg,transparent 0 110px,#a9d9c2 111px 112px);transform:perspective(600px) rotateX(58deg) scale(2);transform-origin:bottom}
+.entryScreen:after{border:20px solid #040c10;box-shadow:inset 0 0 140px #0009}
+.entryForm{position:relative;z-index:1;width:min(690px,100%);padding:clamp(32px,6vw,67px);background:#101e25f2;border:1px solid #425c64;box-shadow:0 24px 110px #000b,0 0 110px #65f4be0a;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%)}
+.entrySigil{width:65px;height:61px;display:grid;place-items:center;font:900 30px 'Barlow Condensed',sans-serif;background:#b5f4ce;color:#172c2b;clip-path:polygon(0 0,100% 0,100% 70%,72% 100%,0 100%);margin-bottom:29px}
+.entrySigil span{display:none}.entryEyebrow{color:#b7efd2;font-size:10px;font-weight:800;letter-spacing:.26em}
+.entryForm h1{font:900 clamp(55px,7vw,92px)/.87 'Barlow Condensed',Impact,sans-serif;letter-spacing:-.02em;margin:19px 0 23px}
+.entryForm h1 em{font-style:normal;color:#b7f7d4}.entryForm p{max-width:470px;color:#9bb6bc;font-size:14px;line-height:1.65;margin:0 0 40px}
+.entryForm label,.shStation label{display:block;color:#acbfc1;font-size:10px;font-weight:800;letter-spacing:.16em;margin-bottom:10px}
+.entryControls{display:flex;gap:8px}.entryControls input{flex:1;min-width:0;padding:15px;background:#071318;border:1px solid #47636b;color:#f4fff5;font-weight:700;letter-spacing:.08em;border-radius:0}.entryControls input::placeholder{color:#70848c}
+.entryControls .btn{font-size:11px}.entryStatus{min-height:22px;margin-top:12px;font-size:11px;color:#a7d7c5}
+.entryFoot{border-top:1px solid #355159;margin-top:39px;padding-top:20px;font-size:9px;line-height:1.6;font-weight:700;letter-spacing:.13em;color:#68868e}
+.safehouse{height:100vh;height:100dvh;width:100%;overflow:hidden;background:#081219;position:relative}
+.safehouseStage,.safehouseStage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.safehouseStage canvas{outline:0}
+.shHud{position:absolute;inset:0;pointer-events:none;color:#e4f6f0;font-family:'DM Sans',sans-serif}
+.shTop{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:22px 32px;background:linear-gradient(#03090dbc,transparent);gap:20px}
+.shBrand{display:flex;align-items:center;gap:11px}.shBrand>b{display:grid;place-items:center;background:#aaf0cf;color:#0f2926;width:45px;height:42px;font:900 21px 'Barlow Condensed',sans-serif}.shBrand strong,.shBrand span{display:block}.shBrand strong{font:800 19px 'Barlow Condensed',sans-serif;letter-spacing:.08em}.shBrand span{font-size:9px;color:#a9c4c2;letter-spacing:.14em;margin-top:3px}
+.shTopRight{display:flex;align-items:center;gap:21px;font-size:11px;letter-spacing:.12em;font-weight:800;color:#d7e8e1}.shTopRight button{pointer-events:auto;background:#142b30d9;border:1px solid #52716e;color:#c2ded0;font-size:10px;padding:10px 13px;font-weight:800;letter-spacing:.08em;cursor:pointer}.shTopRight button:hover{background:#28514b}.shGreenDot{color:#a7f4c6}
+.shCrosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);font:200 25px Arial,sans-serif;color:#ccffe5a8;text-shadow:0 0 9px #b6eeca}
+.shPrompt{position:absolute;left:50%;bottom:108px;transform:translateX(-50%);max-width:calc(100vw - 30px);text-align:center;padding:14px 20px;background:#0a1a20df;border:1px solid #7ad2ad8a;font-size:11px;color:#dafbe9;white-space:nowrap;font-weight:800;letter-spacing:.1em;text-shadow:0 1px 2px #000}
+.shPrompt b{background:#baf3d2;color:#122b24;padding:6px 8px;margin-right:9px}
+.shBottom{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;gap:20px;padding:24px 32px;background:linear-gradient(transparent,#061117e8);font-size:10px;font-weight:800;letter-spacing:.12em}
+.shBottom>div:first-child b,.shBottom>div:first-child span{display:block}.shBottom b{color:#b4f9d3}.shBottom span{color:#93abb0}.shBottom>div:first-child span{font-size:8px;margin-top:4px}
+.shPanel{position:absolute;z-index:6;right:22px;top:20px;bottom:20px;width:min(580px,calc(100vw - 44px));display:flex;flex-direction:column;background:#0e1d24f7;border:1px solid #607878;box-shadow:0 18px 100px #000e,0 0 100px #0de6ba14;backdrop-filter:blur(19px);color:#e8f8f0}
+.shPanelHeader{padding:21px 25px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #2a444d}
+.shPanelHeader small{font-size:9px;letter-spacing:.16em;font-weight:800;color:#89bcae}.shPanelHeader h2{font:800 33px 'Barlow Condensed',sans-serif;letter-spacing:.025em;margin:4px 0 0;color:#f1f9f3}
+.shPanelHeader button{border:1px solid #4b6a6b;background:#23353d;color:#effff6;font-size:25px;width:39px;height:39px;line-height:1;cursor:pointer}
+.shTabs{display:flex;gap:3px;flex-wrap:wrap;padding:11px 22px;border-bottom:1px solid #31464d}
+.shTabs button{border:1px solid transparent;background:transparent;color:#92aab1;font-size:9px;font-weight:800;letter-spacing:.09em;padding:9px 10px;cursor:pointer}
+.shTabs button.selected,.shTabs button:hover{color:#c5ffe0;background:#25423e;border-color:#477665}
+.shPanelContent{padding:25px;overflow:auto;min-height:0;flex:1;scrollbar-color:#4a746d transparent}
+.shStation{display:block}.shStation.hidden{display:none}
+.shLead{font-size:13px;line-height:1.65;color:#a0b9bd;margin:0 0 25px}
+.shCampaign{margin-bottom:23px;padding:14px;background:#142b32;border:1px solid #305058}
+.shCampaign>div:first-child,.shPanelRow{display:flex;justify-content:space-between;align-items:center;gap:12px}.shCampaign small,.shPanelRow{font-size:10px;color:#9bb5b7;font-weight:800;letter-spacing:.11em}.shCampaign b,.shPanelRow span{font-size:12px;color:#bcfcd9}.shCampaign .bar{margin-top:12px}
+.shPanelRow{margin-bottom:10px}.shPanelRow label{margin:0}
+.shStation .select{margin-bottom:13px}
+.shJobs{display:grid;width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px;margin-bottom:15px}
+.shJobs .jobCard{padding:17px 14px;min-height:155px}.shJobs .jobIndex{font-size:32px;margin:4px 0}.shJobs .jobCard h3{font-size:18px}.shJobs .jobCard p{font-size:9px}.shJobs .jobReward{font-size:9px}
+.shAction{width:100%;margin-top:17px;min-height:47px}.shKitStats{padding:22px 17px;background:#162b33;border:1px solid #3d6367;color:#baf1d5;font-weight:700;font-size:12px;line-height:1.7}
+.shMiniStats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 23px}
+.shMiniStats>div{background:#152d34;border:1px solid #38555b;padding:15px;min-width:0}.shMiniStats small{display:block;font-size:9px;letter-spacing:.09em;color:#a0b4b8}.shMiniStats b{display:block;font:800 23px 'Barlow Condensed';color:#c0f9d4;margin-top:7px;word-break:break-word}
+.shStation .upgradeList{display:grid;gap:8px}.shStation .upgrade{background:#162a30;border:1px solid #33515c}
+.shJoin{margin-top:28px}.shJoin>div{display:flex;gap:7px}.shJoin input{width:100%;min-width:0;background:#0a181e;border:1px solid #45666a;color:#ecfff5;padding:13px 12px;letter-spacing:.12em}
+.shRoomInvite{margin-top:15px;background:#1d373b;border:1px solid #4b7774;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.shRoomInvite span{font:800 24px 'Barlow Condensed';letter-spacing:.2em;color:#bbffd5}.shRoomInvite button{font-size:10px}
+.shDeployName{padding:20px;background:#172e35;border:1px solid #3c6268;font:900 45px 'Barlow Condensed';color:#f5d69c}.shDeployKit{color:#acdbc9;padding:14px 0;font-size:12px;font-weight:800;letter-spacing:.11em}
+.shPanelFooter{padding:14px 22px;border-top:1px solid #2c454b;color:#849e9e;font-size:9px;font-weight:700;letter-spacing:.11em;text-align:center}
+@media(max-width:700px){
+ .entryForm{padding:27px 20px}.entryForm h1{font-size:58px}.entryControls{flex-direction:column}.entryControls .btn{width:100%}
+ .shTop{padding:14px}.shTopRight{gap:6px}.shTopRight .shGreenDot{display:none}.shTopRight button{padding:8px;font-size:9px}
+ .shBottom{padding:18px 12px;font-size:9px}.shBottom>div:last-child{display:none}.shPrompt{bottom:76px;font-size:9px;white-space:normal;width:calc(100vw - 32px)}
+ .shPanel{top:10px;right:9px;bottom:10px;width:calc(100vw - 18px)}.shPanelHeader{padding:14px}.shTabs{padding:8px}.shTabs button{padding:8px 6px}.shPanelContent{padding:16px}
+ .shJobs .jobCard{min-height:145px}.shJobs .jobCard h3{font-size:16px}
+}

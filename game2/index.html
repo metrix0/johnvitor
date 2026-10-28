@@ -5,32 +5,83 @@
 <title>GETAWAY CLUB — The Heist Campaign</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=2">
+<link rel="stylesheet" href="./style.css?v=3">
 <script defer src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-<script type="module" src="./main.js?v=2"></script>
+<script type="module" src="./main.js?v=3"></script>
 </head><body>
-<div id="menu" class="menu">
- <nav class="nav"><a class="wordmark" href="/game2/"><span class="mark">G<span>·</span>C</span><span>GETAWAY <em>CLUB</em></span></a><div class="navRight"><span class="liveDot"></span> BLACKOUT PROTOCOL <span class="navSlash">/</span> SEASON 01</div></nav>
- <div class="hero">
-  <div class="heroCopy"><div class="eyebrow"><span class="line"></span> A COOPERATIVE FPS HEIST CAMPAIGN</div><h1>MAKE<br><span>A KILLING.</span><br>MAKE IT <i>OUT.</i></h1>
-   <p>Five jobs. Bigger scores. Better guns. The plan never survives first contact — but you and your crew might.</p>
-   <div class="heroPills"><span>◉ FIRST-PERSON COMBAT</span><span>◈ SOLO OR 2-PLAYER CO-OP</span><span>✳ PERSISTENT LOADOUTS</span></div>
-   <div class="progressTrack"><div class="progressTop"><span>CAMPAIGN PROGRESS</span><strong id="progressText">0 / 5 JOBS</strong></div><div class="bar"><div id="progressBar" class="barFill"></div></div></div>
-  </div>
-  <div class="dispatch"><div class="dispatchHead"><span>01 / CREW REGISTRATION</span><strong>OPERATOR CONSOLE <span class="signal">● ONLINE</span></strong></div>
-   <div class="dispatchBody"><label for="playerName">YOUR OPERATOR NAME</label><div class="profileControls"><input id="playerName" maxlength="24" spellcheck="false" autocomplete="nickname" placeholder="Choose a name"><button id="loadProfile" class="btn btnOutline">LOAD</button></div><div id="profileStatus" class="status" aria-live="polite">Names are public. Your browser saves progress first.</div>
-    <div class="miniStats"><div><span>AVAILABLE FUNDS</span><strong id="wallet">₵ 0</strong></div><div><span>JOBS CLEARED</span><strong id="cleared">00 / 05</strong></div><div><span>OPERATOR</span><strong id="operator">UNREGISTERED</strong></div></div>
-    <div class="dispatchTitle">SELECT YOUR OPERATION <span id="missionNumber">01 / 05</span></div>
-    <select id="missionSelect" class="select" aria-label="Choose unlocked operation"></select>
-    <div class="dispatchActions"><button id="solo" class="btn btnPrimary">GO SOLO <span>↗</span></button><button id="create" class="btn btnLight">CREATE CO-OP <span>↗</span></button></div>
-    <div class="joinLabel">HAVE AN INVITE CODE?</div><div class="joinRow"><input id="roomCode" autocomplete="off" maxlength="6" placeholder="ENTER 6-DIGIT CODE" aria-label="Invite code"><button id="join" class="btn btnOutline">JOIN ROOM ↗</button></div><div id="connectStatus" class="status" aria-live="polite"></div>
-   </div><div class="dispatchFoot">NO ACCOUNTS. NO INSTALLS. JUST THE JOB. <span>↗</span></div></div>
+<div id="menu" class="entryScreen">
+ <div class="entryNoise"></div>
+ <div class="entryForm">
+  <div class="entrySigil">G<span>·</span>C</div>
+  <div class="entryEyebrow">ENCRYPTED ACCESS / THE GETAWAY CLUB</div>
+  <h1>WELCOME<br><em>BACK,</em> OPERATOR.</h1>
+  <p>Your crew is waiting below ground. Enter your callsign to unlock the safehouse.</p>
+  <label for="playerName">OPERATOR CALLSIGN</label>
+  <div class="entryControls"><input id="playerName" maxlength="24" spellcheck="false" autocomplete="nickname" placeholder="YOUR OPERATOR NAME" aria-label="Operator callsign"><button id="loadProfile" class="btn btnPrimary" type="button">ENTER SAFEHOUSE ↗</button></div>
+  <div id="profileStatus" class="entryStatus" aria-live="polite">3–24 letters, numbers, _ or −. Your browser remembers your name.</div>
+  <div class="entryFoot">NO PASSWORDS · YOUR OPERATOR NAME IS PUBLIC · PROGRESS SAVES LOCALLY FIRST</div>
  </div>
- <div class="sectionHead"><div><span class="sectionOverline">YOUR NEXT TARGETS</span><h2>THE JOB BOARD <span>05 OPERATIONS</span></h2></div><span class="sectionHint">FROM PETTY CASH TO THE CITY'S BIGGEST VAULT</span></div>
- <div id="jobBoard" class="jobBoard"></div>
- <div class="sectionHead armoryHead"><div><span class="sectionOverline">EARN. EQUIP. REPEAT.</span><h2>SAFEHOUSE ARMORY <span>PERSISTENT UPGRADES</span></h2></div><span class="sectionHint">GEAR IS SAVED TO YOUR OPERATOR PROFILE</span></div>
- <div class="loadoutWrap"><div class="loadout"><label>PRIMARY WEAPON</label><select id="weapon" class="select"></select><span id="weaponStats" class="loadoutInfo">—</span></div><div class="loadout"><label>TACTICAL GADGET</label><select id="gadget" class="select"></select><span id="gadgetStats" class="loadoutInfo">—</span></div><div class="upgradeList" id="upgrades"></div></div>
- <footer class="footer"><span>GETAWAY CLUB <b>© 2026</b> · A SMALL CREW. A BIG SCORE.</span><span>BUILT FOR DESKTOP · MOUSE + KEYBOARD RECOMMENDED</span></footer>
+</div>
+<div id="safehouse" class="safehouse hidden" aria-label="3D interactive safehouse lobby">
+ <div id="safehouseStage" class="safehouseStage"></div>
+ <div class="shHud">
+  <div class="shTop">
+   <div class="shBrand"><b>G·C</b><div><strong>THE SAFEHOUSE</strong><span>UNDERGROUND / OPERATIONS HUB</span></div></div>
+   <div class="shTopRight"><span class="shGreenDot">● SECURE</span><span id="safehouseName">OPERATOR</span><button id="changeOperator" type="button">SWITCH OPERATOR</button></div>
+  </div>
+  <div class="shCrosshair" aria-hidden="true">+</div>
+  <div class="shPrompt" id="safehousePrompt" aria-live="polite">CLICK TO LOOK AROUND · WASD TO MOVE · E TO INTERACT</div>
+  <div class="shBottom"><div><b>HIDEOUT / 001</b><span>ONLY YOUR CREW KNOWS THIS LOCATION</span></div><div>W A S D <span>MOVE</span> · MOUSE <span>LOOK</span> · E <span>INTERACT</span></div></div>
+ </div>
+ <div id="safehousePanel" class="shPanel hidden" aria-label="Safehouse station">
+  <header class="shPanelHeader"><div><small>GETAWAY CLUB / SAFEHOUSE TERMINAL</small><h2 id="safehousePanelTitle">OPERATIONS</h2></div><button id="closeSafehouse" type="button" aria-label="Close station">×</button></header>
+  <nav class="shTabs" aria-label="Safehouse stations">
+   <button type="button" data-station="missions">01 JOBS</button><button type="button" data-station="weapons">02 WEAPONS</button><button type="button" data-station="gadgets">03 GADGETS</button><button type="button" data-station="upgrades">04 UPGRADES</button><button type="button" data-station="crew">05 CREW</button><button type="button" data-station="deploy">06 DEPLOY</button>
+  </nav>
+  <div class="shPanelContent">
+   <section id="station-missions" class="shStation">
+    <p class="shLead">Pick the next target. Clear an operation to unlock the following one.</p>
+    <div class="shCampaign"><div><small>CAMPAIGN PROGRESS</small><b id="progressText">0 / 5 JOBS</b></div><div class="bar"><div class="barFill" id="progressBar"></div></div></div>
+    <div class="shPanelRow"><label for="missionSelect">OPERATION</label><span id="missionNumber">01 / 05</span></div>
+    <select id="missionSelect" class="select" aria-label="Choose unlocked operation"></select>
+    <div id="jobBoard" class="jobBoard shJobs"></div>
+    <button class="btn btnPrimary shAction" data-jump="deploy" type="button">PROCEED TO DEPLOYMENT ↗</button>
+   </section>
+   <section id="station-weapons" class="shStation hidden">
+    <p class="shLead">Your armory expands as you survive bigger jobs.</p>
+    <label for="weapon">PRIMARY FIREARM</label><select id="weapon" class="select"></select>
+    <div id="weaponStats" class="shKitStats"></div>
+    <button class="btn btnOutline shAction" data-jump="gadgets" type="button">TACTICAL GEAR →</button>
+   </section>
+   <section id="station-gadgets" class="shStation hidden">
+    <p class="shLead">Choose the tool you want at your side when the alarms go off.</p>
+    <label for="gadget">TACTICAL GADGET</label><select id="gadget" class="select"></select>
+    <div id="gadgetStats" class="shKitStats"></div>
+    <button class="btn btnOutline shAction" data-jump="upgrades" type="button">BALLISTIC UPGRADES →</button>
+   </section>
+   <section id="station-upgrades" class="shStation hidden">
+    <div class="shMiniStats"><div><small>FUNDS AVAILABLE</small><b id="wallet">₵ 0</b></div><div><small>JOBS CLEARED</small><b id="cleared">00 / 05</b></div></div>
+    <p class="shLead">Invest the take into survivability and firepower.</p>
+    <div id="upgrades" class="upgradeList"></div>
+   </section>
+   <section id="station-crew" class="shStation hidden">
+    <p class="shLead">Bring one partner. Share a private six-character code, or enter one to join their crew.</p>
+    <div class="shMiniStats"><div><small>OPERATOR</small><b id="operator">UNREGISTERED</b></div><div><small>NETWORK</small><b>PEER TO PEER</b></div></div>
+    <button id="create" class="btn btnPrimary shAction" type="button">CREATE PRIVATE ROOM ↗</button>
+    <div class="shJoin"><label for="roomCode">INVITE CODE</label><div><input id="roomCode" maxlength="6" autocomplete="off" placeholder="6-CHAR CODE" aria-label="Invite code"><button id="join" class="btn btnOutline" type="button">JOIN ROOM</button></div></div>
+    <div id="connectStatus" class="status" aria-live="polite"></div>
+    <div id="shRoomInvite" class="shRoomInvite hidden"><span id="shRoomCode"></span><button id="copyRoomInvite" class="btn btnOutline" type="button">COPY INVITE LINK</button></div>
+   </section>
+   <section id="station-deploy" class="shStation hidden">
+    <p class="shLead">Gear checked. Route planned. The door only opens one way.</p>
+    <div class="shDeployName" id="shDeployMission">AFTER HOURS</div>
+    <div class="shDeployKit" id="shDeployKit">M9 SIDEARM</div>
+    <button id="solo" class="btn btnPrimary shAction" type="button">LAUNCH SOLO OPERATION ↗</button>
+    <button class="btn btnOutline shAction" data-jump="crew" type="button">PLAY WITH A PARTNER →</button>
+   </section>
+  </div>
+  <footer class="shPanelFooter">EQUIPMENT AND PROGRESSION AUTO-SAVE TO YOUR OPERATOR</footer>
+ </div>
 </div>
 <div id="gameScreen" class="gameScreen hidden">
  <div id="stage" class="stage"><div class="vignette"></div><div id="damage" class="damage"></div>

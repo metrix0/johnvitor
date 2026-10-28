@@ -1,11 +1,13 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js';
 import {View} from './render.js';
+import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js';
 const $=id=>document.getElementById(id);
 const key=name=>'getaway-v3-'+name.toLowerCase();
 let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
 let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
 let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set();
+let safehouse=null,activeStation='',lastSafehousePrompt=0;
 let selectedMission=0,selectedWeapon='pistol',selectedGadget='',last=0,lastNetwork=0,lastHud=0,lastFoot=0,lastShots=0,lastHits=0,lastHeadshots=0,lastHp=100,lastToast='',lastToastUntil=0;
 const controls={forward:false,back:false,left:false,right:false,walk:false,fire:false,reload:false,interact:false,gadget:false,aim:false,yaw:-Math.PI/2,pitch:0};
 let audio=null,muted=localStorage.getItem('getaway-muted')==='true';
@@ -97,6 +99,9 @@ function refreshMenu(){
   return `<div class="upgrade"><div><b>${u.icon} ${u.name} <span style="color:#9eeabe">LVL ${tier}/3</span></b><small>${u.desc}</small></div><button data-upgrade="${id}" ${can?'':'disabled'}>${tier>=3?'MAXED':cost?coins(cost):'—'}</button></div>`;
  }).join('');
  $('upgrades').querySelectorAll('[data-upgrade]').forEach(b=>b.onclick=()=>buyUpgrade(b.dataset.upgrade));
+ $('safehouseName').textContent=loadedName?profile.name.toUpperCase():'OPERATOR';
+ $('shDeployMission').textContent=MISSIONS[selectedMission].name+' / '+MISSIONS[selectedMission].site;
+ $('shDeployKit').textContent=WEAPONS[selectedWeapon].name+' · '+(selectedGadget?GADGETS[selectedGadget].name:'NO GADGET')+' · '+coins(profileWallet())+' AVAILABLE';
 }
 function buyUpgrade(id){
  if(!loadedName||!UPGRADES[id])return;
@@ -137,8 +142,37 @@ function initView(){
  }catch(e){$('fatalText').textContent='3D graphics could not initialize: '+e.message;$('fatal').classList.remove('hidden');return false;}
 }
 function requestLock(){if(!view||run?.phase!=='play')return;try{const promise=view.canvas.requestPointerLock();if(promise?.catch)promise.catch(()=>status('CLICK THE GAME TO ENABLE MOUSE LOOK'));}catch{}}
+function safehouseIsVisible(){return !$('safehouse').classList.contains('hidden');}
+function openStation(id){
+ if(!SAFEHOUSE_STATIONS.some(s=>s.id===id)||!safehouseIsVisible())return;
+ activeStation=id;safehouse?.setActive(false);
+ if(document.pointerLockElement===safehouse?.canvas)document.exitPointerLock();
+ $('safehousePanelTitle').textContent=SAFEHOUSE_STATIONS.find(s=>s.id===id).name;
+ $('safehousePanel').classList.remove('hidden');
+ for(const button of document.querySelectorAll('.shTabs [data-station]'))button.classList.toggle('selected',button.dataset.station===id);
+ for(const section of document.querySelectorAll('.shStation'))section.classList.toggle('hidden',section.id!=='station-'+id);
+ $('safehousePrompt').classList.add('hidden');
+ refreshMenu();
+}
+function closeStation(){
+ activeStation='';$('safehousePanel').classList.add('hidden');$('safehousePrompt').classList.remove('hidden');
+ safehouse?.setActive(true);
+ try{const promise=safehouse?.canvas.requestPointerLock();promise?.catch?.(()=>{});}catch{}
+}
+function enterSafehouse(){
+ $('menu').classList.add('hidden');$('gameScreen').classList.add('hidden');$('safehouse').classList.remove('hidden');
+ if(!safehouse){
+  try{safehouse=new Safehouse($('safehouseStage'),id=>openStation(id));safehouse.pos.z=-3.15;}
+  catch(e){$('fatalText').textContent='Could not load the 3D safehouse: '+e.message;$('fatal').classList.remove('hidden');return false;}
+ }
+ safehouse.setActive(true);safehouse.resize();if(mode!=='coop')mode='safehouse';
+ $('safehousePanel').classList.add('hidden');$('safehousePrompt').classList.remove('hidden');activeStation='';
+ refreshMenu();if(invite&&!room)openStation('crew');return true;
+}
 function enterScreen(){
- $('menu').classList.add('hidden');$('gameScreen').classList.remove('hidden');
+ if(document.pointerLockElement===safehouse?.canvas)document.exitPointerLock();
+ safehouse?.setActive(false);
+ $('menu').classList.add('hidden');$('safehouse').classList.add('hidden');$('gameScreen').classList.remove('hidden');
  $('roomDisplay').textContent=mode==='solo'?'SOLO / OFFLINE':room;
  $('networkDisplay').textContent=mode==='solo'?'LOCAL':'CONNECTED';
  $('invite').classList.toggle('hidden',mode==='solo');
@@ -146,10 +180,17 @@ function enterScreen(){
 }
 function returnMenu(){
  if(document.pointerLockElement)document.exitPointerLock();
- conn?.close();peer?.destroy();peer=null;conn=null;room='';mode='menu';host=true;run=null;softPaused=false;activeOverlay='';
- $('gameScreen').classList.add('hidden');$('menu').classList.remove('hidden');history.replaceState(null,'',location.pathname);
+ conn?.close();peer?.destroy();peer=null;conn=null;room='';mode='safehouse';host=true;run=null;softPaused=false;activeOverlay='';
+ $('gameScreen').classList.add('hidden');$('centerOverlay').classList.add('hidden');history.replaceState(null,'',location.pathname);
  if(view){view.dispose();view.canvas.remove();view=null;}
- for(const k of ['forward','back','left','right','walk','fire','reload','interact','gadget','aim'])controls[k]=false;status('');refreshMenu();
+ for(const k of ['forward','back','left','right','walk','fire','reload','interact','gadget','aim'])controls[k]=false;status('');$('shRoomInvite').classList.add('hidden');
+ enterSafehouse();
+}
+function changeOperator(){
+ if(document.pointerLockElement)document.exitPointerLock();
+ conn?.close();peer?.destroy();peer=null;conn=null;room='';run=null;mode='menu';loadedName='';activeStation='';
+ safehouse?.setActive(false);$('safehouse').classList.add('hidden');$('safehousePanel').classList.add('hidden');$('menu').classList.remove('hidden');
+ history.replaceState(null,'',location.pathname);$('playerName').focus();profileStatus('ENTER AN OPERATOR CALLSIGN');
 }
 function showOverlay(tag,title,description,actionText,handler,stats=[]){
  activeOverlay=tag;$('overlayTag').textContent=tag;$('overlayTitle').textContent=title;$('overlayText').textContent=description;
@@ -208,12 +249,14 @@ function awardMission(completedRun){
 }
 function startBrief(n){
  if(!host)return;
+ if($('gameScreen').classList.contains('hidden')&&!enterScreen())return;
  const local=kit(),guest=remoteKit||{name:'PARTNER',weapon:'pistol',gadget:null,upgrades:{}};
  run=makeRun(n,mode==='solo'?1:2,[local,guest]);
  onRunChange();sendState();
 }
 async function startSolo(){
  if(!await ensureProfile())return;
+ conn?.close();peer?.destroy();peer=null;conn=null;
  mode='solo';host=true;room='';if(!enterScreen())return;
  startBrief(selectedMission);
 }
@@ -223,7 +266,8 @@ function randomCode(){
 function send(packet){if(conn?.open)try{conn.send(packet);}catch{}}
 function sendState(){if(host&&run)send({type:'state',run:{...run,grid:undefined}});}
 function connectionLost(){
- if(mode==='menu')return;
+ if(mode!=='coop')return;
+ if(!run){peer?.destroy();peer=null;conn=null;mode='safehouse';room='';$('shRoomInvite').classList.add('hidden');status('CONNECTION LOST · TRY JOINING OR CREATING A ROOM AGAIN');return;}
  $('networkDisplay').textContent='OFFLINE';
  if(host&&run){
   if(run.players.length===2)run.players.splice(1,1);
@@ -256,6 +300,7 @@ function setupConnection(c){
    if(packet.type==='input')remoteInput=sanitizedInput(packet.input);
    if(packet.type==='kit-update'&&packet.kit){const k=packet.kit;remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:WEAPONS[k.weapon]?k.weapon:'pistol',gadget:GADGETS[k.gadget]?k.gadget:null,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};}
   }else if(packet.type==='state'&&packet.run){
+   if($('gameScreen').classList.contains('hidden')&&!enterScreen())return;
    const previous=run?.runId;run=packet.run;run.grid=makeGrid(MISSIONS[run.mission]);onRunChange();if(previous!==run.runId)view?.build(run);
   }
  });
@@ -263,28 +308,23 @@ function setupConnection(c){
 }
 async function startCoop(isHost,code){
  if(!await ensureProfile())return;
- if(typeof window.Peer!=='function'){status('REAL-TIME SERVICE DID NOT LOAD. CHECK YOUR CONNECTION.');return;}
+ if(typeof window.Peer!=='function'){openStation('crew');status('REAL-TIME SERVICE DID NOT LOAD. CHECK YOUR CONNECTION.');return;}
+ conn?.close();peer?.destroy();conn=null;peer=null;
  mode='coop';host=isHost;room=code;remoteKit=null;remoteInput={};run=null;
- if(!enterScreen()){mode='menu';return;}
- $('roomDisplay').textContent=room;
- $('networkDisplay').textContent='CONNECTING';
+ openStation('crew');$('shRoomInvite').classList.toggle('hidden',!isHost);$('shRoomCode').textContent=code;
+ status(isHost?'OPENING PRIVATE ROOM '+code+'…':'CONNECTING TO ROOM '+code+'…');
  const id='getaway-club-v4-'+room;
  peer=isHost?new window.Peer(id,{debug:0}):new window.Peer(undefined,{debug:0});
- const timeout=setTimeout(()=>{if(mode==='coop'&&!conn?.open)showOverlay('NETWORK','COULD NOT CONNECT','Check the room code and verify that your partner has the room open.',null,null);},18000);
+ const timeout=setTimeout(()=>{if(mode==='coop'&&!conn?.open)status('COULD NOT CONNECT. CHECK THE CODE AND TRY AGAIN.');},18000);
  peer.on('open',()=>{
-  if(isHost){
-   history.replaceState(null,'',location.pathname+'?room='+room);
-   showOverlay('CO-OP ROOM / '+room,'AWAITING THE CREW','Share your invite link with one partner. The mission briefing loads when they connect.',null,null,[['ROOM CODE',room],['PLAYERS','1 / 2'],['SESSION','PRIVATE P2P']]);
-  }else{
-   showOverlay('CONNECTING','JOINING THE HEIST','Establishing a direct connection with your crew leader.',null,null);
-   setupConnection(peer.connect(id,{reliable:true,serialization:'json'}));
-  }
+  if(isHost){history.replaceState(null,'',location.pathname+'?room='+room);status('ROOM '+room+' READY · SHARE YOUR INVITE LINK · WAITING FOR PARTNER');}
+  else{status('CONTACTING CREW LEADER…');setupConnection(peer.connect(id,{reliable:true,serialization:'json'}));}
  });
  peer.on('connection',c=>{if(!host){c.close();return;}setupConnection(c);});
  peer.on('error',e=>{
   clearTimeout(timeout);
-  const message=e.type==='peer-unavailable'?'Room not found. Ask your partner to create a room.':e.type==='unavailable-id'?'That room code is in use. Try creating another.':'Realtime service unavailable. Check your internet connection.';
-  showOverlay('NETWORK ERROR','CONNECTION FAILED',message,null,null);
+  status(e.type==='peer-unavailable'?'ROOM NOT FOUND. ASK YOUR PARTNER TO CREATE IT.':e.type==='unavailable-id'?'ROOM CODE IN USE. TRY ANOTHER.':'REALTIME SERVICE UNAVAILABLE. CHECK YOUR INTERNET.');
+  mode='safehouse';$('shRoomInvite').classList.add('hidden');
  });
 }
 function updateHud(){
@@ -362,6 +402,15 @@ function drawMinimap(player){
 function frame(time){
  requestAnimationFrame(frame);
  const dt=Math.min(.05,Math.max(0,(time-last)/1000||0));last=time;
+ if(safehouse&&safehouseIsVisible()){
+  safehouse.update(dt);
+  if(!activeStation&&time-lastSafehousePrompt>120){
+   const station=safehouse.nearest(),locked=document.pointerLockElement===safehouse.canvas;
+   $('safehousePrompt').innerHTML=station?'<b>E</b> '+escapeText(station.name)+' · '+escapeText(station.hint):locked?'WASD TO MOVE · LOOK TOWARD A STATION · E TO INTERACT':'CLICK TO LOOK AROUND · WASD TO MOVE · E TO INTERACT';
+   lastSafehousePrompt=time;
+  }
+  return;
+ }
  if(mode==='menu'||!view||!run)return;
  if(host&&run.phase==='play'&&!softPaused){
   stepRun(run,[controls,remoteInput],dt);
@@ -376,22 +425,33 @@ function frame(time){
 }
 window.addEventListener('keydown',e=>{
  if(mode==='menu')return;
- const k=e.key.toLowerCase(),keys={'w':'forward','arrowup':'forward','s':'back','arrowdown':'back','a':'left','arrowleft':'left','d':'right','arrowright':'right','shift':'walk','r':'reload','e':'interact','q':'gadget',' ':'fire'};
+ const k=e.key.toLowerCase();
+ if(safehouseIsVisible()){
+  if(k==='escape'&&activeStation){closeStation();e.preventDefault();return;}
+  if(activeStation||e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement)return;
+  if(k==='e'&&!e.repeat){const station=safehouse?.nearest();if(station)openStation(station.id);}
+  safehouse?.key(k,true);
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift','e'].includes(k))e.preventDefault();
+  return;
+ }
+ const keys={'w':'forward','arrowup':'forward','s':'back','arrowdown':'back','a':'left','arrowleft':'left','d':'right','arrowright':'right','shift':'walk','r':'reload','e':'interact','q':'gadget',' ':'fire'};
  if(keys[k]){controls[keys[k]]=true;e.preventDefault();}
  if(k==='escape'&&run?.phase==='play'&&!activeOverlay)showPause();
  if(k==='m'&&!e.repeat){muted=!muted;localStorage.setItem('getaway-muted',String(muted));$('sound').textContent=muted?'♪̸':'♫';}
 });
 window.addEventListener('keyup',e=>{
+ safehouse?.key(e.key.toLowerCase(),false);
  const keys={'w':'forward','arrowup':'forward','s':'back','arrowdown':'back','a':'left','arrowleft':'left','d':'right','arrowright':'right','shift':'walk','r':'reload','e':'interact','q':'gadget',' ':'fire'};const key=keys[e.key.toLowerCase()];if(key)controls[key]=false;
 });
 window.addEventListener('mousemove',e=>{
+ if(safehouse&&document.pointerLockElement===safehouse.canvas){safehouse.look(e.movementX,e.movementY);return;}
  if(!view||document.pointerLockElement!==view.canvas)return;
  const sensitivity=controls.aim?.70:1;controls.yaw-=e.movementX*.0021*sensitivity;controls.pitch=clamp(controls.pitch-e.movementY*.0018*sensitivity,-1.22,1.22);
 });
-window.addEventListener('blur',()=>{for(const k of ['forward','back','left','right','walk','fire','reload','interact','gadget','aim'])controls[k]=false;});
-$('loadProfile').onclick=()=>void ensureProfile(true);
+window.addEventListener('blur',()=>{safehouse?.resetKeys();for(const k of ['forward','back','left','right','walk','fire','reload','interact','gadget','aim'])controls[k]=false;});
+$('loadProfile').onclick=async()=>{if(await ensureProfile(true))enterSafehouse();};
 $('playerName').oninput=()=>{if($('playerName').value.trim().toLowerCase()!==loadedName){profileStatus('PRESS LOAD TO ACCESS THIS OPERATOR');}};
-$('playerName').onkeydown=e=>{if(e.key==='Enter')void ensureProfile(true);};
+$('playerName').onkeydown=e=>{if(e.key==='Enter')$('loadProfile').click();};
 $('missionSelect').onchange=e=>{selectedMission=Number(e.target.value);refreshMenu();};
 $('weapon').onchange=e=>{selectedWeapon=e.target.value;persistLoadout();refreshMenu();};
 $('gadget').onchange=e=>{selectedGadget=e.target.value;persistLoadout();refreshMenu();};
@@ -400,15 +460,19 @@ $('create').onclick=()=>void startCoop(true,randomCode());
 $('join').onclick=()=>{const code=$('roomCode').value.trim().toUpperCase();if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){status('ENTER A VALID 6-CHARACTER CODE');return;}void startCoop(false,code);};
 $('roomCode').onkeydown=e=>{if(e.key==='Enter')$('join').click();};
 $('overlayLeave').onclick=returnMenu;
+$('closeSafehouse').onclick=closeStation;
+$('changeOperator').onclick=changeOperator;
+document.querySelectorAll('.shTabs [data-station], [data-jump]').forEach(button=>button.onclick=()=>openStation(button.dataset.station||button.dataset.jump));
+$('copyRoomInvite').onclick=async()=>{const url=location.origin+location.pathname+'?room='+room;try{await navigator.clipboard.writeText(url);status('INVITE LINK COPIED');}catch{window.prompt('Copy invite:',url);}};
 $('invite').onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname+'?room='+room);$('invite').textContent='✓';setTimeout(()=>$('invite').textContent='↗',1500);}catch{window.prompt('Copy invitation URL:',location.origin+location.pathname+'?room='+room);}};
 $('sound').onclick=()=>{muted=!muted;localStorage.setItem('getaway-muted',String(muted));$('sound').textContent=muted?'♪̸':'♫';beep('pickup');};
 $('pause').onclick=()=>{if(document.pointerLockElement)document.exitPointerLock();if(run?.phase==='play')showPause();};
 $('sound').textContent=muted?'♪̸':'♫';
 const invite=new URLSearchParams(location.search).get('room');
-if(invite&&/^[A-HJ-NP-Z2-9]{6}$/i.test(invite)){$('roomCode').value=invite.toUpperCase();status('INVITE DETECTED · ENTER YOUR NAME AND JOIN');}
+if(invite&&/^[A-HJ-NP-Z2-9]{6}$/i.test(invite)){$('roomCode').value=invite.toUpperCase();profileStatus('INVITE DETECTED · ENTER YOUR CALLSIGN TO ACCESS THE SAFEHOUSE');}
 const remembered=localStorage.getItem('getaway-last-operator')||localStorage.getItem('getaway-profile-name');
-if(remembered&&/^[a-zA-Z0-9_-]{3,24}$/.test(remembered)){$('playerName').value=remembered;void ensureProfile();}
-else refreshMenu();
+if(remembered&&/^[a-zA-Z0-9_-]{3,24}$/.test(remembered)){$('playerName').value=remembered;}
+refreshMenu();
 window.addEventListener('beforeunload',()=>{peer?.destroy();});
 window.getawayReady=true;
 $('fatal').classList.add('hidden');

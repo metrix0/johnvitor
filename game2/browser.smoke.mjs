@@ -23,6 +23,26 @@ try{
  await page.waitForFunction(()=>window.getawayReady===true,{timeout:45000});
  await page.screenshot({path:'/tmp/getaway-menu.png',fullPage:false});
  await page.locator('#playerName').fill('QATEST26');
+ await page.locator('#loadProfile').click();
+ await page.waitForSelector('#safehouse:not(.hidden)',{timeout:15000});
+ const lobbyCanvas=page.locator('#safehouseStage canvas');
+ assert.equal(await lobbyCanvas.count(),1,'3D safehouse renderer canvas exists');
+ assert.equal(await page.locator('#menu').isVisible(),false,'initial operator screen closes after entry');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('getaway-last-operator')),'qatest26','operator name persisted locally');
+ await page.screenshot({path:'/tmp/getaway-safehouse.png',fullPage:false});
+ await page.keyboard.press('e');
+ await page.waitForSelector('#safehousePanel:not(.hidden)',{timeout:12000});
+ assert.equal(await page.locator('#station-missions').isVisible(),true,'mission station opens with E');
+ await page.locator('.shTabs [data-station="weapons"]').click();
+ assert.equal(await page.locator('#station-weapons').isVisible(),true,'weapons station accessible');
+ assert.equal(await page.locator('#weapon').inputValue(),'pistol','initial pistol is equipped');
+ await page.locator('.shTabs [data-station="gadgets"]').click();
+ assert.equal(await page.locator('#station-gadgets').isVisible(),true,'gadget station accessible');
+ await page.locator('.shTabs [data-station="upgrades"]').click();
+ assert.equal(await page.locator('#station-upgrades').isVisible(),true,'upgrade station accessible');
+ await page.locator('.shTabs [data-station="crew"]').click();
+ assert.equal(await page.locator('#station-crew').isVisible(),true,'co-op radio station accessible');
+ await page.locator('.shTabs [data-station="deploy"]').click();
  await page.locator('#solo').click();
  await page.waitForSelector('#gameScreen:not(.hidden)',{timeout:15000});
  await page.waitForSelector('#overlayTitle',{timeout:15000});
@@ -43,6 +63,6 @@ try{
  const fatal=await page.locator('#fatal').isVisible();
  assert.equal(fatal,false,'no fatal error overlay');
  assert.equal(errors.filter(e=>e.startsWith('pageerror')).length,0,'no page runtime errors: '+errors.join('; '));
- console.log('BROWSER SMOKE PASS: lobby -> solo -> mission briefing -> live WebGL render -> HUD -> shooting (ammo dropped to '+ammunition+')');
+ console.log('BROWSER SMOKE PASS: operator login -> 3D safehouse -> six stations -> solo -> mission briefing -> live WebGL render -> HUD -> shooting (ammo dropped to '+ammunition+')');
  console.log('Browser console observations:',errors.slice(0,8));
 }finally{await browser.close();await new Promise(ok=>server.close(ok));}
