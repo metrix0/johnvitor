@@ -435,18 +435,24 @@ export class View{
   ring.position.set(0,this.sightHeight,-.09);this.optic.add(ring);
   // The crisp ADS dot is screen-aligned in the HUD; avoid a second, aliased 3D reticle.
   // Keep the optic's physical frame visible on the firearm.
-  // Render the firearm on layer 1 with a soft, separate light rig.
+  // The iron sight/optic should stay dark and readable irrespective of lighting.
+  // Actual aiming feedback is drawn in the screen-aligned HUD.
+  for(const sight of [this.irons,this.optic])sight.traverse(part=>{
+   if(part.isMesh&&part.material?.color)
+    part.material=new THREE.MeshBasicMaterial({color:part.material.color.clone().multiplyScalar(.72),toneMapped:false});
+  });
+  // Keep the held weapon on its own layer with restrained lighting.
   this.camera.layers.enable(1);
   this.gunBody.traverse(part=>part.layers.set(1));
-  this.weaponFill=new THREE.HemisphereLight(0xd8e2e1,0x34434b,.8);
+  this.weaponFill=new THREE.HemisphereLight(0xaabbbf,0x202b32,.5);
   this.weaponFill.layers.set(1);this.camera.add(this.weaponFill);
-  this.weaponKey=new THREE.DirectionalLight(0xe3e1d9,.78);
+  this.weaponKey=new THREE.DirectionalLight(0xc6ced1,.38);
   this.weaponKey.layers.set(1);this.weaponKey.position.set(-1,1.4,1.1);
   this.weaponKey.target.position.set(0,0,-1);
   this.camera.add(this.weaponKey,this.weaponKey.target);
   this.gunTarget=new THREE.Vector3();
-  this.muzzle=new THREE.PointLight(0xffd187,0,4);this.muzzle.position.set(0,.06,-.8);this.gun.add(this.muzzle);
-  this.flash=new THREE.Mesh(new THREE.ConeGeometry(.15,.48,8),new THREE.MeshBasicMaterial({color:0xffd99a,transparent:true,opacity:.85,depthWrite:false}));this.flash.rotation.x=-Math.PI/2;this.flash.position.set(0,.07,-.8);this.gun.add(this.flash);this.flash.visible=false;this.flash.layers.set(1);
+  this.muzzle=new THREE.PointLight(0xffd187,0,1.8);this.muzzle.position.set(0,.06,-.8);this.gun.add(this.muzzle);
+  this.flash=new THREE.Mesh(new THREE.ConeGeometry(.11,.30,8),new THREE.MeshBasicMaterial({color:0xffbd72,transparent:true,opacity:.60,depthWrite:false}));this.flash.rotation.x=-Math.PI/2;this.flash.position.set(0,.07,-.8);this.gun.add(this.flash);this.flash.visible=false;this.flash.layers.set(1);
  }
  applyGun(weapon){
   const w=WEAPONS[weapon]||WEAPONS.pistol;
@@ -522,9 +528,15 @@ export class View{
    this.reloadHand.rotation.set(0,0,progress<.77?-.18:.24);
   }
   camera.fov+=((aiming?56:input.walk?74:moving?80:76)-camera.fov)*Math.min(1,dt*9);camera.updateProjectionMatrix();
-  this.muzzle.intensity=Math.max(0,this.muzzle.intensity-dt*70);
-  this.flash.visible=this.muzzle.intensity>2;
-  if(p.stats.shots!==this.lastShots){this.lastShots=p.stats.shots;this.muzzle.intensity=12;this.flash.visible=true;}
+  // Never project a near-camera muzzle flash/light across the ADS sight.
+  // Recoil, tracers and hitmarkers still communicate ADS shots.
+  this.weaponFill.intensity=aiming?.30:.5;
+  this.weaponKey.intensity=aiming?.20:.38;
+  this.muzzle.intensity=aiming?0:Math.max(0,this.muzzle.intensity-dt*40);
+  this.flash.visible=!aiming&&this.muzzle.intensity>.35;
+  if(p.stats.shots!==this.lastShots){
+   this.lastShots=p.stats.shots;this.muzzle.intensity=aiming?0:2.2;this.flash.visible=!aiming;
+  }
   this.exitRing.rotation.z+=dt*.38;
   this.exitRing.material.color.setHex(run.objectives.every(o=>o.done||o.optional)?0x8affbb:0x465b54);
   this.exitBeacon.visible=run.objectives.every(o=>o.done||o.optional);

@@ -136,8 +136,8 @@
 .gameScreen .mapCaption{margin:3px 0 0;padding:0 3px;letter-spacing:.08em}
 .gameScreen .alarmPanel{margin-top:12px;padding:9px 2px;background:none;border:0}
 .gameScreen .gameBottom{justify-content:space-between;padding-bottom:20px}
-.damageIndicator{position:absolute;z-index:6;left:50%;top:50%;width:132px;height:132px;pointer-events:none;opacity:0;color:#ff5b4c;transform:translate(-50%,-50%) scale(1.13);transition:opacity .25s,transform .25s;filter:drop-shadow(0 0 5px #ff343491)}
-.damageIndicator.active{opacity:.96;transform:translate(-50%,-50%) scale(1)}
+.damageIndicator{position:absolute;z-index:6;left:50%;top:50%;width:132px;height:132px;pointer-events:none;opacity:0;color:#ff5b4c;transform:translate(-50%,-50%) rotate(var(--damage-angle,0rad)) scale(1.13);transition:opacity .25s,transform .25s;filter:drop-shadow(0 0 4px #ff343491)}
+.damageIndicator.active{opacity:.96;transform:translate(-50%,-50%) rotate(var(--damage-angle,0rad)) scale(1)}
 @media(max-width:800px){.gameScreen .rightRail{display:block;top:63px;right:13px}.gameScreen .mapFrame canvas{width:min(236px,42vw)}.gameScreen .leftRail{top:74px;left:13px;max-width:170px}.gameMenuToggle{top:13px;left:13px}.gameScreen .alarmPanel{margin-top:5px}.gameScreen .mapCaption{font-size:7px}}
 @media(max-width:520px){.gameScreen .rightRail{right:9px;top:68px}.gameScreen .mapFrame canvas{width:min(182px,45vw)}.gameScreen .leftRail{max-width:145px}.gameScreen .crewCard{min-width:110px}.gameScreen .mapCaption span:first-child{display:none}.gameScreen .alarmPanel{display:none}.gameMenuToggle span{display:none}.gameMenuPanel{padding:70px 18px 28px}.damageIndicator{width:105px;height:105px}}
 

@@ -218,8 +218,9 @@ export class Visuals {
   // Move the camera flashlight below the ADS sight and dim its hotspot.
   const blend=Math.min(1,Math.max(0,dt)*10);
   this.flashlight.target.position.y+=((aiming?-2.5:-.22)-this.flashlight.target.position.y)*blend;
-  const lightLevel=(run.mission===0?3:2.3)*(1+.06*Math.sin(seconds*1.7))*(aiming?.2:1);
-  this.flashlight.intensity+=(lightLevel-this.flashlight.intensity)*blend;
+  const lightLevel=(run.mission===0?3:2.3)*(1+.06*Math.sin(seconds*1.7));
+  // Even a 20% flashlight beam bleaches the ADS view. Cut it instantly on aim.
+  this.flashlight.intensity=aiming?0:this.flashlight.intensity+(lightLevel-this.flashlight.intensity)*blend;
   for(const {light,base} of this.alerts)
    light.intensity=a*(base+2.9)*(0.74+.26*Math.sin(seconds*7.3+light.position.x*.11)**2);
  }

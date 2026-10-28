@@ -80,7 +80,7 @@ export function makeRun(n=0,count=1,loadouts=[]){
   const kit=loadouts[i]||{},wid=WEAPONS[kit.weapon]?kit.weapon:'pistol',gid=GADGETS[kit.gadget]?kit.gadget:null,w=WEAPONS[wid];
   const maxHp=(n===0?125:100)+25*clamp(kit.upgrades?.armor||0,0,3),mag=Math.round(w.mag*(1+clamp(kit.upgrades?.mag||0,0,3)*.2));
   const gadgetStart=gid?clamp(Number.isFinite(kit.charges)?kit.charges:GADGETS[gid].charges,0,GADGETS[gid].charges):0;
-  run.players.push({bagId:null,id:i,name:String(kit.name||'CREW '+(i+1)).slice(0,24),x:start.x,z:start.z+(i?1.2:0),yaw:-Math.PI/2,pitch:0,hp:maxHp,maxHp,stamina:100,noise:0,noiseUntil:0,bloom:0,weapon:wid,gadget:gid,mag,ammo:mag,reserve:w.reserve,reload:0,cool:0,gadgets:gadgetStart,gadgetStart,gadCool:0,shieldUntil:0,damageTier:clamp(kit.upgrades?.damage||0,0,3),invuln:0,interact:0,interactId:'',bleed:0,down:false,stats:{kills:0,shots:0,hits:0},recoil:0});
+  run.players.push({bagId:null,id:i,name:String(kit.name||'CREW '+(i+1)).slice(0,24),x:start.x,z:start.z+(i?1.2:0),yaw:-Math.PI/2,pitch:0,hp:maxHp,maxHp,stamina:100,noise:0,noiseUntil:0,bloom:0,weapon:wid,gadget:gid,mag,ammo:mag,reserve:w.reserve,reload:0,cool:0,gadgets:gadgetStart,gadgetStart,gadCool:0,shieldUntil:0,damageTier:clamp(kit.upgrades?.damage||0,0,3),invuln:0,interact:0,interactId:'',bleed:0,down:false,stats:{kills:0,shots:0,hits:0},recoil:0,lastDamageFrom:null});
  }
  run.objectives=mission.objectives.map(o=>({...o,x:o.at[0]*CELL,z:o.at[1]*CELL,requires:o.requires||[],done:false}));
  if(n===0){
@@ -94,9 +94,10 @@ export function makeRun(n=0,count=1,loadouts=[]){
  return run;
 }
 function announce(run,msg){run.toast=msg;run.toastUntil=run.time+3.3;}
-function damagePlayer(run,p,dmg){
+function damagePlayer(run,p,dmg,source){
  if(p.hp<=0||p.invuln>0)return;
  p.hp=Math.max(0,p.hp-Math.max(1,Math.round(dmg*(p.shieldUntil>run.time?.35:1))));p.invuln=.28;p.recoil=Math.min(1,p.recoil+.18);
+ if(source&&Number.isFinite(source.x)&&Number.isFinite(source.z))p.lastDamageFrom={x:source.x,z:source.z};
  if(p.hp===0){p.down=true;p.bleed=28;if(p.bagId!==null){const bag=run.loot.find(x=>x.id===p.bagId);if(bag){bag.carrier=null;bag.x=p.x;bag.z=p.z;}p.bagId=null;}announce(run,p.name+' IS DOWN — REVIVE THEM');}
 }
 function damageEnemy(run,e,amount,player){
@@ -171,7 +172,7 @@ function enemyFire(run,e,target){
  e.fireSeq=(e.fireSeq||0)+1;
  const d=unit(target.x-e.x,target.z-e.z),miss=rng(-.09,.09)*(e.type==='sniper'?.4:1);
  const v=unit(d.x+miss,d.z+miss);
- run.projectiles.push({id:++run.serial,x:e.x,z:e.z,y:e.type==='drone'?2.15:1.3,dx:v.x,dz:v.z,damage:e.damage,speed:e.type==='sniper'?23:17,life:2.7,type:e.type});
+ run.projectiles.push({id:++run.serial,x:e.x,z:e.z,sourceX:e.x,sourceZ:e.z,y:e.type==='drone'?2.15:1.3,dx:v.x,dz:v.z,damage:e.damage,speed:e.type==='sniper'?23:17,life:2.7,type:e.type});
  e.cool=e.cadence;
  if(e.type==='heavy')e.cool*=.75;
 }
@@ -286,7 +287,7 @@ function tickEnemy(run,e,dt){
  const target=decoy?decoy:e.alert&&!smoked?(sight?p:e.lastKnown||p):{x:e.patrolX,z:e.patrolZ};
  const range=e.type==='sniper'?16:e.type==='heavy'?9:e.type==='rusher'?1.3:e.type==='drone'?9:7;
  if(!decoy&&e.alert&&!smoked&&seen&&d<e.range&&e.cool===0){
-  if(e.type==='rusher'&&d<1.7){damagePlayer(run,p,e.damage);e.fireSeq=(e.fireSeq||0)+1;e.cool=e.cadence;}
+  if(e.type==='rusher'&&d<1.7){damagePlayer(run,p,e.damage,e);e.fireSeq=(e.fireSeq||0)+1;e.cool=e.cadence;}
   else enemyFire(run,e,p);
  }
  const pursue=e.type==='rusher'?d>1.5:d>range;
@@ -314,7 +315,7 @@ function tickProjectile(run,b,dt){
    if(p.hp<=0)continue;
    const t=clamp(((p.x-b.x)*vx+(p.z-b.z)*vz)/(denom||1),0,1);
    if(Math.hypot(b.x+vx*t-p.x,b.z+vz*t-p.z)<.62){
-    damagePlayer(run,p,b.damage);b.life=0;return;
+    damagePlayer(run,p,b.damage,{x:b.sourceX??b.x,z:b.sourceZ??b.z});b.life=0;return;
    }
   }
   b.x=nx;b.z=nz;

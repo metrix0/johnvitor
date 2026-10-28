@@ -1,6 +1,6 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js';
-import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=5';
-import {View} from './render.js?v=6';
+import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=6';
+import {View} from './render.js?v=7';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=5';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
@@ -477,7 +477,13 @@ function updateHud(){
  }
  if(p.hp<lastHp){
   beep('hurt');
-  const ring=$('damageIndicator');
+  const ring=$('damageIndicator'),source=p.lastDamageFrom;
+  if(source){
+   const dx=source.x-p.x,dz=source.z-p.z;
+   const ahead=-Math.sin(controls.yaw)*dx-Math.cos(controls.yaw)*dz;
+   const right=Math.cos(controls.yaw)*dx-Math.sin(controls.yaw)*dz;
+   if(Math.hypot(dx,dz)>.01)ring.style.setProperty('--damage-angle',Math.atan2(right,ahead)+'rad');
+  }
   ring.classList.remove('active');void ring.offsetWidth;ring.classList.add('active');
   clearTimeout(damageIndicatorTimer);
   damageIndicatorTimer=setTimeout(()=>ring.classList.remove('active'),430);
