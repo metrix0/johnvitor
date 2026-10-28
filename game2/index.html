@@ -6,11 +6,11 @@
 <title>GETAWAY CLUB — The Heist Campaign</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=12">
+<link rel="stylesheet" href="./style.css?v=13">
 <script defer src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-<script type="module" src="./main.js?v=18"></script>
+<script type="module" src="./main.js?v=19"></script>
 </head><body>
-<aside id="gameVersion" class="gameVersion" aria-label="Game version"><span>VERSION</span> v0.4.4</aside>
+<aside id="gameVersion" class="gameVersion" aria-label="Game version"><span>VERSION</span> v0.4.5</aside>
 <div id="menu" class="entryScreen">
  <div class="entryNoise"></div>
  <div class="entryForm">
@@ -101,7 +101,7 @@
  <div class="rightRail"><div class="mapFrame"><canvas id="minimap" width="270" height="210"></canvas><div class="mapCaption"><span>TACTICAL MAP</span><span id="enemyCount">0 HOSTILES</span></div></div><div class="alarmPanel"><div class="alarmLine"><span>SECURITY ALERT</span><b id="alertName">QUIET</b></div><div class="alarmTrack"><div id="alarmFill"></div></div></div></div>
  <div id="toast" class="toast hidden"></div>
  <svg id="damageIndicator" class="damageIndicator" viewBox="0 0 120 120" aria-hidden="true"><path d="M 33 19 A 49 49 0 0 1 87 19" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
- <div id="crosshair" class="crosshair"><span></span><span></span><span></span><span></span></div><div id="hitMarker" class="hitMarker"><span></span><span></span><span></span><span></span></div>
+ <div id="crosshair" class="crosshair"><span></span><span></span><span></span><span></span></div><div id="hitMarker" class="hitMarker"><span></span><span></span><span></span><span></span><b class="headshotLabel">HEADSHOT</b></div>
  <div id="interaction" class="interaction hidden"><div class="interactText"><kbd>E</kbd><span id="interactionLabel">ACCESS TERMINAL</span></div><div class="interactTrack"><div id="interactionFill"></div></div></div>
  <div id="gameBottom" class="gameBottom"><div class="vital"><div class="vitalTop"><span>HEALTH / ARMOR</span><strong id="hpLabel">100 / 100</strong></div><div class="hpTrack"><div id="hpFill"></div></div></div><div class="ammo"><div><small id="gunName">M9 SIDEARM</small><strong id="ammoValue">15 <em>/ 90</em></strong></div><div class="gadgetBadge" id="gadgetValue">NO GADGET</div></div></div>
  <div id="centerOverlay" class="centerOverlay"><div class="missionPanel"><div class="panelCorner">✳ GETAWAY CLUB — MISSION CONTROL</div><div class="panelEyebrow" id="overlayTag">CASE FILE / 01</div><h2 id="overlayTitle">PREPARE FOR ENTRY</h2><p id="overlayText">Your crew is getting ready.</p><div id="overlayDetails" class="overlayDetails"></div><div class="overlayButtons"><button id="overlayAction" class="btn btnPrimary hidden">START JOB ↗</button><button id="overlayLeave" class="btn btnOutline">RETURN TO SAFEHOUSE</button></div><small id="overlayFoot">SINGLE PLAYER AND 2-PLAYER CO-OP SUPPORTED</small></div></div>

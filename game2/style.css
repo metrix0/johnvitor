@@ -180,3 +180,7 @@
 .safehouse .shWallet strong{font:800 19px/1 'Barlow Condensed',sans-serif;color:#d6ffde;font-variant-numeric:tabular-nums}
 @media(max-width:800px){.safehouse .shWallet{right:13px}}
 @media(max-width:520px){.safehouse .shWallet{right:9px;top:24px;padding:4px 7px;gap:6px}.safehouse .shWallet span{font-size:7px}.safehouse .shWallet strong{font-size:16px}}
+
+/* A confirmed head hit gets a distinct, compact critical-hit cue. */
+.hitMarker .headshotLabel{display:none;position:absolute;left:50%;top:36px;transform:translateX(-50%);font:900 12px/1 'Barlow Condensed',sans-serif;letter-spacing:.13em;color:#ffd19a;text-shadow:0 1px 5px #000,0 0 9px #9d4d2680;white-space:nowrap}
+.hitMarker.headshot .headshotLabel{display:block}

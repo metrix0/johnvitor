@@ -130,17 +130,35 @@ function shoot(run,p){
   for(const e of run.enemies){
    if(e.hp<=0)continue;
    const vx=e.x-p.x,vz=e.z-p.z,t=(vx*dx+vz*dz)/planar;
-   if(t<=0||t>=minT)continue;
+   if(t<=0)continue;
+   // Preserve the original body hitboxes, but stop treating upper-torso hits as headshots.
    const horizontal=Math.hypot(vx-dx*t,vz-dz*t),y=1.67+dy*t;
    const radius=e.type==='heavy'?.83:e.type==='drone'?.68:.58;
    const low=e.type==='drone'?1.72:.25,high=e.type==='drone'?2.60:e.type==='heavy'?2.85:2.38;
-   if(horizontal>radius||y<low||y>high)continue;
-   hit=e;minT=t;headshot=e.type!=='drone'&&horizontal<.36&&y>=1.86&&y<=high;
+   const bodyT=horizontal<=radius&&y>=low&&y<=high?t:Infinity;
+   // Actual 3D head sphere aligns with the visible helmet/face, including model scale.
+   // Heavy guards have taller heads, rushers are smaller, and drones have no head.
+   let headT=Infinity;
+   if(e.type!=='drone'){
+    const scale=e.type==='heavy'?1.22:e.type==='rusher'?.9:1;
+    const headY=1.94*scale,headRadius=.285*scale;
+    const ox=p.x-e.x,oy=1.67-headY,oz=p.z-e.z;
+    const along=ox*dx+oy*dy+oz*dz;
+    const discriminant=along*along-(ox*ox+oy*oy+oz*oz-headRadius*headRadius);
+    if(discriminant>=0){
+     const root=Math.sqrt(discriminant),entry=-along-root,exit=-along+root;
+     headT=entry>0?entry:exit>0?exit:Infinity;
+    }
+   }
+   const impactT=Math.min(bodyT,headT);
+   if(impactT<=0||impactT>=minT)continue;
+   hit=e;minT=impactT;headshot=headT<=bodyT;
   }
   run.tracers.push({id:++run.serial,x:p.x,y:1.64,z:p.z,tx:p.x+dx*minT,ty:1.67+dy*minT,tz:p.z+dz*minT,owner:p.id,ttl:.13,hit:!!hit});
   if(hit){
    const armorScale=hit.type==='heavy'?.70+(w.armorPen||0)*.30:1;
-   damageEnemy(run,hit,Math.round(w.damage*(1+p.damageTier*.13)*armorScale*(headshot?1.65:1)),p);
+   damageEnemy(run,hit,Math.round(w.damage*(1+p.damageTier*.13)*armorScale*(headshot?2:1)),p);
+   if(headshot)hit.flinch=Math.max(hit.flinch,.26);
    p.stats.hits++;run.hitShots++;
    if(headshot)p.stats.headshots=(p.stats.headshots||0)+1;
   }

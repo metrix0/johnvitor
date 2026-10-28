@@ -1,5 +1,5 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=4';
-import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=8';
+import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=9';
 import {View} from './render.js?v=8';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=6';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
@@ -538,10 +538,11 @@ function updateHud(){
  if(p.stats.hits!==lastHits){
   const marker=$('hitMarker'),headshot=(p.stats.headshots||0)>lastHeadshots;
   marker.style.color=headshot?'#ffbe82':'#e9fff4';
+  marker.classList.toggle('headshot',headshot);
   marker.style.opacity='1';
   lastHits=p.stats.hits;lastHeadshots=p.stats.headshots||0;
   clearTimeout(hitMarkerTimer);
-  hitMarkerTimer=setTimeout(()=>{marker.style.opacity='0';},145);
+  hitMarkerTimer=setTimeout(()=>{marker.style.opacity='0';marker.classList.remove('headshot');},headshot?280:145);
  }
  if(p.hp<lastHp){
   beep('hurt');
