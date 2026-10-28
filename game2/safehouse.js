@@ -1,6 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
 import {Visuals} from './visuals.js?v=3';
-import {buildCabin} from './cabin.js?v=2';
+import {buildCabin} from './cabin.js?v=3';
 
 // Physical stations, all reachable from the compact walkable safehouse.
 export const SAFEHOUSE_STATIONS = [
@@ -51,7 +51,7 @@ export class Safehouse {
  focus(){return this.focused;}
  pick(){
   this.raycaster.setFromCamera({x:0,y:0},this.camera);
-  const hit=this.raycaster.intersectObjects(this.targets,false).find(({distance})=>distance<6.4);
+  const hit=this.raycaster.intersectObjects(this.targets,false).find(({distance})=>distance<4.5);
   const mesh=hit?.object||null;
   if(mesh!==this.focusMesh){
    if(this.highlight){this.scene.remove(this.highlight);this.highlight.geometry.dispose();this.highlight.material.dispose();this.highlight=null;}
@@ -83,7 +83,7 @@ export class Safehouse {
  }
  resetKeys(){for(const k of Object.keys(this.move))this.move[k]=false;}
  nearest(){
-  let best=null,bestDistance=3.85;
+  let best=null,bestDistance=2.8;
   const forward={x:-Math.sin(this.yaw),z:-Math.cos(this.yaw)};
   for(const s of SAFEHOUSE_STATIONS){
    const dx=s.x-this.pos.x,dz=s.z-this.pos.z,d=Math.hypot(dx,dz);

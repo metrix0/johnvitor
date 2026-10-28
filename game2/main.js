@@ -1,7 +1,7 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=4';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=7';
 import {View} from './render.js?v=8';
-import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=5';
+import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=6';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
 const key=name=>'getaway-v3-'+name.toLowerCase();
@@ -206,8 +206,13 @@ function closeStation(){
  try{const promise=safehouse?.canvas.requestPointerLock();promise?.catch?.(()=>{});}catch{}
 }
 function cabinItemState(target){
- const {kind,id}=target,item=(kind==='weapon'?WEAPONS:GADGETS)[id];
+ const {kind,id}=target,item=(kind==='weapon'?WEAPONS:kind==='upgrade'?UPGRADES:GADGETS)[id];
  if(!item)return null;
+ if(kind==='upgrade'){
+  const tier=profile.upgrades[id]||0,finished=tier>=item.cost.length,cost=finished?0:item.cost[tier];
+  const note=finished?'MAX LEVEL · E TO OPEN':profileWallet()<cost?'LEVEL '+tier+'/3 · NEED '+coins(cost-profileWallet())+' MORE':'LEVEL '+tier+'/3 · E TO OPEN';
+  return {item,price:finished?'MAXED':coins(cost),note,tier,owned:false};
+ }
  const unlock=item.unlock<=profile.unlocked,owned=kind==='weapon'?canEquipWeapon(profile,id):canEquipGadget(profile,id);
  const equipped=kind==='weapon'?selectedWeapon===id:selectedGadget===id;
  const stock=kind==='gadget'?(profile.gadgetStock[id]||0):0;
@@ -231,15 +236,22 @@ function showCabinFocus(target){
  const state=cabinItemState(target);if(!state)return;
  hover.classList.remove('hidden');
  $('shHoverName').textContent=state.item.name;
- $('shHoverType').textContent=(target.kind==='weapon'?state.item.class:'TACTICAL GADGET')+(target.kind==='gadget'?' · '+state.stock+' CHARGES OWNED':'');
+ $('shHoverType').textContent=target.kind==='upgrade'?'UPGRADE · LEVEL '+state.tier+'/3':(target.kind==='weapon'?state.item.class:'TACTICAL GADGET')+(target.kind==='gadget'?' · '+state.stock+' CHARGES OWNED':'');
  $('shHoverPrice').textContent=state.price;
  $('shHoverState').textContent=state.note;
- prompt.textContent='[E] '+(state.owned?'EQUIP / VIEW':'INSPECT')+' · [TAB] OPEN FULL MENU';
+ prompt.textContent='[E] '+(target.kind==='upgrade'?'OPEN':state.owned?'EQUIP / VIEW':'INSPECT')+' · [TAB] OPEN FULL MENU';
 }
 function inspectCabin(target){
  if(!target)return;
  if(target.type==='station'){openStation(target.station);return;}
  const state=cabinItemState(target);if(!state)return;
+ if(target.kind==='upgrade'){
+  openStation('upgrades');
+  const button=$('upgrades')?.querySelector('[data-upgrade="'+target.id+'"]');
+  button?.scrollIntoView({block:'center',behavior:'auto'});
+  button?.focus({preventScroll:true});
+  return;
+ }
  if(state.owned&&!state.equipped){
   if(target.kind==='weapon')selectedWeapon=target.id;else selectedGadget=target.id;
   persistLoadout();refreshMenu();beep('purchase');return;

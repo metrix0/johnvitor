@@ -1,5 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
-import {WEAPONS,GADGETS} from './data.js';
+import {WEAPONS,GADGETS,UPGRADES} from './data.js';
 
 const standard=(hex,metalness=0,roughness=.76)=>new THREE.MeshStandardMaterial({color:hex,metalness,roughness});
 const plank=standard(0x64432c),darkWood=standard(0x39291f),trimWood=standard(0x80583b);
@@ -53,6 +53,39 @@ function gadgetModel(id){
  }
  return g;
 }
+// Visible models for the three real permanent upgrades. Each object has a separate focus target.
+function upgradeModel(id){
+ const g=new THREE.Group();
+ if(id==='armor'){
+  // Reinforced ballistic vest with shoulders, front plate, side straps and buckles.
+  box(g,0,.04,0,.8,.89,.28,canvasTan);
+  box(g,0,.08,.16,.57,.57,.08,iron);
+  box(g,0,.08,.215,.35,.39,.023,steel);
+  for(const x of [-.37,.37]){
+   box(g,x,.41,.015,.17,.33,.24,leather);
+   box(g,x,-.24,.015,.1,.5,.32,iron);
+  }
+  for(const y of [-.22,.05,.3])box(g,0,y,.23,.53,.045,.04,brass);
+ }else if(id==='damage'){
+  // Ammunition case, exposed armor-piercing rounds and reinforced cartridge box.
+  box(g,0,-.16,0,.93,.45,.49,iron);
+  box(g,0,.075,0,.99,.07,.53,steel);
+  box(g,0,-.22,.26,.52,.14,.03,brass);
+  for(const x of [-.31,-.1,.11,.32]){
+   cylinder(g,x,.27,.04,.078,.32,brass);
+   cylinder(g,x,.47,.04,.066,.09,steel);
+  }
+ }else{
+  // Extended curved magazines, follower plates and visible cartridge tips.
+  for(const x of [-.32,.32]){
+   const mag=box(g,x,-.04,0,.29,.88,.31,iron);mag.rotation.z=x<0?-.15:.15;
+   box(g,x,.42,0,.35,.10,.37,steel);
+   for(const z of [-.075,.075])cylinder(g,x,.49,z,.05,.1,brass,10);
+   box(g,x,-.44,.01,.29,.09,.33,leather);
+  }
+ }
+ return g;
+}
 function createRack(house,station){
  const world=house.scene;
  const g=new THREE.Group();g.position.set(station.x,0,station.z);g.rotation.y=station.rot;world.add(g);
@@ -88,11 +121,15 @@ function createRack(house,station){
   }
   for(const x of [-1.65,0,1.65])cylinder(g,x,3.56,.35,.09,.07,brass);
  }else if(station.id==='upgrades'){
-  for(const x of [-1.5,0,1.5]){
-   const vest=box(g,x,2.68,.35,.76,.9,.3,canvasTan);
-   box(g,x,2.74,.53,.48,.48,.07,iron);
-   for(const b of [-.2,.2])box(g,x+b,2.38,.5,.1,.17,.1,leather);
-  }
+  // Show the actual upgrade types, with individual E-to-inspect targets like the armory.
+  box(g,0,2.04,.39,5.15,.15,.55,trimWood);
+  Object.keys(UPGRADES).forEach((id,i)=>{
+   const x=(i-1)*1.62,icon=upgradeModel(id);
+   icon.position.set(x,2.76,.51);g.add(icon);
+   const pick=box(g,x,2.74,.73,1.42,1.35,.36,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+   pick.userData.focus={type:'item',station:'upgrades',kind:'upgrade',id};
+   house.targets.push(pick);
+  });
  }else if(station.id==='crew'){
   box(g,0,2.2,.36,3.3,.65,.61,iron);
   for(const x of [-.7,.7])cylinder(g,x,2.56,.7,.2,.06,brass);
@@ -112,7 +149,8 @@ function createRack(house,station){
   box(g,0,.065,z+.27,3.05,.13,.54,steel);
  }
  // Wider interaction zones for radio, armor and door; no painted 3D labels.
- const interactive=['upgrades','crew','deploy'].includes(station.id);
+ // Keep the upgrade wall's station target behind its individually selectable items.
+ const interactive=['crew','deploy'].includes(station.id);
  const board=box(g,0,interactive?1.9:2.7,interactive?.32:-.18,station.id==='deploy'?3.25:5.05,interactive?3.65:3.2,interactive?1.06:.13,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
  board.userData.focus={type:'station',station:station.id};
  house.targets.push(board);return g;
