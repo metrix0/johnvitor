@@ -1,6 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
-import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=5';
-import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=5';
+import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=6';
+import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=6';
+import {buildCheckoutArea} from './level1-zone-3.js?v=1';
 import {Visuals} from './visuals.js?v=6';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
@@ -160,8 +161,12 @@ export class View{
 
   // Batch repeated opaque market details across ALL fixtures into shared GPU instances.
   this.marketBatches=new Map();
-  for(const [x,z,kind] of mission.decor)this.prop(kind,x*CELL,z*CELL,p);
+  for(const [x,z,kind] of mission.decor){
+   if(kind==='counter'&&z>=28&&z<=34)continue; // Zone 3 owns checkout fixtures.
+   this.prop(kind,x*CELL,z*CELL,p);
+  }
   this.finishMarketBatches();
+  buildCheckoutArea(this);
   // Fixed world landmarks and billboards; no downloaded textures/models.
   for(const sign of mission.signs)this.sign(sign.text,sign.x*CELL,sign.y,sign.z*CELL,sign.rot,sign.color,sign.size);
   // Only the market fascia carries a wordmark; no hovering location labels.
@@ -380,7 +385,9 @@ export class View{
  objectiveMesh(o,p){
   const g=new THREE.Group();g.userData.kind=o.kind;
   g.position.set(o.x,0,o.z);
-  const pedestal=this.box(g,0,.28,0,1.1,.55,.95,0x1a2930,.6);
+  // Market checkout objects are built in zone 3; the ground marker remains reachable.
+  const marketCash=this.mission===0&&o.kind==='cash';
+  if(!marketCash)this.box(g,0,.28,0,1.1,.55,.95,0x1a2930,.6);
   if(o.kind==='hack'||o.kind==='drill'||o.kind==='radio'||o.kind==='recon'){
    this.box(g,0,1,0,.96,1.05,.34,0x1e333d,.55);
    const screen=this.box(g,0,1.07,.195,.72,.68,.025,0x4fffdc);
@@ -388,7 +395,7 @@ export class View{
   }else if(o.kind==='gold'){for(let i=0;i<3;i++)this.box(g,(i-1)*.3,.7,0,.28,.2,.46,0xf0c765,.8);}
   else if(o.kind==='keycard'||o.kind==='data'){this.box(g,0,.82,0,.5,.14,.72,o.kind==='data'?0x5beedc:0x8dd5fa,.4);}
   else if(o.kind==='safe'){this.box(g,0,.8,0,1,1,.8,0xadb6b6,.85);this.cyl(g,0,.85,.42,.18,.12,0x384a52).rotation.x=Math.PI/2;}
-  else this.box(g,0,.65,0,.75,.48,.53,0xd7b47c,.3);
+  else if(!marketCash)this.box(g,0,.65,0,.75,.48,.53,0xd7b47c,.3);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.94,.045,8,40),new THREE.MeshBasicMaterial({color:p.accent}));ring.rotation.x=Math.PI/2;ring.position.y=.1;g.add(ring);g.userData.ring=ring;
   const beam=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,2.7,12,1,true),new THREE.MeshBasicMaterial({color:p.accent,transparent:true,opacity:.14,depthWrite:false,side:THREE.DoubleSide}));beam.position.y=1.45;g.add(beam);g.userData.beam=beam;
   return g;

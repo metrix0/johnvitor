@@ -62,6 +62,7 @@ export const LEVEL1={
 // These tiles must block movement but NOT render as ceiling-height masonry.
 // Their own shelf, carton, bathroom and dumpster meshes are authored in decor.
 export const LEVEL1_PROP_CELLS=new Set([
+ ...[24,27,31,38].map(x=>x+',30'),
  ...[19,24,29,34,39].flatMap(x=>[20,21,24,25].map(z=>x+','+z)),
  ...[[18,9,1,2],[21,9,1,2],[40,9,1,2],[49,10,2,1],[51,22,2,1],[50,33,2,1],[4,8,3,3]].flatMap(([x,z,w,h])=>
   Array.from({length:w*h},(_,i)=>(x+i%w)+','+(z+Math.floor(i/w))))
@@ -86,6 +87,9 @@ export function makeLevel1Grid(){
  set(35,7,1,10,[[11,13]]);
  // Shelving cores have physical collision; wide rows leave flanking routes.
  for(const x of [19,24,29,34,39])for(const z of [20,24])set(x,z,1,2);
+
+ // Real collision for checkout fixtures, never 4.5 m high walls.
+ for(const x of [24,27,31,38])set(x,30,1,1);
  // Stockroom racks, bathroom partitions and exterior dumpsters.
  for(const [x,z,w,h] of [[18,9,1,2],[21,9,1,2],[40,9,1,2],[49,10,2,1],[51,22,2,1],[50,33,2,1],[4,8,3,3]])set(x,z,w,h);
  // Maintain accessible floor around mandatory objectives, doors and spawns.

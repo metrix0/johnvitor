@@ -1,4 +1,4 @@
-import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS,GADGETS,makeGrid,clamp,pos} from './data.js?v=5';
+import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS,GADGETS,makeGrid,clamp,pos} from './data.js?v=6';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const unit=(x,z)=>{const d=Math.hypot(x,z)||1;return {x:x/d,z:z/d};};
 const T=(p)=>({x:Math.round(p.x/CELL),z:Math.round(p.z/CELL)});
