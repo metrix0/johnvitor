@@ -540,11 +540,10 @@ function updateHud(){
  if(p.stats.hits!==lastHits){
   const marker=$('hitMarker'),headshot=(p.stats.headshots||0)>lastHeadshots;
   marker.style.color=headshot?'#ffbe82':'#e9fff4';
-  marker.classList.toggle('headshot',headshot);
   marker.style.opacity='1';
   lastHits=p.stats.hits;lastHeadshots=p.stats.headshots||0;
   clearTimeout(hitMarkerTimer);
-  hitMarkerTimer=setTimeout(()=>{marker.style.opacity='0';marker.classList.remove('headshot');},headshot?280:145);
+  hitMarkerTimer=setTimeout(()=>{marker.style.opacity='0';},headshot?280:145);
  }
  if(p.hp<lastHp){
   beep('hurt');
