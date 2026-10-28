@@ -28,6 +28,13 @@
   - `netlify/functions/getaway-profile-v2.mjs`: cloud profile endpoint.
 - Preserve the existing username-based profile format, earned currency, unlocks, and browser-local fallback. Avoid destructive schema changes or silently resetting progress.
 
+## Game version — mandatory for every commit
+- The single source of truth is the visible `#gameVersion` element in `game2/index.html`, currently initialized at `v0.1.0`. Keep that version visible at the **top right at all times**, including the operator entry screen, the safehouse and its panels, gameplay, mission overlays, and errors. Do not place it behind the UI or obstruct interactive controls.
+- **Every commit changing The Getaway Club must increment the visible semantic version exactly once** (including graphics, gameplay, bugs, UI, tests and documentation changes). Default to a PATCH increment; use MINOR for a substantial feature and MAJOR only for a breaking release. Never reuse a version for separate commits.
+- Bump the version **after reconciling concurrent changes against the latest remote `main`**. If another agent has already advanced the version, bump from their newest value; never overwrite or skip their bump. Keep the label and current deployed build consistent, and refresh the stylesheet cache key when its styling changes.
+- Test the version label when possible in entry, safehouse, open-panel, gameplay, and narrow-screen states. If browser validation cannot be run, report that limitation.
+- **Every final AI answer reporting a game commit must explicitly state the new version** (and ideally previous → new), alongside the commit SHA/link, affected files, tests, unverified functionality, and live URL. Never omit the version from commit delivery reports.
+
 ## Gameplay, co-op and quality
 - New or enlarged maps must be traversable: spawn, objectives, enemy routes and extraction should be reachable, with clear sequencing and viable solo progression. Add/update tests for new phases, dependencies and softlock risks.
 - Improve actual gameplay, not map area alone: meaningful spaces, encounters, combat pacing, landmarks, optional challenges, and reasons to explore. Keep jobs distinct.
@@ -54,7 +61,7 @@
    - Add targeted gameplay tests for altered mission mechanics; perform real two-client and cloud checks when claiming those flows.
 3. **Run the mandatory concurrent-development HEAD check above immediately before committing/pushing.** Create **one final commit directly on `main`**, based on the latest remote HEAD and containing only intended game changes. Do not leave requested work as an uncommitted local-only modification.
 4. The existing `.github/workflows/getaway-game.yml` automatically validates changes to `game2/**`. Do not manually trigger workflows, manage deployments or modify site-wide CI unless explicitly requested.
-5. After committing, report concisely: commit SHA/link, exact changed files and count, tests actually run with results, any unverified flows, and the affected live page link (normally https://johnvitor.com/game2/). Clearly distinguish a successful commit from a confirmed deployment.
+5. After committing, report concisely: **new displayed game version** (and previous version), commit SHA/link, exact changed files and count, tests actually run with results, any unverified flows, and the affected live page link (normally https://johnvitor.com/game2/). Clearly distinguish a successful commit from a confirmed deployment.
 
 ## Access boundaries
 - Use GitHub as the code source of truth. Do not use Remote Desktop Commander, Vercel deployment tools, or unrelated infrastructure connectors without the user's explicit permission for that task.

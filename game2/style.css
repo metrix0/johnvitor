@@ -99,3 +99,7 @@
 .shopFoot button:disabled{opacity:.65}
 @media(max-width:800px){.shopHeading{display:block}.shopHeading small{display:block;text-align:left;margin-top:7px}}
 @media(max-width:520px){.shopCards{grid-template-columns:repeat(auto-fit,minmax(155px,1fr))}.shopCard{padding:12px}.shopFoot{flex-wrap:wrap}.shopFoot button{width:100%}}
+
+/* Version is above every screen and in-game overlay, without obstructing the controls. */
+.gameVersion{position:fixed;top:calc(env(safe-area-inset-top,0px) + 3px);right:calc(env(safe-area-inset-right,0px) + 13px);z-index:10000;display:flex;align-items:center;gap:7px;padding:4px 9px;background:#08161bdc;border:1px solid #4a727366;color:#def7e9;box-shadow:0 2px 12px #0008;white-space:nowrap;pointer-events:none;user-select:none;font:800 10px/1.2 'DM Sans',sans-serif;letter-spacing:.09em}
+.gameVersion span{color:#84a8a9;font-size:8px;letter-spacing:.14em}

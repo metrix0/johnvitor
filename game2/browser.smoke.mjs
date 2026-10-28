@@ -21,10 +21,20 @@ page.on('console',msg=>{if(msg.type()==='error')errors.push('console: '+msg.text
 try{
  await page.goto('http://127.0.0.1:8877/',{waitUntil:'domcontentloaded',timeout:45000});
  await page.waitForFunction(()=>window.getawayReady===true,{timeout:45000});
+ const versionLabel=page.locator('#gameVersion');
+ async function assertVersionVisible(where){
+  assert.equal(await versionLabel.isVisible(),true,'version badge hidden in '+where);
+  assert.match((await versionLabel.innerText()).trim(),/^VERSION v\d+\.\d+\.\d+$/,'semantic version missing in '+where);
+  const rectangle=await versionLabel.boundingBox();
+  assert.ok(rectangle&&rectangle.y>=0&&rectangle.y<=30&&rectangle.x>=page.viewportSize().width-160,'version must stay top-right in '+where);
+  assert.equal(await versionLabel.evaluate(el=>getComputedStyle(el).position),'fixed');
+ }
+ await assertVersionVisible('operator entry');
  await page.screenshot({path:'/tmp/getaway-menu.png',fullPage:false});
  await page.locator('#playerName').fill('QATEST26');
  await page.locator('#loadProfile').click();
  await page.waitForSelector('#safehouse:not(.hidden)',{timeout:15000});
+ await assertVersionVisible('safehouse');
  const lobbyCanvas=page.locator('#safehouseStage canvas');
  assert.equal(await lobbyCanvas.count(),1,'3D safehouse renderer canvas exists');
  assert.equal(await page.locator('#menu').isVisible(),false,'initial operator screen closes after entry');
@@ -32,6 +42,7 @@ try{
  await page.screenshot({path:'/tmp/getaway-safehouse.png',fullPage:false});
  await page.keyboard.press('e');
  await page.waitForSelector('#safehousePanel:not(.hidden)',{timeout:12000});
+ await assertVersionVisible('safehouse terminal');
  assert.equal(await page.locator('#station-missions').isVisible(),true,'mission station opens with E');
  await page.locator('.shTabs [data-station="weapons"]').click();
  assert.equal(await page.locator('#station-weapons').isVisible(),true,'weapons station accessible');
@@ -46,12 +57,14 @@ try{
  await page.locator('#solo').click();
  await page.waitForSelector('#gameScreen:not(.hidden)',{timeout:15000});
  await page.waitForSelector('#overlayTitle',{timeout:15000});
+ await assertVersionVisible('mission briefing');
  assert.match(await page.locator('#overlayTitle').innerText(),/AFTER HOURS/);
  const canvas=page.locator('#stage > canvas').first();
  assert.equal(await canvas.count(),1,'3D renderer canvas exists');
  await page.locator('#overlayAction').click();
  await page.waitForFunction(()=>document.getElementById('centerOverlay').classList.contains('hidden'),null,{timeout:15000});
  await page.waitForTimeout(1000);
+ await assertVersionVisible('active mission');
  assert.match(await page.locator('#hudMission').innerText(),/AFTER HOURS/);
  assert.match(await page.locator('#hpLabel').innerText(),/125/);
  assert.match(await page.locator('#ammoValue').innerText(),/15/);
@@ -60,6 +73,8 @@ try{
  const ammunition=Number((await page.locator('#ammoValue').innerText()).match(/\d+/)[0]);
  assert.ok(ammunition<15,'shooting should consume ammo: '+ammunition);
  await page.screenshot({path:'/tmp/getaway-smoke.png'});
+ await page.setViewportSize({width:390,height:844});
+ await assertVersionVisible('narrow mission viewport');
  const fatal=await page.locator('#fatal').isVisible();
  assert.equal(fatal,false,'no fatal error overlay');
  assert.equal(errors.filter(e=>e.startsWith('pageerror')).length,0,'no page runtime errors: '+errors.join('; '));
