@@ -37,6 +37,14 @@
 - Protect frame rate and loading on desktop browsers. Reuse batched/instanced geometry and existing assets where possible; avoid unbounded per-frame allocations, pathfinding spikes and excessive draw calls.
 - Reuse the existing HUD/menu design and interactions. For visual changes, inspect the rendered page and relevant states at desktop and narrower sizes; don't treat a passing build as visual validation.
 
+## Concurrent development — mandatory
+- Multiple agents and developers may commit to `main` simultaneously. **Never assume the branch has stayed unchanged** since the task began, since files were first read, or since tests were run.
+- Record the current remote `main` HEAD SHA before beginning work. **Immediately before creating a commit or pushing**, fetch the latest remote `main` HEAD SHA again and compare it with the recorded SHA. Also re-fetch every intended existing target file from the latest `main`; inspect the intervening changes, especially overlaps with your own edits.
+- If `main` advanced, integrate/reapply only your requested changes on top of the **newest** `main` (fetch + rebase/fast-forward or equivalent conflict-aware GitHub edits). Keep concurrent agents' unrelated changes intact; resolve overlapping edits carefully using the latest full file, never an outdated snapshot.
+- Re-run affected tests and checks **after** integrating newer commits, not just before. Recheck remote `main` one final time at commit/push; use non-force fast-forward updates and expected-head/compare-and-swap protections when available.
+- If the remote moves or a content-SHA/expected-head check fails during the commit/push, **do not force-push or overwrite**. Fetch the newest HEAD, reconcile again, revalidate, and retry. If a conflict cannot be resolved safely, report the blocker without discarding anyone's work.
+- Even when newer commits touch unrelated files, base the final commit on current `main`. One final commit remains the goal; never rewrite, reset, revert, or cherry-pick away other agents' work merely to finish the task.
+
 ## Validation and delivery
 1. Inspect the affected source and tests on `main`; make only the requested changes.
 2. Validate with applicable existing checks:
@@ -44,7 +52,7 @@
    - `node --experimental-default-type=module --test game2/game.test.mjs`.
    - `node game2/browser.smoke.mjs` when Playwright/Chromium dependencies are available.
    - Add targeted gameplay tests for altered mission mechanics; perform real two-client and cloud checks when claiming those flows.
-3. Create **one final commit directly on `main`**, containing only intended game changes. Do not leave requested work as an uncommitted local-only modification.
+3. **Run the mandatory concurrent-development HEAD check above immediately before committing/pushing.** Create **one final commit directly on `main`**, based on the latest remote HEAD and containing only intended game changes. Do not leave requested work as an uncommitted local-only modification.
 4. The existing `.github/workflows/getaway-game.yml` automatically validates changes to `game2/**`. Do not manually trigger workflows, manage deployments or modify site-wide CI unless explicitly requested.
 5. After committing, report concisely: commit SHA/link, exact changed files and count, tests actually run with results, any unverified flows, and the affected live page link (normally https://johnvitor.com/game2/). Clearly distinguish a successful commit from a confirmed deployment.
 
