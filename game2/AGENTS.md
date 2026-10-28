@@ -9,7 +9,7 @@
 ## Working conduct
 - Implement only what the user asks. Make the smallest correct change, and extend/reuse existing systems instead of creating competing implementations.
 - Investigation, suggestions, and explanation are **read-only** unless the user explicitly asks to implement or commit.
-- Inspect relevant source, state, callers, and tests before drawing conclusions. For bugs, reproduce or establish the cause before fixing; avoid speculative patches and cosmetic workarounds.
+- Inspect relevant source, state, and callers before drawing conclusions. For bugs, reproduce or establish the cause before fixing; avoid speculative patches and cosmetic workarounds.
 - Never invent test results, deployment status, real-time multiplayer success, or cloud-save success. State what was actually verified and what remains untested.
 - Keep replies brief and practical. Do not ask for information already available from the repository or conversation.
 
@@ -24,7 +24,6 @@
   - `game2/render.js`: Three.js/WebGL scene, maps, props and FPS rendering.
   - `game2/main.js`: browser UI, input, game loop, profile persistence and PeerJS co-op.
   - `game2/index.html` and `style.css`: menus, HUD, presentation.
-  - `game2/game.test.mjs`, `game2/browser.smoke.mjs`: regression and browser tests.
   - `netlify/functions/getaway-profile-v2.mjs`: cloud profile endpoint.
 - Preserve the existing username-based profile format, earned currency, unlocks, and browser-local fallback. Avoid destructive schema changes or silently resetting progress.
 
@@ -32,37 +31,29 @@
 - The single source of truth is the visible `#gameVersion` element in `game2/index.html`, currently initialized at `v0.1.0`. Keep that version visible at the **top right at all times**, including the operator entry screen, the safehouse and its panels, gameplay, mission overlays, and errors. Do not place it behind the UI or obstruct interactive controls.
 - **Every commit changing The Getaway Club must increment the visible semantic version exactly once** (including graphics, gameplay, bugs, UI, tests and documentation changes). Default to a PATCH increment; use MINOR for a substantial feature and MAJOR only for a breaking release. Never reuse a version for separate commits.
 - Bump the version **after reconciling concurrent changes against the latest remote `main`**. If another agent has already advanced the version, bump from their newest value; never overwrite or skip their bump. Keep the label and current deployed build consistent, and refresh the stylesheet cache key when its styling changes.
-- Test the version label when possible in entry, safehouse, open-panel, gameplay, and narrow-screen states. If browser validation cannot be run, report that limitation.
-- **Every final AI answer reporting a game commit must explicitly state the new version** (and ideally previous → new), alongside the commit SHA/link, affected files, tests, unverified functionality, and live URL. Never omit the version from commit delivery reports.
+- **Every final AI answer reporting a game commit must explicitly state the new version** (and ideally previous → new), alongside the commit SHA/link, affected files, and live URL. Never claim a feature was verified or deployed without actually verifying it. Never omit the version from commit delivery reports.
 
 ## Gameplay, co-op and quality
-- New or enlarged maps must be traversable: spawn, objectives, enemy routes and extraction should be reachable, with clear sequencing and viable solo progression. Add/update tests for new phases, dependencies and softlock risks.
+- New or enlarged maps must be traversable: spawn, objectives, enemy routes and extraction should be reachable, with clear sequencing and viable solo progression. Keep new phases, dependencies and routes designed to avoid softlocks.
 - Improve actual gameplay, not map area alone: meaningful spaces, encounters, combat pacing, landmarks, optional challenges, and reasons to explore. Keep jobs distinct.
 - Preserve keyboard/mouse FPS controls and input feedback (WASD, mouse, shoot, sprint, interact, reload, gadget), enemy variants, upgrades and co-op revive.
-- Test single-player and two-player behavior separately. Passing simulation tests does **not** prove real PeerJS connections work between two browsers/devices. Do not call co-op end-to-end verified without a real two-client check.
-- Likewise, browser-local profile saves do **not** prove Netlify Blobs cloud persistence works. Test cloud GET/POST on the deployed endpoint before claiming cloud saves are verified.
 - Protect frame rate and loading on desktop browsers. Reuse batched/instanced geometry and existing assets where possible; avoid unbounded per-frame allocations, pathfinding spikes and excessive draw calls.
-- Reuse the existing HUD/menu design and interactions. For visual changes, inspect the rendered page and relevant states at desktop and narrower sizes; don't treat a passing build as visual validation.
+- Reuse the existing HUD/menu design and interactions across desktop and narrower sizes.
 
 ## Concurrent development — mandatory
-- Multiple agents and developers may commit to `main` simultaneously. **Never assume the branch has stayed unchanged** since the task began, since files were first read, or since tests were run.
+- Multiple agents and developers may commit to `main` simultaneously. **Never assume the branch has stayed unchanged** since the task began, or since files were first read.
 - Record the current remote `main` HEAD SHA before beginning work. **Immediately before creating a commit or pushing**, fetch the latest remote `main` HEAD SHA again and compare it with the recorded SHA. Also re-fetch every intended existing target file from the latest `main`; inspect the intervening changes, especially overlaps with your own edits.
 - If `main` advanced, integrate/reapply only your requested changes on top of the **newest** `main` (fetch + rebase/fast-forward or equivalent conflict-aware GitHub edits). Keep concurrent agents' unrelated changes intact; resolve overlapping edits carefully using the latest full file, never an outdated snapshot.
-- Re-run affected tests and checks **after** integrating newer commits, not just before. Recheck remote `main` one final time at commit/push; use non-force fast-forward updates and expected-head/compare-and-swap protections when available.
+- Recheck remote `main` one final time at commit/push; use non-force fast-forward updates and expected-head/compare-and-swap protections when available.
 - If the remote moves or a content-SHA/expected-head check fails during the commit/push, **do not force-push or overwrite**. Fetch the newest HEAD, reconcile again, revalidate, and retry. If a conflict cannot be resolved safely, report the blocker without discarding anyone's work.
 - Even when newer commits touch unrelated files, base the final commit on current `main`. One final commit remains the goal; never rewrite, reset, revert, or cherry-pick away other agents' work merely to finish the task.
 
-## Validation and delivery
-1. Inspect the affected source and tests on `main`; make only the requested changes.
-2. Validate with applicable existing checks:
-   - `node --check --experimental-default-type=module game2/data.js` (and each other modified JS module).
-   - `node --experimental-default-type=module --test game2/game.test.mjs`.
-   - `node game2/browser.smoke.mjs` when Playwright/Chromium dependencies are available.
-   - Add targeted gameplay tests for altered mission mechanics; perform real two-client and cloud checks when claiming those flows.
-3. **Run the mandatory concurrent-development HEAD check above immediately before committing/pushing.** Create **one final commit directly on `main`**, based on the latest remote HEAD and containing only intended game changes. Do not leave requested work as an uncommitted local-only modification.
-4. The existing `.github/workflows/getaway-game.yml` automatically validates changes to `game2/**`. Do not manually trigger workflows, manage deployments or modify site-wide CI unless explicitly requested.
-5. After committing, report concisely: **new displayed game version** (and previous version), commit SHA/link, exact changed files and count, tests actually run with results, any unverified flows, and the affected live page link (normally https://johnvitor.com/game2/). Clearly distinguish a successful commit from a confirmed deployment.
+## Commits and delivery
+1. Inspect relevant current source on `main` and make only the requested changes.
+2. **Do not run, add, or require game validation**: no automated tests, gameplay regression tests, browser smoke tests, CI validation workflows, or test artifacts. The old game regression tests, Playwright smoke test, and game validation workflow were intentionally removed. Do not recreate them unless the user explicitly requests that.
+3. **Run the mandatory concurrent-development HEAD check above immediately before committing/pushing.** Create **one final commit directly on `main`**, based on the latest remote HEAD and containing only intended changes. Do not leave work uncommitted.
+4. After committing, report concisely: **new displayed game version** (and previous version), commit SHA/link, exact changed files and count, any unverified functionality if relevant, and the affected live page link (normally https://johnvitor.com/game2/). Clearly distinguish a successful commit from a confirmed deployment.
 
 ## Access boundaries
 - Use GitHub as the code source of truth. Do not use Remote Desktop Commander, Vercel deployment tools, or unrelated infrastructure connectors without the user's explicit permission for that task.
-- If required access is unavailable, identify the precise blocker. If only environment/secrets prevent an optional live test, commit otherwise complete work and report the test as unverified.
+- If required access is unavailable, identify the precise blocker. Do not claim unperformed checks, successful deployments, or verified functionality.
