@@ -104,52 +104,14 @@
 .gameVersion{position:fixed;top:calc(env(safe-area-inset-top,0px) + 3px);right:calc(env(safe-area-inset-right,0px) + 13px);z-index:10000;display:flex;align-items:center;gap:7px;padding:4px 9px;background:#08161bdc;border:1px solid #4a727366;color:#def7e9;box-shadow:0 2px 12px #0008;white-space:nowrap;pointer-events:none;user-select:none;font:800 10px/1.2 'DM Sans',sans-serif;letter-spacing:.09em}
 .gameVersion span{color:#84a8a9;font-size:8px;letter-spacing:.14em}
 
-
-/* CABIN SAFEHOUSE — warm lantern light, leather cards and quiet timber palette. */
+/* Cabin scenery stays warm; restore the original green/tactical HUD and menus. */
 .safehouse{background:#1f170f}
-.shTop{background:linear-gradient(#130e0bd9,transparent);text-shadow:0 2px 8px #110b05}
-.shBrand>b{background:#b78a50;color:#23170d;border:1px solid #efc886}
-.shBrand strong{color:#f8e5c7}
-.shBrand span{color:#ccae80}
-.shTopRight{color:#e9cf9b}
-.shTopRight button{background:#2b2017db;border:1px solid #7c6040;color:#f6e4c4}
-.shTopRight button:hover{background:#533b22}
-.shGreenDot{color:#dbbb83}
-.shCrosshair{color:#fff1d0;text-shadow:0 0 7px #2b1707}
-.shBottom{background:linear-gradient(transparent,#1d140bdf)}
-.shBottom b{color:#f6d09b}
-.shBottom span{color:#c0a98a}
-.shPrompt{background:#24180fe8;border:1px solid #aa8754;color:#f6dfb2;box-shadow:0 8px 35px #140b05b0;letter-spacing:.09em}
-.shHoverCard{position:absolute;left:50%;top:calc(50% + 40px);transform:translateX(-50%);width:min(335px,calc(100vw - 45px));padding:14px 18px 13px;background:#24170de9;border:1px solid #b08d58;box-shadow:0 12px 44px #120b06cc;text-align:center;pointer-events:none}
-.shHoverCard:before{content:"";position:absolute;left:11px;right:11px;top:5px;border-top:1px solid #6a4b2d}
-.shHoverCard small{display:block;font-size:9px;letter-spacing:.21em;color:#c6a97b;font-weight:900}
-.shHoverCard strong{display:block;margin:7px 0;font:800 25px 'Barlow Condensed',Impact,sans-serif;color:#fff3dd;letter-spacing:.08em}
-.shHoverMeta{border-top:1px solid #65472e;padding-top:9px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-.shHoverMeta b{font:800 20px 'Barlow Condensed',sans-serif;color:#f3ce8c;white-space:nowrap}
-.shHoverMeta span{font-size:9px;font-weight:800;color:#d3b796;line-height:1.4;text-align:right}
-.shPanel{background:#1e170feb;border-color:#92744b;box-shadow:0 18px 90px #0b0905e8,0 0 0 6px #1911085c;backdrop-filter:blur(22px);color:#f8e9cf}
-.shPanelHeader{border-color:#5a432c}
-.shPanelHeader small{color:#ba9a6e}
-.shPanelHeader h2{color:#f4dfb8}
-.shPanelHeader button{background:#342519;border-color:#82603e;color:#f6dfb2}
-.shTabs{border-color:#59422b}
-.shTabs button{color:#c4ab86}
-.shTabs button.selected,.shTabs button:hover{background:#5b4026;border-color:#9a7343;color:#ffe2ac}
-.shPanelContent{scrollbar-color:#866140 transparent}
-.shLead{color:#d6bda1}
-.shCampaign,.shKitStats,.shMiniStats>div{background:#2c2219;border-color:#624b32}
-.shCampaign small,.shPanelRow,.shMiniStats small{color:#c8ae8e}
-.shCampaign b,.shPanelRow span,.shMiniStats b{color:#f0cf95}
-.shStation .upgrade{background:#2d2116;border-color:#725538}
-.shStation label{color:#d6be9b}
-.shJoin input{background:#1b130d;border-color:#6b4c2f;color:#fff2d9}
-.shRoomInvite{background:#34251a;border-color:#795d3b}
-.shRoomInvite span{color:#f9d698}
-.shDeployName{background:#312419;border-color:#816141;color:#f9daa0}
-.shDeployKit{color:#e9c69a}
-.shPanelFooter{border-color:#59432b;color:#b69c78}
-.shFocusedItem{outline:2px solid #dfb573;outline-offset:3px;box-shadow:0 0 24px #e8bd5b25}
-.shPanel .shopCard{background:#2b2119;border:1px solid #634a30;color:#f7e5c5}
-.shPanel .shopCard p,.shPanel .shopMeta{color:#ccb594}
-.shPanel .shopFoot{border-color:#5e452d}
-@media(max-width:700px){.shHoverCard{top:calc(50% + 33px);padding:11px 14px}.shHoverCard strong{font-size:21px}.shPrompt{bottom:75px}.shTopRight{font-size:9px}}
+.shHoverCard{position:absolute;left:50%;top:calc(50% + 40px);transform:translateX(-50%);width:min(335px,calc(100vw - 45px));padding:14px 18px 13px;background:#0a1d22f0;border:1px solid #69b99a;box-shadow:0 12px 44px #061013cc;text-align:center;pointer-events:none}
+.shHoverCard:before{content:"";position:absolute;left:11px;right:11px;top:5px;border-top:1px solid #40685b}
+.shHoverCard small{display:block;font-size:9px;letter-spacing:.21em;color:#9dddc2;font-weight:900}
+.shHoverCard strong{display:block;margin:7px 0;font:800 25px 'Barlow Condensed',Impact,sans-serif;color:#effff5;letter-spacing:.08em}
+.shHoverMeta{border-top:1px solid #3b6356;padding-top:9px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.shHoverMeta b{font:800 20px 'Barlow Condensed',sans-serif;color:#b9fbd4;white-space:nowrap}
+.shHoverMeta span{font-size:9px;font-weight:800;color:#b0d7ca;line-height:1.4;text-align:right}
+.shFocusedItem{outline:2px solid #9ef2c7;outline-offset:3px;box-shadow:0 0 24px #74d7b52b}
+@media(max-width:700px){.shHoverCard{top:calc(50% + 33px);padding:11px 14px}.shHoverCard strong{font-size:21px}}
