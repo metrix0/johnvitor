@@ -518,7 +518,7 @@ export class View{
    this.tracerMeshes.get(t.id).material.opacity=Math.max(0,t.ttl/.13);
   }
   for(const [id,mesh] of this.tracerMeshes)if(!activeTracers.has(id)){this.world.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();this.tracerMeshes.delete(id);}
-  this.visuals.update(run,this.clock);
+  this.visuals.update(run,this.clock,aiming,dt);
   this.renderer.render(this.scene,camera);
  }
  dispose(){this.observer.disconnect();this.clear();this.visuals.dispose();this.renderer.dispose();}

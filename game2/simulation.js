@@ -178,7 +178,7 @@ function tickPlayer(run,p,input,dt){
  // Run by default in any direction. Shift is the slower, quieter walk.
  const carrying=p.bagId!==null,walking=!!input?.walk,aiming=!!input?.aim,moving=f!==0||s!==0;
  // Aim-down-sights movement is deliberately slower, including while silent-walking.
- const spd=(walking?3.2:7.4)*(aiming?.54:1)*(carrying?.72:1);
+ const spd=(walking?3.2:7.4)*.92*(aiming?.54:1)*(carrying?.72:1);
  const dx=(-Math.sin(p.yaw)*f+Math.cos(p.yaw)*s)*spd*dt/norm;
  const dz=(-Math.cos(p.yaw)*f-Math.sin(p.yaw)*s)*spd*dt/norm;
  move(run,p,dx,dz,.36);

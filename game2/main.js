@@ -11,7 +11,7 @@ let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
 let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
 let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set(),gearSettled=new Set();
 let safehouse=null,activeStation='',lastSafehousePrompt=0,lastStation='missions';
-let selectedMission=0,selectedWeapon='pistol',selectedGadget='',last=0,lastNetwork=0,lastHud=0,lastFoot=0,lastShots=0,lastHits=0,lastHeadshots=0,lastHp=100,lastToast='',lastToastUntil=0,hitMarkerTimer=null;
+let selectedMission=0,selectedWeapon='pistol',selectedGadget='',last=0,lastNetwork=0,lastHud=0,lastFoot=0,lastShots=0,lastHits=0,lastHeadshots=0,lastHp=100,lastToast='',lastToastUntil=0,hitMarkerTimer=null,damageIndicatorTimer=null;
 const controls={forward:false,back:false,left:false,right:false,walk:false,fire:false,reload:false,interact:false,gadget:false,aim:false,yaw:-Math.PI/2,pitch:0};
 let audio=null,muted=localStorage.getItem('getaway-muted')==='true';
 const coins=n=>'₵ '+Math.max(0,Math.floor(n||0)).toLocaleString('en-US');
@@ -182,7 +182,7 @@ function initView(){
   document.addEventListener('pointerlockchange',()=>{
    if(!view)return;
    if(document.pointerLockElement!==view.canvas&&run?.phase==='play'&&!activeOverlay){showPause();}
-   if(document.pointerLockElement===view.canvas&&activeOverlay==='pause'){hideOverlay();softPaused=false;}
+   if(document.pointerLockElement===view.canvas&&activeOverlay==='pause'){closeGameMenu();softPaused=false;}
   });
   return true;
  }catch(e){$('fatalText').textContent='3D graphics could not initialize: '+e.message;$('fatal').classList.remove('hidden');return false;}
@@ -263,7 +263,7 @@ function enterScreen(){
  if(document.pointerLockElement===safehouse?.canvas)document.exitPointerLock();
  safehouse?.setActive(false);
  $('menu').classList.add('hidden');$('safehouse').classList.add('hidden');$('shHoverCard').classList.add('hidden');$('gameScreen').classList.remove('hidden');
- $('roomDisplay').textContent=mode==='solo'?'SOLO / OFFLINE':room;
+ closeGameMenu();$('roomDisplay').textContent=mode==='solo'?'SOLO / OFFLINE':room;
  $('networkDisplay').textContent=mode==='solo'?'LOCAL':'CONNECTED';
  $('invite').classList.toggle('hidden',mode==='solo');
  if(!initView())return false;view.resize();return true;
@@ -272,7 +272,7 @@ function returnMenu(){
  if(quickTest){location.assign('/game2/');return;}
  if(document.pointerLockElement)document.exitPointerLock();
  conn?.close();peer?.destroy();peer=null;conn=null;room='';mode='safehouse';host=true;run=null;softPaused=false;activeOverlay='';
- $('gameScreen').classList.add('hidden');$('centerOverlay').classList.add('hidden');history.replaceState(null,'',location.pathname);
+ closeGameMenu();$('gameScreen').classList.add('hidden');$('centerOverlay').classList.add('hidden');history.replaceState(null,'',location.pathname);
  if(view){view.dispose();view.canvas.remove();view=null;}
  for(const k of ['forward','back','left','right','walk','fire','reload','interact','gadget','aim'])controls[k]=false;status('');$('shRoomInvite').classList.add('hidden');
  enterSafehouse();
@@ -284,7 +284,7 @@ function changeOperator(){
  history.replaceState(null,'',location.pathname);$('playerName').focus();profileStatus('ENTER AN OPERATOR CALLSIGN');
 }
 function showOverlay(tag,title,description,actionText,handler,stats=[]){
- activeOverlay=tag;$('overlayTag').textContent=tag;$('overlayTitle').textContent=title;$('overlayText').textContent=description;
+ closeGameMenu();activeOverlay=tag;$('overlayTag').textContent=tag;$('overlayTitle').textContent=title;$('overlayText').textContent=description;
  $('overlayAction').textContent=actionText||'';$('overlayAction').classList.toggle('hidden',!actionText);
  $('overlayAction').onclick=handler||(()=>{});
  $('overlayDetails').innerHTML=stats.map(([k,v])=>`<div class="detail"><span>${escapeText(k)}</span><b>${escapeText(v)}</b></div>`).join('');
@@ -297,9 +297,19 @@ function showBrief(){
  showOverlay('CASE FILE / '+m.number,m.name,m.description+(run.mission===0?' Scout the neighborhood, get the credentials, breach the backroom safe, carry EACH bag to the parked van, then signal the driver and hold out for extraction. Optional jobs reduce risk or increase your payout.':''),host?'BEGIN OPERATION ↗':'WAITING FOR THE HOST',host?()=>{run.phase='play';lastPhase='';hideOverlay();softPaused=false;sendState();requestLock();}:null,[['TARGET',m.site],['THREAT LEVEL',String(run.mission+1)+' / 5'],['EST. PAYOUT',coins(m.payout)]]);
  if(!host)$('overlayAction').classList.add('hidden');
 }
+function closeGameMenu(){
+ $('gameMenuPanel').classList.add('hidden');
+ $('gameMenuToggle').setAttribute('aria-expanded','false');
+ if(activeOverlay==='pause')activeOverlay='';
+}
+function resumeGame(){closeGameMenu();softPaused=false;requestLock();}
 function showPause(){
- softPaused=mode==='solo';for(const k of ['forward','back','left','right','walk','fire','reload','interact','gadget','aim'])controls[k]=false;
- showOverlay('TACTICAL PAUSE',mode==='solo'?'TAKE A MOMENT':'MOUSE UNLOCKED',mode==='solo'?'The operation is paused. Resume when you are ready.':'The operation continues while your teammate is playing. Return to the action when ready.','RESUME OPERATION',()=>{hideOverlay();softPaused=false;requestLock();});
+ if(!run||run.phase!=='play')return;
+ softPaused=mode==='solo';
+ for(const k of ['forward','back','left','right','walk','fire','reload','interact','gadget','aim'])controls[k]=false;
+ activeOverlay='pause';
+ $('gameMenuPanel').classList.remove('hidden');
+ $('gameMenuToggle').setAttribute('aria-expanded','true');
 }
 function showOutcome(){
  if(!run)return;const m=MISSIONS[run.mission],won=run.phase==='won';
@@ -442,7 +452,7 @@ function updateHud(){
  $('crew').innerHTML=run.players.map((player,i)=>`<div class="crewCard ${player.hp<=0?'downed':''}" style="border-color:${i===0?'#b7f7d4':'#8bd8ff'}"><div class="crewName">${escapeText(player.name.toUpperCase())}${i===(host?0:1)?' / YOU':''}</div><div class="crewHp">${player.hp>0?Math.ceil(player.hp)+' / '+player.maxHp+' HP':'DOWN — NEEDS REVIVE'}</div><div class="crewMiniBar"><div style="width:${Math.max(0,player.hp/player.maxHp*100)}%"></div></div></div>`).join('');
  $('tasks').innerHTML=run.objectives.map(o=>`<div class="task ${o.done?'done':objectiveReady(run,o)?'':'locked'}"><span class="taskIcon">${o.done?'✓':objectiveReady(run,o)?'◇':o.optional?'✧':'⊠'}</span><span>${escapeText(o.name)}${o.optional?' · BONUS':''}</span></div>`).join('');
  $('hpLabel').textContent=Math.ceil(p.hp)+' / '+p.maxHp;$('hpFill').style.width=(p.hp/p.maxHp*100)+'%';$('hpFill').style.background=p.hp/p.maxHp<.3?'#ff786c':'#b8f8d0';
- $('staminaFill').style.width=Math.min(100,(p.noise||0)/30*100)+'%';$('staminaFill').style.background=p.noise>20?'#ff9b83':p.noise>5?'#efc484':'#8cbdd5';$('damage').style.opacity=p.hp>0?Math.max(0,(.33-p.hp/p.maxHp))*1.7:.8;
+ $('damage').style.opacity=p.hp>0?Math.max(0,(.33-p.hp/p.maxHp))*1.7:.8;
  $('gunName').textContent=WEAPONS[p.weapon].name+ (p.reload>0?' · RELOADING':'');
  $('ammoValue').innerHTML=p.ammo+' <em>/ '+p.reserve+'</em>';$('gadgetValue').textContent=p.gadget?(GADGETS[p.gadget].name+' × '+p.gadgets):'NO GADGET';
  $('alarmFill').style.width=run.alarm+'%';$('alertName').textContent=run.alarm<32?'QUIET':run.alarm<65?'SUSPICIOUS':'LOCKDOWN';
@@ -462,27 +472,14 @@ function updateHud(){
   clearTimeout(hitMarkerTimer);
   hitMarkerTimer=setTimeout(()=>{marker.style.opacity='0';},145);
  }
- if(p.hp<lastHp)beep('hurt');lastHp=p.hp;
- if(run.mission===0){
-  let target=null,detail='';
-  const carrying=p.bagId!==null&&p.bagId!==undefined;
-  if(carrying){target=run.dropoff;detail='DELIVER BAG TO VAN';}
-  else if(run.loot.length&&run.secured<run.bagGoal){
-   target=run.loot.find(b=>!b.secured&&b.carrier===null);detail='COLLECT CASH BAG';
-  }else{
-   target=run.objectives.find(o=>!o.optional&&objectiveReady(run,o));
-   detail=target?target.name.toUpperCase():'REACH THE VAN';
-  }
-  if(!target)target=run.exit;
-  const dx=target.x-p.x,dz=target.z-p.z,d=Math.hypot(dx,dz);
-  const forward=-Math.sin(controls.yaw)*dx-Math.cos(controls.yaw)*dz;
-  const right=Math.cos(controls.yaw)*dx-Math.sin(controls.yaw)*dz;
-  const angle=Math.atan2(right,forward);
-  $('waypointArrow').textContent=Math.abs(angle)<.4?'↑':Math.abs(angle)>2.7?'↓':angle>0?'→':'←';
-  $('waypointTitle').textContent=detail;
-  $('waypointDistance').textContent=Math.round(d)+' M · '+(run.secured||0)+' / '+(run.bagGoal||3)+' BAGS';
-  $('waypoint').classList.remove('hidden');
- }else $('waypoint').classList.add('hidden');
+ if(p.hp<lastHp){
+  beep('hurt');
+  const ring=$('damageIndicator');
+  ring.classList.remove('active');void ring.offsetWidth;ring.classList.add('active');
+  clearTimeout(damageIndicatorTimer);
+  damageIndicatorTimer=setTimeout(()=>ring.classList.remove('active'),430);
+ }
+ lastHp=p.hp;
  const aiming=controls.aim&&p.reload<=0&&p.hp>0;
  const scale=(controls.walk?.84:(controls.forward||controls.back||controls.left||controls.right)?1.18:1)+Math.min(.35,(p.bloom||0)*.22);
  const crosshair=$('crosshair');
@@ -490,6 +487,18 @@ function updateHud(){
  // The ADS dot stays pixel-sharp at the exact screen center, even while the gun animates.
  crosshair.style.transform=aiming?'translate(-50%,-50%)':'translate(-50%,-50%) scale('+scale+')';
  drawMinimap(p);
+}
+function mapGoal(player){
+ if(run.mission===0){
+  if(player.bagId!==null&&player.bagId!==undefined)return {at:run.dropoff,label:'VAN'};
+  if(run.loot.length&&run.secured<run.bagGoal){
+   const bag=run.loot.find(b=>!b.secured&&b.carrier===null);
+   return bag?{at:bag,label:'BAG'}:{at:run.dropoff,label:'VAN'};
+  }
+  if(run.escapeAt>0)return {at:run.exit,label:run.escapeReady?'EXIT':'VAN'};
+ }
+ const goal=run.objectives.find(o=>!o.optional&&objectiveReady(run,o))||run.objectives.find(o=>objectiveReady(run,o));
+ return goal?{at:goal,label:'GOAL'}:{at:run.exit,label:'EXIT'};
 }
 function drawMinimap(player){
  const c=$('minimap'),ctx=c.getContext('2d'),W=c.width,H=c.height;ctx.clearRect(0,0,W,H);
@@ -507,7 +516,29 @@ function drawMinimap(player){
   ctx.beginPath();ctx.arc(run.dropoff.x/CELL*sx,run.dropoff.z/CELL*sz,3,0,Math.PI*2);ctx.fill();
  }
  for(const e of run.enemies)if(e.hp>0){ctx.fillStyle='#ff817d';ctx.beginPath();ctx.arc(e.x/CELL*sx,e.z/CELL*sz,1.6,0,Math.PI*2);ctx.fill();}
- run.players.forEach((p,i)=>{ctx.fillStyle=i===0?'#b7ffd8':'#8bd8ff';ctx.beginPath();ctx.arc(p.x/CELL*sx,p.z/CELL*sz,3.5,0,Math.PI*2);ctx.fill();});
+ // World-scaled noise ring around this operator; footsteps stay on the map, not in the health bar.
+ const px=player.x/CELL*sx,py=player.z/CELL*sz,noise=Math.max(0,player.noise||0);
+ if(noise>.1){
+  ctx.fillStyle=noise>16?'#ff857414':noise>5?'#ffca7611':'#b7f7d40c';
+  ctx.strokeStyle=noise>16?'#ff9279':noise>5?'#ffd38c':'#9be6bc';
+  ctx.lineWidth=1.25;ctx.beginPath();
+  ctx.ellipse(px,py,Math.max(3.5,noise/CELL*sx),Math.max(3.5,noise/CELL*sz),0,0,Math.PI*2);
+  ctx.fill();ctx.stroke();
+ }
+ const goal=mapGoal(player),gx=goal.at.x/CELL*sx,gy=goal.at.z/CELL*sz;
+ ctx.strokeStyle='#ffda83';ctx.lineWidth=2;ctx.beginPath();ctx.arc(gx,gy,7+Math.sin(run.time*5)*1.4,0,Math.PI*2);ctx.stroke();
+ ctx.fillStyle='#ffda83';ctx.fillRect(gx-2,gy-2,4,4);
+ ctx.font='800 10px DM Sans,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+ const lx=Math.max(3,Math.min(W-44,gx+10)),ly=Math.max(10,Math.min(H-9,gy-10));
+ ctx.fillStyle='#07151b';ctx.fillRect(lx-2,ly-7,39,14);
+ ctx.fillStyle='#ffe9ad';ctx.fillText(goal.label,lx,ly);
+ run.players.forEach((p,i)=>{
+  const x=p.x/CELL*sx,y=p.z/CELL*sz;
+  if(p===player){
+   ctx.save();ctx.translate(x,y);ctx.rotate(-p.yaw);ctx.fillStyle='#b7ffd8';ctx.strokeStyle='#09231d';ctx.lineWidth=1.2;
+   ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(4.7,5);ctx.lineTo(0,2.5);ctx.lineTo(-4.7,5);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  }else{ctx.fillStyle='#8bd8ff';ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();}
+ });
 }
 function frame(time){
  requestAnimationFrame(frame);
@@ -547,7 +578,7 @@ window.addEventListener('keydown',e=>{
  const keys={'w':'forward','arrowup':'forward','s':'back','arrowdown':'back','a':'left','arrowleft':'left','d':'right','arrowright':'right','shift':'walk','r':'reload','e':'interact','q':'gadget',' ':'fire'};
  if(keys[k]){controls[keys[k]]=true;e.preventDefault();}
  if(k==='escape'&&run?.phase==='play'&&!activeOverlay)showPause();
- if(k==='m'&&!e.repeat){muted=!muted;localStorage.setItem('getaway-muted',String(muted));$('sound').textContent=muted?'♪̸':'♫';}
+ if(k==='m'&&!e.repeat){muted=!muted;localStorage.setItem('getaway-muted',String(muted));updateSoundLabel();}
 });
 window.addEventListener('keyup',e=>{
  safehouse?.key(e.key.toLowerCase(),false);
@@ -575,9 +606,17 @@ $('changeOperator').onclick=changeOperator;
 document.querySelectorAll('.shTabs [data-station], [data-jump]').forEach(button=>button.onclick=()=>openStation(button.dataset.station||button.dataset.jump));
 $('copyRoomInvite').onclick=async()=>{const url=location.origin+location.pathname+'?room='+room;try{await navigator.clipboard.writeText(url);status('INVITE LINK COPIED');}catch{window.prompt('Copy invite:',url);}};
 $('invite').onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname+'?room='+room);$('invite').textContent='✓';setTimeout(()=>$('invite').textContent='↗',1500);}catch{window.prompt('Copy invitation URL:',location.origin+location.pathname+'?room='+room);}};
-$('sound').onclick=()=>{muted=!muted;localStorage.setItem('getaway-muted',String(muted));$('sound').textContent=muted?'♪̸':'♫';beep('pickup');};
-$('pause').onclick=()=>{if(document.pointerLockElement)document.exitPointerLock();if(run?.phase==='play')showPause();};
-$('sound').textContent=muted?'♪̸':'♫';
+function updateSoundLabel(){$('sound').textContent=muted?'SOUND OFF':'SOUND ON';}
+$('sound').onclick=()=>{muted=!muted;localStorage.setItem('getaway-muted',String(muted));updateSoundLabel();beep('pickup');};
+$('pause').onclick=resumeGame;
+$('leaveOperation').onclick=returnMenu;
+$('gameMenuToggle').onclick=()=>{
+ if($('gameMenuPanel').classList.contains('hidden')){
+  if(document.pointerLockElement===view?.canvas)document.exitPointerLock();
+  showPause();
+ }else resumeGame();
+};
+updateSoundLabel();
 const invite=new URLSearchParams(location.search).get('room');
 if(invite&&/^[A-HJ-NP-Z2-9]{6}$/i.test(invite)){$('roomCode').value=invite.toUpperCase();profileStatus('INVITE DETECTED · ENTER YOUR CALLSIGN TO ACCESS THE SAFEHOUSE');}
 const remembered=localStorage.getItem('getaway-last-operator')||localStorage.getItem('getaway-profile-name');
