@@ -24,7 +24,7 @@ const quickTest=/^\/game2\/test\/?$/.test(location.pathname);
 let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
 let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
 let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set(),gearSettled=new Set();
-let safehouse=null,activeStation='',lastSafehousePrompt=0,lastStation='missions';
+let safehouse=null,activeStation='',lastSafehousePrompt=0,lastStation='missions',devConsole=null;
 let selectedMission=0,selectedWeapon='pistol',selectedGadget='',last=0,lastNetwork=0,lastHud=0,lastFoot=0,lastShots=0,lastHits=0,lastHeadshots=0,lastHp=100,lastToast='',lastToastUntil=0,hitMarkerTimer=null,damageIndicatorTimer=null;
 const controls={forward:false,back:false,left:false,right:false,walk:false,fire:false,reload:false,interact:false,gadget:false,aim:false,yaw:-Math.PI/2,pitch:0};
 let audio=null,muted=localStorage.getItem('getaway-muted')==='true';
@@ -195,7 +195,7 @@ function initView(){
   window.addEventListener('mouseup',e=>{if(e.button===0)controls.fire=false;if(e.button===2)controls.aim=false;});
   document.addEventListener('pointerlockchange',()=>{
    if(!view)return;
-   if(document.pointerLockElement!==view.canvas&&run?.phase==='play'&&!activeOverlay){showPause();}
+   if(document.pointerLockElement!==view.canvas&&run?.phase==='play'&&!activeOverlay&&!(quickTest&&devConsole?.isOpen())){showPause();}
    if(document.pointerLockElement===view.canvas&&activeOverlay==='pause'){closeGameMenu();softPaused=false;}
   });
   return true;
@@ -431,6 +431,44 @@ function startBrief(n){
  }
  onRunChange();sendState();
 }
+function launchQuickTestDevTools(createDevConsole){
+ // Dev tools exist only in /game2/test, always using the disposable solo run.
+ if(!quickTest||!run||mode!=='solo')return;
+ const player=()=>run?.players?.[0];
+ const controlsReset=()=>{
+  for(const k of ['forward','back','left','right','walk','fire','reload','interact','gadget','aim'])controls[k]=false;
+ };
+ devConsole=createDevConsole({
+  getPosition:()=>{
+   const p=player();return p?{x:p.x/CELL,z:p.z/CELL,yaw:controls.yaw*180/Math.PI,pitch:controls.pitch*180/Math.PI}:null;
+  },
+  teleport:(x,z)=>{
+   const p=player(),grid=run?.grid;
+   if(!p||!grid)return 'No active test run';
+   if(!Number.isFinite(x)||!Number.isFinite(z)||x<1||z<1||x>=grid[0].length-1||z>=grid.length-1)return 'Coordinates outside the Level 1 map';
+   // Developer inspection may place the camera near scenery, even on collision tiles.
+   // We never mutate the grid, enemy state, objective completion or operator profile.
+   p.x=x*CELL;p.z=z*CELL;
+   controlsReset();
+   return true;
+  },
+  aim:(yaw,pitch)=>{
+   controls.yaw=yaw*Math.PI/180;
+   controls.pitch=clamp(pitch*Math.PI/180,-1.22,1.22);
+   const p=player();
+   if(p){p.yaw=controls.yaw;p.pitch=controls.pitch;}
+  },
+  onOpen:()=>{
+   softPaused=true;controlsReset();
+   if(document.pointerLockElement===view?.canvas)document.exitPointerLock();
+  },
+  onClose:()=>{
+   softPaused=false;
+   if(run?.phase==='play'&&!activeOverlay)requestLock();
+  },
+  onHudToggle:show=>$('gameScreen').classList.toggle('devConsoleHudHidden',!show)
+ });
+}
 function launchQuickTest(){
  // No cloud fetch, localStorage writes, purchases, or progression rewards.
  profile=profileDefaults('TEST OPERATOR');loadedName='';
@@ -643,6 +681,13 @@ function frame(time){
  if(time-lastHud>85){updateHud();lastHud=time;}
 }
 window.addEventListener('keydown',e=>{
+ if(quickTest&&(e.code==='Backquote'||e.key==='F2')){
+  e.preventDefault();if(!e.repeat)devConsole?.toggle();return;
+ }
+ if(quickTest&&devConsole?.isOpen()){
+  if(e.key==='Escape'){e.preventDefault();devConsole.close();}
+  return; // Commands, arrows and typing never fire or move the player.
+ }
  if(mode==='menu')return;
  const k=e.key.toLowerCase();
  if(safehouseIsVisible()){
@@ -660,6 +705,7 @@ window.addEventListener('keydown',e=>{
  if(k==='m'&&!e.repeat){muted=!muted;localStorage.setItem('getaway-muted',String(muted));updateSoundLabel();}
 });
 window.addEventListener('keyup',e=>{
+ if(quickTest&&devConsole?.isOpen())return;
  safehouse?.key(e.key.toLowerCase(),false);
  const keys={'w':'forward','arrowup':'forward','s':'back','arrowdown':'back','a':'left','arrowleft':'left','d':'right','arrowright':'right','shift':'walk','r':'reload','e':'interact','q':'gadget',' ':'fire'};const key=keys[e.key.toLowerCase()];if(key)controls[key]=false;
 });
@@ -705,7 +751,11 @@ refreshMenu();
 window.addEventListener('beforeunload',()=>{peer?.destroy();});
 window.getawayReady=true;
 $('fatal').classList.add('hidden');
-if(quickTest)launchQuickTest();
+if(quickTest){
+ launchQuickTest();
+ void import('./dev-console.js?v=1').then(({createDevConsole})=>launchQuickTestDevTools(createDevConsole))
+  .catch(error=>console.warn('Dev navigation console unavailable:',error));
+}
 else if(remembered){
  // Returning operators enter immediately; existing local saves load without a network wait.
  void ensureProfile().then(loaded=>{
