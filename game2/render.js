@@ -333,10 +333,10 @@ export class View{
   this.box(this.irons,0,.115,.13,.22,.05,.14,0x182a2d,.5);
   this.optic=new THREE.Group();this.gunBody.add(this.optic);
   this.box(this.optic,0,.125,-.09,.13,.11,.18,0x1e292c,.6);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(.087,.012,8,24),new THREE.MeshStandardMaterial({color:0x283237,metalness:.24,roughness:.78}));
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.078,.007,10,40),new THREE.MeshStandardMaterial({color:0x283237,metalness:.24,roughness:.78}));
   ring.position.set(0,this.sightHeight,-.09);this.optic.add(ring);
-  this.reticle=new THREE.Mesh(new THREE.SphereGeometry(.007,8,8),new THREE.MeshBasicMaterial({color:0xc9b58a,transparent:true,opacity:.85,depthWrite:false}));
-  this.reticle.position.set(0,this.sightHeight,-.37);this.optic.add(this.reticle);
+  // The crisp ADS dot is screen-aligned in the HUD; avoid a second, aliased 3D reticle.
+  // Keep the optic's physical frame visible on the firearm.
   // Render the firearm on layer 1 with a soft, separate light rig.
   this.camera.layers.enable(1);
   this.gunBody.traverse(part=>part.layers.set(1));
@@ -386,7 +386,7 @@ export class View{
   const baseX=wantsAim?0:.37,baseY=wantsAim?-this.sightHeight:-.36+bob;
   this.gunTarget.set(baseX+(.24-baseX)*pose,baseY+(-.095-baseY)*pose,-.55-pose*.48+p.recoil*.08);
   this.gun.position.lerp(this.gunTarget,Math.min(1,dt*19));
-  this.gun.rotation.x=(aiming?0:Math.sin(this.clock*6)*.01)-p.recoil*.13;
+  this.gun.rotation.x=(aiming?0:Math.sin(this.clock*6)*.01)-p.recoil*(aiming?.055:.13);
   this.gunBody.rotation.set(-pose*.22,pose*.29,-pose*.32);
   const revolver=this.weaponType==='revolver',shotgun=this.weaponType==='shotgun';
   const magFed=!revolver&&!shotgun;

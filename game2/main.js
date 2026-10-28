@@ -1,6 +1,6 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js';
-import {View} from './render.js?v=3';
+import {View} from './render.js?v=4';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=3';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
@@ -11,7 +11,7 @@ let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
 let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
 let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set(),gearSettled=new Set();
 let safehouse=null,activeStation='',lastSafehousePrompt=0;
-let selectedMission=0,selectedWeapon='pistol',selectedGadget='',last=0,lastNetwork=0,lastHud=0,lastFoot=0,lastShots=0,lastHits=0,lastHeadshots=0,lastHp=100,lastToast='',lastToastUntil=0;
+let selectedMission=0,selectedWeapon='pistol',selectedGadget='',last=0,lastNetwork=0,lastHud=0,lastFoot=0,lastShots=0,lastHits=0,lastHeadshots=0,lastHp=100,lastToast='',lastToastUntil=0,hitMarkerTimer=null;
 const controls={forward:false,back:false,left:false,right:false,walk:false,fire:false,reload:false,interact:false,gadget:false,aim:false,yaw:-Math.PI/2,pitch:0};
 let audio=null,muted=localStorage.getItem('getaway-muted')==='true';
 const coins=n=>'₵ '+Math.max(0,Math.floor(n||0)).toLocaleString('en-US');
@@ -410,7 +410,14 @@ function updateHud(){
  if(run.toast&&run.toastUntil>run.time){$('toast').textContent=run.toast;$('toast').classList.remove('hidden');}
  else $('toast').classList.add('hidden');
  if(p.stats.shots!==lastShots){if(p.stats.shots>lastShots)beep('shoot');lastShots=p.stats.shots;}
- if(p.stats.hits!==lastHits){$('hitMarker').style.borderColor=(p.stats.headshots||0)>lastHeadshots?'#ffcb76':'#f9e7b8';$('hitMarker').style.opacity=1;lastHits=p.stats.hits;lastHeadshots=p.stats.headshots||0;setTimeout(()=>$('hitMarker').style.opacity=0,110);}
+ if(p.stats.hits!==lastHits){
+  const marker=$('hitMarker'),headshot=(p.stats.headshots||0)>lastHeadshots;
+  marker.style.color=headshot?'#ffbe82':'#e9fff4';
+  marker.style.opacity='1';
+  lastHits=p.stats.hits;lastHeadshots=p.stats.headshots||0;
+  clearTimeout(hitMarkerTimer);
+  hitMarkerTimer=setTimeout(()=>{marker.style.opacity='0';},145);
+ }
  if(p.hp<lastHp)beep('hurt');lastHp=p.hp;
  if(run.mission===0){
   let target=null,detail='';
@@ -432,10 +439,12 @@ function updateHud(){
   $('waypointDistance').textContent=Math.round(d)+' M · '+(run.secured||0)+' / '+(run.bagGoal||3)+' BAGS';
   $('waypoint').classList.remove('hidden');
  }else $('waypoint').classList.add('hidden');
- const scale=(controls.aim?.68:controls.walk?.84:(controls.forward||controls.back||controls.left||controls.right)?1.18:1)+Math.min(.35,(p.bloom||0)*.22);
- $('crosshair').style.transform='translate(-50%,-50%) scale('+scale+')';
- // The weapon sight itself becomes the crosshair during ADS.
- $('crosshair').style.opacity=controls.aim&&p.reload<=0&&p.hp>0?'0':'1';
+ const aiming=controls.aim&&p.reload<=0&&p.hp>0;
+ const scale=(controls.walk?.84:(controls.forward||controls.back||controls.left||controls.right)?1.18:1)+Math.min(.35,(p.bloom||0)*.22);
+ const crosshair=$('crosshair');
+ crosshair.classList.toggle('aiming',aiming);
+ // The ADS dot stays pixel-sharp at the exact screen center, even while the gun animates.
+ crosshair.style.transform=aiming?'translate(-50%,-50%)':'translate(-50%,-50%) scale('+scale+')';
  drawMinimap(p);
 }
 function drawMinimap(player){
@@ -503,7 +512,7 @@ window.addEventListener('keyup',e=>{
 window.addEventListener('mousemove',e=>{
  if(safehouse&&document.pointerLockElement===safehouse.canvas){safehouse.look(e.movementX,e.movementY);return;}
  if(!view||document.pointerLockElement!==view.canvas)return;
- const sensitivity=controls.aim?.70:1;controls.yaw-=e.movementX*.0021*sensitivity;controls.pitch=clamp(controls.pitch-e.movementY*.0018*sensitivity,-1.22,1.22);
+ const sensitivity=controls.aim?.45:1;controls.yaw-=e.movementX*.0021*sensitivity;controls.pitch=clamp(controls.pitch-e.movementY*.0018*sensitivity,-1.22,1.22);
 });
 window.addEventListener('blur',()=>{safehouse?.resetKeys();for(const k of ['forward','back','left','right','walk','fire','reload','interact','gadget','aim'])controls[k]=false;});
 $('loadProfile').onclick=async()=>{if(await ensureProfile(true))enterSafehouse();};
