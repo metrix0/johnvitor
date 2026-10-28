@@ -5,6 +5,20 @@ import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=6';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
 const key=name=>'getaway-v3-'+name.toLowerCase();
+const operatorCookie='getaway-operator';
+function rememberOperator(name){
+ if(!/^[a-zA-Z0-9_-]{3,24}$/.test(name))return;
+ document.cookie=operatorCookie+'='+encodeURIComponent(name)+'; Max-Age=31536000; Path=/game2; SameSite=Lax'+(location.protocol==='https:'?'; Secure':'');
+}
+function rememberedOperator(){
+ const entry=document.cookie.split(';').map(part=>part.trim()).find(part=>part.startsWith(operatorCookie+'='));
+ let name='';
+ try{if(entry)name=decodeURIComponent(entry.slice(operatorCookie.length+1));}catch{}
+ if(/^[a-zA-Z0-9_-]{3,24}$/.test(name))return name;
+ // Automatically migrate operators remembered by earlier versions of the game.
+ try{name=localStorage.getItem('getaway-last-operator')||localStorage.getItem('getaway-profile-name')||'';}catch{}
+ return /^[a-zA-Z0-9_-]{3,24}$/.test(name)?name:'';
+}
 // Isolated one-click level-one run, without touching real operator saves.
 const quickTest=/^\/game2\/test\/?$/.test(location.pathname);
 let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
@@ -18,7 +32,7 @@ const coins=n=>'₵ '+Math.max(0,Math.floor(n||0)).toLocaleString('en-US');
 function status(message){$('connectStatus').textContent=message;}
 function profileStatus(message){$('profileStatus').textContent=message;}
 function profileWallet(){return Math.max(0,(profile.earned||0)-(profile.spent||0));}
-function saveLocal(){if(!loadedName)return;try{localStorage.setItem(key(loadedName),JSON.stringify(profile));localStorage.setItem('getaway-last-operator',loadedName);}catch{}}
+function saveLocal(){if(!loadedName)return;try{localStorage.setItem(key(loadedName),JSON.stringify(profile));localStorage.setItem('getaway-last-operator',loadedName);}catch{}rememberOperator(loadedName);}
 function mergeProfiles(local,remote,name){
  const a=normalizeProfile(local,name),b=normalizeProfile(remote,name);
  const merged=profileDefaults(name);
@@ -682,11 +696,17 @@ $('gameMenuToggle').onclick=()=>{
 updateSoundLabel();
 const invite=new URLSearchParams(location.search).get('room');
 if(invite&&/^[A-HJ-NP-Z2-9]{6}$/i.test(invite)){$('roomCode').value=invite.toUpperCase();profileStatus('INVITE DETECTED · ENTER YOUR CALLSIGN TO ACCESS THE SAFEHOUSE');}
-const remembered=localStorage.getItem('getaway-last-operator')||localStorage.getItem('getaway-profile-name');
-if(remembered&&/^[a-zA-Z0-9_-]{3,24}$/.test(remembered)){$('playerName').value=remembered;}
+const remembered=rememberedOperator();
+if(remembered)$('playerName').value=remembered;
 refreshMenu();
 window.addEventListener('beforeunload',()=>{peer?.destroy();});
 window.getawayReady=true;
 $('fatal').classList.add('hidden');
 if(quickTest)launchQuickTest();
+else if(remembered){
+ // Returning operators enter immediately; existing local saves load without a network wait.
+ void ensureProfile().then(loaded=>{
+  if(loaded&&mode==='menu'&&$('playerName').value.trim().toLowerCase()===remembered.toLowerCase())enterSafehouse();
+ }).catch(()=>profileStatus('COULD NOT RESTORE OPERATOR · ENTER YOUR CALLSIGN'));
+}
 requestAnimationFrame(frame);
