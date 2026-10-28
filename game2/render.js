@@ -317,13 +317,13 @@ export class View{
   const p=run.players[playerIndex]||run.players[0];if(!p)return;
   const camera=this.camera;
   const desired=new THREE.Vector3(p.x,1.67-(p.hp<=0?.9:0),p.z);
-  if(!this.cameraReady){camera.position.copy(desired);this.cameraReady=true;}else camera.position.lerp(desired,Math.min(1,dt*18));
+  camera.position.copy(desired);this.cameraReady=true;
   camera.rotation.set(angles.pitch||0,angles.yaw||0,0,'YXZ');
-  const moving=!!(input.forward||input.back||input.left||input.right),bob=moving&&p.hp>0?Math.sin(this.clock*(input.sprint?15:10))*.015:0;
+  const moving=!!(input.forward||input.back||input.left||input.right),bob=moving&&p.hp>0?Math.sin(this.clock*(input.walk?8:14))*(input.walk?.008:.02):0;
   const aiming=!!input.aim;
-  this.gun.position.lerp(new THREE.Vector3(aiming?.01:.37,-.36+bob-(aiming?.09:0),aiming?-.56:-.55),Math.min(1,dt*11));
+  this.gun.position.lerp(new THREE.Vector3(aiming?.01:.37,-.36+bob-(aiming?.09:0),(aiming?-.56:-.55)+p.recoil*.11),Math.min(1,dt*16));
   this.gun.rotation.x=Math.sin(this.clock*6)*.01-p.recoil*.16;
-  camera.fov+=( (aiming?56:input.sprint?80:76)-camera.fov)*Math.min(1,dt*9);camera.updateProjectionMatrix();
+  camera.fov+=( (aiming?56:input.walk?74:moving?80:76)-camera.fov)*Math.min(1,dt*9);camera.updateProjectionMatrix();
   this.muzzle.intensity=Math.max(0,this.muzzle.intensity-dt*70);
   this.flash.visible=this.muzzle.intensity>2;
   if(p.stats.shots!==this.lastShots){this.lastShots=p.stats.shots;this.muzzle.intensity=12;this.flash.visible=true;}
@@ -401,11 +401,11 @@ export class View{
   const activeTracers=new Set();
   for(const t of run.tracers){activeTracers.add(t.id);
    if(!this.tracerMeshes.has(t.id)){
-    const a=new THREE.Vector3(t.x,1.4,t.z),b=new THREE.Vector3(t.tx,1.4,t.tz);
+    const a=new THREE.Vector3(t.x,t.y??1.64,t.z),b=new THREE.Vector3(t.tx,t.ty??1.64,t.tz);
     const geo=new THREE.BufferGeometry().setFromPoints([a,b]);
     const line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:t.owner===playerIndex?0xfff1aa:0xfda3a0,transparent:true,opacity:.95}));this.world.add(line);this.tracerMeshes.set(t.id,line);
    }
-   this.tracerMeshes.get(t.id).material.opacity=Math.max(0,t.ttl/.16);
+   this.tracerMeshes.get(t.id).material.opacity=Math.max(0,t.ttl/.13);
   }
   for(const [id,mesh] of this.tracerMeshes)if(!activeTracers.has(id)){this.world.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();this.tracerMeshes.delete(id);}
   this.renderer.render(this.scene,camera);

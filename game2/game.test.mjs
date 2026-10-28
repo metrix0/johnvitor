@@ -125,3 +125,30 @@ test('the long first mission offers restock caches and one solo checkpoint retry
  stepRun(run,[idle],.05);
  assert.equal(run.phase,'lost');
 });
+
+test('running is default, Shift walking is quiet and no stamina drain',()=>{
+ const run=makeRun(1,1);run.enemies=[];run.reinforce=Infinity;run.phase='play';const p=run.players[0],start=p.x;
+ advance(run,[{...idle,forward:true}],.7);const fast=p.x-start,noise=p.noise;
+ p.x=start;p.z=MISSIONS[1].spawn[1]*CELL;advance(run,[{...idle,forward:true,walk:true}],.7);
+ assert.ok(fast>(p.x-start)*1.7);assert.ok(noise>p.noise*4);assert.equal(p.stamina,100);
+});
+test('precise 3D ADS shots resolve bodyshots, headshots and misses',()=>{
+ const setup=()=>{const run=makeRun(1,1,[{weapon:'dmr'}]);run.phase='play';run.enemies=[];run.reinforce=Infinity;
+ const p=run.players[0];p.x=4;p.z=18;
+ const e={id:999,x:14,z:18,type:'heavy',hp:245,maxHp:245,stun:5,flinch:0,cool:0};run.enemies.push(e);return {run,p,e};};
+ const body=setup();stepRun(body.run,[{yaw:-Math.PI/2,pitch:0,aim:true,fire:true}],.05);
+ const head=setup();stepRun(head.run,[{yaw:-Math.PI/2,pitch:.048,aim:true,fire:true}],.05);
+ assert.ok(245-body.e.hp>=70);assert.ok(245-head.e.hp>(245-body.e.hp)*1.4);assert.equal(head.p.stats.headshots,1);
+ const miss=setup();stepRun(miss.run,[{yaw:-Math.PI/2,pitch:.4,aim:true,fire:true}],.05);assert.equal(miss.e.hp,245);
+});
+test('fast projectiles cannot tunnel through a player between simulation frames',()=>{
+ const run=makeRun(1,1);run.phase='play';run.enemies=[];run.reinforce=Infinity;const p=run.players[0],hp=p.hp;
+ run.projectiles.push({id:1000,x:p.x-1.1,z:p.z,dx:1,dz:0,speed:30,damage:22,life:1});
+ stepRun(run,[idle],.05);assert.ok(p.hp<hp);assert.equal(run.projectiles.length,0);
+});
+test('enemies hear running farther than Shift silent walking',()=>{
+ const setup=walk=>{const run=makeRun(1,1);run.phase='play';run.reinforce=Infinity;run.enemies=[];const p=run.players[0];p.x=4;p.z=18;
+ const e={id:101,x:4,z:11,type:'guard',hp:80,maxHp:80,speed:0,damage:0,range:0,cadence:3,dir:Math.PI,cool:4,path:[],pathTimer:999,stun:0,flinch:0,alert:false,alertUntil:0,lastKnown:null,patrolX:4,patrolZ:11};
+ run.enemies.push(e);stepRun(run,[{...idle,forward:true,walk}],.05);return e.alert;};
+ assert.equal(setup(false),true);assert.equal(setup(true),false);
+});

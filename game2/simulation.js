@@ -63,7 +63,7 @@ export function spawnEnemy(run,type,at){
  const [hp,speed,damage,cadence,range]=stats[type]||stats.guard;
  const p=pos(at);let x=p.x,z=p.z;
  if(isBlocked(run,x,z,.35)){const q=run.players[0];x=q.x+4;z=q.z+4;}
- const e={id:++run.serial,type,x,z,hp,maxHp:hp,speed,damage,cadence,range,dir:0,cool:rng(.3,1.6),path:[],pathTimer:0,stun:0,flinch:0,alert:false,patrolX:x+rng(-4,4),patrolZ:z+rng(-4,4)};
+ const e={id:++run.serial,type,x,z,hp,maxHp:hp,speed,damage,cadence,range,dir:0,cool:rng(.3,1.6),path:[],pathTimer:0,stun:0,flinch:0,alert:false,patrolX:x+rng(-4,4),patrolZ:z+rng(-4,4),alertUntil:0,lastKnown:null};
  run.enemies.push(e);return e;
 }
 export function makeRun(n=0,count=1,loadouts=[]){
@@ -72,7 +72,7 @@ export function makeRun(n=0,count=1,loadouts=[]){
  for(let i=0;i<count;i++){
   const kit=loadouts[i]||{},wid=WEAPONS[kit.weapon]?kit.weapon:'pistol',gid=GADGETS[kit.gadget]?kit.gadget:null,w=WEAPONS[wid];
   const maxHp=(n===0?125:100)+25*clamp(kit.upgrades?.armor||0,0,3),mag=Math.round(w.mag*(1+clamp(kit.upgrades?.mag||0,0,3)*.2));
-  run.players.push({bagId:null,id:i,name:String(kit.name||'CREW '+(i+1)).slice(0,24),x:start.x,z:start.z+(i?1.2:0),yaw:-Math.PI/2,pitch:0,hp:maxHp,maxHp,stamina:100,weapon:wid,gadget:gid,mag,ammo:mag,reserve:w.reserve,reload:0,cool:0,gadgets:gid?GADGETS[gid].charges:0,gadCool:0,damageTier:clamp(kit.upgrades?.damage||0,0,3),invuln:0,interact:0,interactId:'',bleed:0,down:false,stats:{kills:0,shots:0,hits:0},recoil:0});
+  run.players.push({bagId:null,id:i,name:String(kit.name||'CREW '+(i+1)).slice(0,24),x:start.x,z:start.z+(i?1.2:0),yaw:-Math.PI/2,pitch:0,hp:maxHp,maxHp,stamina:100,noise:0,noiseUntil:0,bloom:0,weapon:wid,gadget:gid,mag,ammo:mag,reserve:w.reserve,reload:0,cool:0,gadgets:gid?GADGETS[gid].charges:0,gadCool:0,damageTier:clamp(kit.upgrades?.damage||0,0,3),invuln:0,interact:0,interactId:'',bleed:0,down:false,stats:{kills:0,shots:0,hits:0},recoil:0});
  }
  run.objectives=mission.objectives.map(o=>({...o,x:o.at[0]*CELL,z:o.at[1]*CELL,requires:o.requires||[],done:false}));
  if(n===0){
@@ -100,24 +100,34 @@ function damageEnemy(run,e,amount,player){
 function shoot(run,p){
  const w=WEAPONS[p.weapon];if(p.cool>0||p.reload>0||p.hp<=0)return;
  if(p.ammo<=0){if(p.reserve>0)p.reload=w.reload;return;}
- p.ammo--;p.cool=w.rate;p.recoil=Math.min(1,p.recoil+.22);p.stats.shots++;run.shots++;run.alarm=clamp(run.alarm+2.3,0,100);
- const pellets=w.pellets,range=w.range;
- for(let i=0;i<pellets;i++){
-  const yaw=p.yaw+rng(-w.spread,w.spread),pitch=p.pitch+rng(-w.spread*.7,w.spread*.7);
+ p.ammo--;p.cool=w.rate;p.recoil=Math.min(1,p.recoil+.25);p.stats.shots++;run.shots++;
+ p.noiseUntil=run.time+1.1;p.noise=30;run.alarm=clamp(run.alarm+2.3,0,100);
+ const precision=(p.aiming?.34:1)*(p.walking?.68:p.moving?1.3:.78);
+ const spread=w.spread*(.65+p.bloom)*precision;
+ p.bloom=Math.min(1.6,p.bloom+(w.pellets>1?.31:.20));
+ for(let i=0;i<w.pellets;i++){
+  const yaw=p.yaw+rng(-spread,spread),pitch=p.pitch+rng(-spread*.8,spread*.8);
   const dx=-Math.sin(yaw)*Math.cos(pitch),dz=-Math.cos(yaw)*Math.cos(pitch),dy=Math.sin(pitch);
-  let hit=null,minT=range,end={x:p.x+dx*range,z:p.z+dz*range};
-  // March against the mission's collision grid so bullets cannot pass through walls.
-  for(let t=.45;t<range;t+=.3)if(isBlocked(run,p.x+dx*t,p.z+dz*t,.02)){minT=t;break;}
+  const planar=dx*dx+dz*dz;
+  let hit=null,headshot=false,minT=w.range;
+  // True eye-height 3D hitscan, occluded by solid walls.
+  for(let t=.12;t<minT;t+=.2)if(isBlocked(run,p.x+dx*t,p.z+dz*t,.015)){minT=t;break;}
   for(const e of run.enemies){
    if(e.hp<=0)continue;
-   const vx=e.x-p.x,vz=e.z-p.z,vy=(e.type==='drone'?1.95:1.3)-1.58;
-   const t=vx*dx+vz*dz+vy*dy;if(t<=0||t>=minT)continue;
-   const error=Math.hypot(vx-dx*t,vz-dz*t,vy-dy*t);
-   if(error<(e.type==='heavy'?.85:.66)){minT=t;hit=e;}
+   const vx=e.x-p.x,vz=e.z-p.z,t=(vx*dx+vz*dz)/planar;
+   if(t<=0||t>=minT)continue;
+   const horizontal=Math.hypot(vx-dx*t,vz-dz*t),y=1.67+dy*t;
+   const radius=e.type==='heavy'?.83:e.type==='drone'?.68:.58;
+   const low=e.type==='drone'?1.72:.25,high=e.type==='drone'?2.60:e.type==='heavy'?2.85:2.38;
+   if(horizontal>radius||y<low||y>high)continue;
+   hit=e;minT=t;headshot=e.type!=='drone'&&horizontal<.36&&y>=1.86&&y<=high;
   }
-  end={x:p.x+dx*minT,z:p.z+dz*minT};
-  run.tracers.push({id:++run.serial,x:p.x,z:p.z,tx:end.x,tz:end.z,owner:p.id,ttl:.16,hit:!!hit});
-  if(hit){const base=w.damage*(1+p.damageTier*.13);damageEnemy(run,hit,Math.round(base),p);p.stats.hits++;run.hitShots++;}
+  run.tracers.push({id:++run.serial,x:p.x,y:1.64,z:p.z,tx:p.x+dx*minT,ty:1.67+dy*minT,tz:p.z+dz*minT,owner:p.id,ttl:.13,hit:!!hit});
+  if(hit){
+   damageEnemy(run,hit,Math.round(w.damage*(1+p.damageTier*.13)*(headshot?1.65:1)),p);
+   p.stats.hits++;run.hitShots++;
+   if(headshot)p.stats.headshots=(p.stats.headshots||0)+1;
+  }
  }
 }
 function enemyFire(run,e,target){
@@ -130,17 +140,20 @@ function enemyFire(run,e,target){
 }
 function tickPlayer(run,p,input,dt){
  p.cool=Math.max(0,p.cool-dt);p.invuln=Math.max(0,p.invuln-dt);p.gadCool=Math.max(0,p.gadCool-dt);
- p.recoil=Math.max(0,p.recoil-dt*2.5);
+ p.recoil=Math.max(0,p.recoil-dt*3.2);p.bloom=Math.max(0,(p.bloom||0)-dt*1.5);
  if(p.reload>0){p.reload=Math.max(0,p.reload-dt);if(p.reload===0){const needed=p.mag-p.ammo,add=Math.min(needed,p.reserve);p.ammo+=add;p.reserve-=add;}}
  if(p.hp<=0){p.bleed-=dt;return;}
  p.yaw=Number.isFinite(input?.yaw)?clamp(input.yaw,-2000,2000):p.yaw;
  p.pitch=Number.isFinite(input?.pitch)?clamp(input.pitch,-1.35,1.35):p.pitch;
  const f=Number(!!input?.forward)-Number(!!input?.back),s=Number(!!input?.right)-Number(!!input?.left),norm=Math.hypot(f,s)||1;
- const carrying=p.bagId!==null,wantsRun=!!input?.sprint&&f>0&&p.stamina>3,spd=(wantsRun?8:5.1)*(carrying?.62:1);
+ // Run by default in any direction. Shift is the slower, quieter walk.
+ const carrying=p.bagId!==null,walking=!!input?.walk,moving=f!==0||s!==0;
+ const spd=(walking?3.2:7.4)*(carrying?.72:1);
  const dx=(-Math.sin(p.yaw)*f+Math.cos(p.yaw)*s)*spd*dt/norm;
  const dz=(-Math.cos(p.yaw)*f-Math.sin(p.yaw)*s)*spd*dt/norm;
  move(run,p,dx,dz,.36);
- p.stamina=clamp(p.stamina+(wantsRun?-27:21)*dt,0,100);
+ p.walking=walking;p.moving=moving;p.aiming=!!input?.aim;
+ p.stamina=100;p.noise=Math.max(moving?(walking?1.5:11):0,run.time<(p.noiseUntil||0)?30:0);
  if(input?.reload&&p.reload===0&&p.ammo<p.mag&&p.reserve>0)p.reload=WEAPONS[p.weapon].reload;
  if(input?.fire&&p.reload===0)shoot(run,p);
  if(input?.gadget&&p.gadgets>0&&p.gadCool===0){
@@ -197,10 +210,14 @@ function tickEnemy(run,e,dt){
  const p=live.reduce((a,b)=>distance(e,a)<distance(e,b)?a:b);
  const d=distance(e,p),sight=d<e.range+12&&lineClear(run,e,p);
  const smoked=run.pickups.some(s=>s.type==='smoke'&&s.ttl>0&&(distance(s,p)<4.6||distance(s,e)<4.6));
- if(sight&&!smoked)e.alert=true;
- const target=e.alert&&!smoked?p:{x:e.patrolX,z:e.patrolZ};
+ const facing=unit(p.x-e.x,p.z-e.z),front=Math.sin(e.dir)*facing.x+Math.cos(e.dir)*facing.z;
+ const seen=sight&&!smoked&&(d<3.2||front>.24||e.alert);
+ const heard=!smoked&&d<(p.noise||0);
+ if(seen||heard){e.alert=true;e.alertUntil=run.time+13;e.lastKnown={x:p.x,z:p.z};}
+ else if(e.alertUntil>0&&run.time>e.alertUntil)e.alert=false;
+ const target=e.alert&&!smoked?(sight?p:e.lastKnown||p):{x:e.patrolX,z:e.patrolZ};
  const range=e.type==='sniper'?16:e.type==='heavy'?9:e.type==='rusher'?1.3:e.type==='drone'?9:7;
- if(e.alert&&!smoked&&sight&&d<e.range&&e.cool===0){
+ if(e.alert&&!smoked&&seen&&d<e.range&&e.cool===0){
   if(e.type==='rusher'&&d<1.7){damagePlayer(run,p,e.damage);e.cool=1.2;}
   else enemyFire(run,e,p);
  }
@@ -219,9 +236,22 @@ function tickEnemy(run,e,dt){
  if(e.type==='drone'&&run.empUntil>run.time)e.stun=1;
 }
 function tickProjectile(run,b,dt){
- b.x+=b.dx*b.speed*dt;b.z+=b.dz*b.speed*dt;b.life-=dt;
- if(isBlocked(run,b.x,b.z,.14)){b.life=0;return;}
- for(const p of run.players)if(p.hp>0&&distance(b,p)<.66){damagePlayer(run,p,b.damage);b.life=0;break;}
+ // Substep projectile travel to catch targets crossed between frames.
+ const steps=Math.max(1,Math.ceil(b.speed*dt/.18)),slice=dt/steps;
+ for(let i=0;i<steps;i++){
+  const nx=b.x+b.dx*b.speed*slice,nz=b.z+b.dz*b.speed*slice;
+  if(isBlocked(run,nx,nz,.14)){b.life=0;return;}
+  const vx=nx-b.x,vz=nz-b.z,denom=vx*vx+vz*vz;
+  for(const p of run.players){
+   if(p.hp<=0)continue;
+   const t=clamp(((p.x-b.x)*vx+(p.z-b.z)*vz)/(denom||1),0,1);
+   if(Math.hypot(b.x+vx*t-p.x,b.z+vz*t-p.z)<.62){
+    damagePlayer(run,p,b.damage);b.life=0;return;
+   }
+  }
+  b.x=nx;b.z=nz;
+ }
+ b.life-=dt;
 }
 export function stepRun(run,inputs,dt){
  if(!run||run.phase!=='play')return;
