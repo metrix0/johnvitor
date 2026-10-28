@@ -1,7 +1,7 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js';
 import {View} from './render.js';
-import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js';
+import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=2';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
 const key=name=>'getaway-v3-'+name.toLowerCase();

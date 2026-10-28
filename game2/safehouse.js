@@ -170,15 +170,16 @@ export class Safehouse {
   const locked=document.pointerLockElement===this.canvas;
   if(locked){
    const forward=(this.move.w?1:0)-(this.move.s?1:0),strafe=(this.move.d?1:0)-(this.move.a?1:0);
-   const magnitude=Math.hypot(forward,strafe)||1,speed=this.move.shift?5.2:3.35;
+   // Match heist movement: run by default, Shift to walk quietly.
+   const magnitude=Math.hypot(forward,strafe)||1,speed=this.move.shift?3.2:7.4;
    const dx=(-Math.sin(this.yaw)*forward+Math.cos(this.yaw)*strafe)*dt*speed/magnitude;
    const dz=(-Math.cos(this.yaw)*forward-Math.sin(this.yaw)*strafe)*dt*speed/magnitude;
    this.pos.x=Math.max(-6.2,Math.min(6.2,this.pos.x+dx));
    this.pos.z=Math.max(-6.1,Math.min(6.1,this.pos.z+dz));
-   if(forward||strafe)this.step+=dt*10;
+   if(forward||strafe)this.step+=dt*(this.move.shift?7:14);
   }
   this.elapsed+=dt;
-  this.camera.position.set(this.pos.x,1.73+(locked?.018*Math.sin(this.step):0),this.pos.z);
+  this.camera.position.set(this.pos.x,1.73+(locked?(this.move.shift?.008:.018)*Math.sin(this.step):0),this.pos.z);
   this.camera.rotation.set(this.pitch,this.yaw,0,'YXZ');
   this.visuals.update({mission:1,alarm:0},this.elapsed);
   this.renderer.render(this.scene,this.camera);
