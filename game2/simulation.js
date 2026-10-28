@@ -98,9 +98,14 @@ function damageEnemy(run,e,amount,player){
  run.kills++;player.stats.kills++;run.alarm=clamp(run.alarm+2,0,100);
  if(Math.random()<.28)run.pickups.push({id:++run.serial,x:e.x,z:e.z,type:Math.random()<.4?'med':'ammo',taken:false});
 }
+function beginReload(p){
+ const w=WEAPONS[p.weapon];
+ if(p.hp<=0||p.reload>0||p.ammo>=p.mag||p.reserve<=0)return false;
+ p.reload=w.reload;return true;
+}
 function shoot(run,p){
  const w=WEAPONS[p.weapon];if(p.cool>0||p.reload>0||p.hp<=0)return;
- if(p.ammo<=0){if(p.reserve>0)p.reload=w.reload;return;}
+ if(p.ammo<=0){beginReload(p);return;}
  const rounds=Math.min(w.burst||1,p.ammo);
  p.ammo-=rounds;p.cool=w.rate;p.recoil=Math.min(1,p.recoil+.25);p.stats.shots+=rounds;run.shots+=rounds;
  p.noiseUntil=run.time+1.1;p.noiseGun=w.noise?3:30;p.noise=p.noiseGun;run.alarm=clamp(run.alarm+(w.noise??2.3),0,100);
@@ -132,6 +137,8 @@ function shoot(run,p){
    if(headshot)p.stats.headshots=(p.stats.headshots||0)+1;
   }
  }
+ // The final shot (including the last burst round) begins reload immediately.
+ if(p.ammo===0)beginReload(p);
 }
 function throwPoint(run,p,range){
  const dx=-Math.sin(p.yaw),dz=-Math.cos(p.yaw);
@@ -176,7 +183,7 @@ function tickPlayer(run,p,input,dt){
  move(run,p,dx,dz,.36);
  p.walking=walking;p.moving=moving;p.aiming=!!input?.aim;
  p.stamina=100;p.noise=Math.max(moving?(walking?1.5:11):0,run.time<(p.noiseUntil||0)?(p.noiseGun||30):0);
- if(input?.reload&&p.reload===0&&p.ammo<p.mag&&p.reserve>0)p.reload=WEAPONS[p.weapon].reload;
+ if(input?.reload||p.ammo===0)beginReload(p);
  if(input?.fire&&p.reload===0)shoot(run,p);
  if(input?.gadget&&p.gadgets>0&&p.gadCool===0){
   p.gadgets--;p.gadCool=1;

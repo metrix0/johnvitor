@@ -236,3 +236,40 @@ test('purchased guns differ in their actual combat behavior against heavy armor'
  assert.ok(damageWith('revolver')>damageWith('pistol'),'armor penetration must be effective');
  assert.ok(damageWith('sniper')>damageWith('revolver'),'sniper must deal more damage');
 });
+
+test('automatic reload begins on the last shot and blocks firing until complete in co-op',()=>{
+ const run=makeRun(1,2);run.phase='play';run.enemies=[];run.reinforce=Infinity;
+ const [p,ally]=run.players;p.ammo=1;p.reserve=8;const before=ally.ammo;
+ stepRun(run,[{...idle,fire:true},idle],.05);
+ assert.equal(p.ammo,0);assert.equal(p.reload,WEAPONS[p.weapon].reload);
+ assert.equal(p.stats.shots,1);
+ advance(run,[{...idle,fire:true},idle],WEAPONS[p.weapon].reload*.5);
+ assert.equal(p.stats.shots,1,'shooting is disabled until reload finishes');
+ advance(run,[idle,idle],WEAPONS[p.weapon].reload);
+ assert.equal(p.ammo,8);assert.equal(p.reserve,0);assert.equal(p.reload,0);
+ assert.equal(ally.ammo,before,'co-op inventory remains per-operator');
+});
+test('empty gun auto-reloads while idle and never loops when no reserve remains',()=>{
+ const run=makeRun(1,1);run.phase='play';run.enemies=[];run.reinforce=Infinity;
+ const p=run.players[0];p.ammo=0;p.reserve=0;advance(run,[idle],.3);
+ assert.equal(p.reload,0);
+ p.reserve=6;stepRun(run,[idle],.05);
+ assert.equal(p.reload,WEAPONS[p.weapon].reload);
+ advance(run,[idle],WEAPONS[p.weapon].reload+.1);
+ assert.equal(p.ammo,6);assert.equal(p.reserve,0);
+ advance(run,[idle],.4);assert.equal(p.reload,0);
+});
+test('manual R reloads a partially spent magazine without losing extra ammunition',()=>{
+ const run=makeRun(1,1);run.phase='play';run.enemies=[];run.reinforce=Infinity;
+ const p=run.players[0];p.ammo=p.mag-3;p.reserve=4;
+ stepRun(run,[{...idle,reload:true}],.05);
+ assert.equal(p.reload,WEAPONS[p.weapon].reload);
+ advance(run,[idle],WEAPONS[p.weapon].reload+.1);
+ assert.equal(p.ammo,p.mag);assert.equal(p.reserve,1);
+});
+test('a burst weapon reloads right after its final partial burst',()=>{
+ const run=makeRun(1,1,[{weapon:'burst'}]);run.phase='play';run.enemies=[];run.reinforce=Infinity;
+ const p=run.players[0];p.ammo=2;p.reserve=9;
+ stepRun(run,[{...idle,fire:true}],.05);
+ assert.equal(p.stats.shots,2);assert.equal(p.ammo,0);assert.equal(p.reload,WEAPONS.burst.reload);
+});

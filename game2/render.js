@@ -306,9 +306,22 @@ export class View{
   this.box(this.gunBody,0,0,0,.23,.2,.54,0x2d3a3c,.7);
   this.box(this.gunBody,0,.09,-.23,.16,.14,.37,0x4c5d62,.75);
   const barrel=this.cyl(this.gunBody,0,.065,-.48,.043,.49,0x161f21);barrel.rotation.x=Math.PI/2;
-  this.box(this.gunBody,-.06,-.22,.16,.16,.37,.19,0x2b3535);
+  this.magazine=this.box(this.gunBody,-.06,-.22,.16,.16,.37,.19,0x2b3535);
   this.box(this.gunBody,.17,-.17,.26,.24,.24,.48,0x4a5962);
-  const sight=this.box(this.gunBody,0,.19,-.3,.12,.12,.13,0x111a1d);
+  // Sight line is at the camera's screen center when the gun is raised to ADS.
+  this.sightHeight=.235;
+  this.irons=new THREE.Group();this.gunBody.add(this.irons);
+  this.box(this.irons,0,.19,-.53,.037,.09,.055,0x0b1316,.6);
+  this.box(this.irons,-.088,.185,.13,.044,.10,.09,0x0b1316,.6);
+  this.box(this.irons,.088,.185,.13,.044,.10,.09,0x0b1316,.6);
+  this.box(this.irons,0,.115,.13,.22,.05,.14,0x182a2d,.5);
+  this.optic=new THREE.Group();this.gunBody.add(this.optic);
+  this.box(this.optic,0,.125,-.09,.13,.11,.18,0x1e292c,.6);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.087,.012,8,24),new THREE.MeshStandardMaterial({color:0x333e42,metalness:.6,roughness:.35}));
+  ring.position.set(0,this.sightHeight,-.09);this.optic.add(ring);
+  this.reticle=new THREE.Mesh(new THREE.SphereGeometry(.009,8,8),new THREE.MeshBasicMaterial({color:0xffd287,depthWrite:false}));
+  this.reticle.position.set(0,this.sightHeight,-.37);this.optic.add(this.reticle);
+  this.gunTarget=new THREE.Vector3();
   this.muzzle=new THREE.PointLight(0xffd187,0,4);this.muzzle.position.set(0,.06,-.8);this.gun.add(this.muzzle);
   this.flash=new THREE.Mesh(new THREE.ConeGeometry(.15,.48,8),new THREE.MeshBasicMaterial({color:0xffd99a,transparent:true,opacity:.85,depthWrite:false}));this.flash.rotation.x=-Math.PI/2;this.flash.position.set(0,.07,-.8);this.gun.add(this.flash);this.flash.visible=false;
  }
@@ -316,7 +329,9 @@ export class View{
   const w=WEAPONS[weapon]||WEAPONS.pistol;
   const shotgun=w.pellets>1,long=['rifle','lmg','dmr','sniper','burst'].includes(weapon),compact=['smg','silenced'].includes(weapon);
   this.gunBody.scale.set(shotgun?1.35:weapon==='lmg'?1.5:compact?.94:1,1,weapon==='sniper'?1.9:long?1.5:shotgun?1.4:compact?1.2:1);
-  this.gunBody.traverse(x=>{if(x.material?.color&&x!==this.flash)x.material.color.lerp(new THREE.Color(w.color),.3);});
+  this.optic.visible=long||compact;
+  this.irons.visible=!this.optic.visible;
+  this.gunBody.traverse(x=>{if(x.material?.color&&x!==this.reticle)x.material.color.lerp(new THREE.Color(w.color),.3);});
  }
  update(run,playerIndex,angles,dt=0,input={}){
   if(!run)return;
@@ -328,10 +343,20 @@ export class View{
   camera.position.copy(desired);this.cameraReady=true;
   camera.rotation.set(angles.pitch||0,angles.yaw||0,0,'YXZ');
   const moving=!!(input.forward||input.back||input.left||input.right),bob=moving&&p.hp>0?Math.sin(this.clock*(input.walk?8:14))*(input.walk?.008:.02):0;
-  const aiming=!!input.aim;
-  this.gun.position.lerp(new THREE.Vector3(aiming?.01:.37,-.36+bob-(aiming?.09:0),(aiming?-.56:-.55)+p.recoil*.11),Math.min(1,dt*16));
-  this.gun.rotation.x=Math.sin(this.clock*6)*.01-p.recoil*.16;
-  camera.fov+=( (aiming?56:input.walk?74:moving?80:76)-camera.fov)*Math.min(1,dt*9);camera.updateProjectionMatrix();
+  const reloading=p.reload>0,aiming=!!input.aim&&!reloading&&p.hp>0;
+  const duration=WEAPONS[p.weapon]?.reload||1;
+  const progress=reloading?Math.max(0,Math.min(1,1-p.reload/duration)):0;
+  const ease=(from,to)=>{const t=Math.max(0,Math.min(1,(progress-from)/(to-from)));return t*t*(3-2*t);};
+  // Magazine removal and insertion are timed to the real simulation reload countdown.
+  const dip=reloading?Math.sin(Math.PI*progress):0;
+  const magazineDrop=reloading?ease(.12,.39)*(1-ease(.54,.86)):0;
+  this.magazine.position.y=-.22-magazineDrop*.40;
+  this.magazine.rotation.x=magazineDrop*.13;
+  this.gunBody.rotation.set(-dip*.17,0,dip*.34);
+  this.gunTarget.set((aiming?0:.37)+dip*.11,(aiming?-this.sightHeight:-.36+bob)-dip*.22,-.55+p.recoil*.08);
+  this.gun.position.lerp(this.gunTarget,Math.min(1,dt*17));
+  this.gun.rotation.x=(aiming?0:Math.sin(this.clock*6)*.01)-p.recoil*.13;
+  camera.fov+=((aiming?56:input.walk?74:moving?80:76)-camera.fov)*Math.min(1,dt*9);camera.updateProjectionMatrix();
   this.muzzle.intensity=Math.max(0,this.muzzle.intensity-dt*70);
   this.flash.visible=this.muzzle.intensity>2;
   if(p.stats.shots!==this.lastShots){this.lastShots=p.stats.shots;this.muzzle.intensity=12;this.flash.visible=true;}

@@ -419,6 +419,8 @@ function updateHud(){
  }else $('waypoint').classList.add('hidden');
  const scale=(controls.aim?.68:controls.walk?.84:(controls.forward||controls.back||controls.left||controls.right)?1.18:1)+Math.min(.35,(p.bloom||0)*.22);
  $('crosshair').style.transform='translate(-50%,-50%) scale('+scale+')';
+ // The weapon sight itself becomes the crosshair during ADS.
+ $('crosshair').style.opacity=controls.aim&&p.reload<=0&&p.hp>0?'0':'1';
  drawMinimap(p);
 }
 function drawMinimap(player){
