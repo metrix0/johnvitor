@@ -58,12 +58,19 @@ export function nearbyTask(run,p){
  }
  return null;
 }
+// The enemy showroom uses the same archetype stats as gameplay.
+export const ENEMY_ARCHETYPES=Object.freeze({
+ guard:{hp:80,speed:3.2,damage:22,cadence:1.25,range:12},
+ rusher:{hp:65,speed:5.3,damage:13,cadence:1.2,range:2},
+ sniper:{hp:58,speed:2.35,damage:33,cadence:2.4,range:25},
+ heavy:{hp:245,speed:1.9,damage:26,cadence:.65,range:14},
+ drone:{hp:68,speed:3.7,damage:17,cadence:1.12,range:20}
+});
 export function spawnEnemy(run,type,at){
- const stats={guard:[80,3.2,22,1.25,12],rusher:[65,5.3,13,1.0,2],sniper:[58,2.35,33,2.4,25],heavy:[245,1.9,26,.65,14],drone:[68,3.7,17,1.12,20]};
- const [hp,speed,damage,cadence,range]=stats[type]||stats.guard;
+ const {hp,speed,damage,cadence,range}=ENEMY_ARCHETYPES[type]||ENEMY_ARCHETYPES.guard;
  const p=pos(at);let x=p.x,z=p.z;
  if(isBlocked(run,x,z,.35)){const q=run.players[0];x=q.x+4;z=q.z+4;}
- const e={id:++run.serial,type,x,z,hp,maxHp:hp,speed,damage,cadence,range,dir:0,cool:rng(.3,1.6),path:[],pathTimer:0,stun:0,flinch:0,alert:false,patrolX:x+rng(-4,4),patrolZ:z+rng(-4,4),alertUntil:0,lastKnown:null};
+ const e={id:++run.serial,type,x,z,hp,maxHp:hp,speed,damage,cadence,range,fireSeq:0,dir:0,cool:rng(.3,1.6),path:[],pathTimer:0,stun:0,flinch:0,alert:false,patrolX:x+rng(-4,4),patrolZ:z+rng(-4,4),alertUntil:0,lastKnown:null};
  run.enemies.push(e);return e;
 }
 export function makeRun(n=0,count=1,loadouts=[]){
@@ -161,6 +168,7 @@ function blast(run,point,player,damage,radius){
 }
 function enemyFire(run,e,target){
  if(e.type==='rusher')return;
+ e.fireSeq=(e.fireSeq||0)+1;
  const d=unit(target.x-e.x,target.z-e.z),miss=rng(-.09,.09)*(e.type==='sniper'?.4:1);
  const v=unit(d.x+miss,d.z+miss);
  run.projectiles.push({id:++run.serial,x:e.x,z:e.z,y:e.type==='drone'?2.15:1.3,dx:v.x,dz:v.z,damage:e.damage,speed:e.type==='sniper'?23:17,life:2.7,type:e.type});
@@ -278,7 +286,7 @@ function tickEnemy(run,e,dt){
  const target=decoy?decoy:e.alert&&!smoked?(sight?p:e.lastKnown||p):{x:e.patrolX,z:e.patrolZ};
  const range=e.type==='sniper'?16:e.type==='heavy'?9:e.type==='rusher'?1.3:e.type==='drone'?9:7;
  if(!decoy&&e.alert&&!smoked&&seen&&d<e.range&&e.cool===0){
-  if(e.type==='rusher'&&d<1.7){damagePlayer(run,p,e.damage);e.cool=1.2;}
+  if(e.type==='rusher'&&d<1.7){damagePlayer(run,p,e.damage);e.fireSeq=(e.fireSeq||0)+1;e.cool=e.cadence;}
   else enemyFire(run,e,p);
  }
  const pursue=e.type==='rusher'?d>1.5:d>range;

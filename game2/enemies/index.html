@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="theme-color" content="#081217">
+ <title>ENEMY TEST RANGE · THE GETAWAY CLUB</title>
+ <link rel="preconnect" href="https://fonts.googleapis.com">
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+ <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="./showroom.css?v=1">
+ <script type="module" src="./showroom.js?v=1"></script>
+</head>
+<body>
+ <div class="grain" aria-hidden="true"></div>
+ <header class="top">
+  <a class="brand" href="/game2/" aria-label="Return to The Getaway Club"><span class="sigil">G·C</span><span>THE GETAWAY CLUB <small>FIELD RESEARCH / SECURE FACILITY</small></span></a>
+  <nav><a href="/game2/">← SAFEHOUSE</a><span class="live">● LIVE MODEL LAB</span></nav>
+ </header>
+ <div id="labVersion" class="version">VERSION v0.3.0</div>
+ <main>
+  <div class="heading"><div><div class="eyebrow">ENEMY INTELLIGENCE <span>/</span> COMBAT SIMULATION</div><h1>KNOW YOUR <em>ENEMY.</em></h1><p>Five live adversary models, exactly as deployed in the heists. Inspect, trigger their attacks, and test their damage reactions without spending gear or affecting your profile.</p></div><div class="unitCount"><strong>05</strong><span>HOSTILE ARCHETYPES</span></div></div>
+  <div class="lab">
+   <aside class="roster"><div class="sectionTitle"><span>01 / HOSTILE ROSTER</span><button id="all" type="button" class="textButton">VIEW ALL</button></div><div id="roster" class="rosterList" aria-label="Enemy types"></div><p class="rosterFoot">CLICK A UNIT TO INSPECT. CLICK ITS 3D MODEL TO HIT IT.</p></aside>
+   <section class="viewer" aria-label="Interactive 3D enemy showroom">
+    <div id="stage" class="stage"></div>
+    <div class="viewerTop"><div><span class="dot">●</span> 3D TACTICAL OBSERVATION</div><span id="viewMode">ALL UNITS / WIDE VIEW</span></div>
+    <div class="viewerHelp">DRAG TO ORBIT <span>·</span> SCROLL TO ZOOM <span>·</span> CLICK A MODEL TO SHOOT</div>
+    <div id="shotLabel" class="shotLabel" aria-live="polite"></div>
+    <div id="fallback" class="fallback" hidden>WebGL could not initialize. Please open the range in a browser with 3D graphics enabled.</div>
+   </section>
+   <aside class="inspector"><div class="sectionTitle">02 / TEST CONTROLS</div>
+    <div class="inspected"><small>UNIT UNDER OBSERVATION</small><strong id="selectedName">ALL HOSTILES</strong><span id="selectedSubtitle">FIVE TYPES · COMPARATIVE VIEW</span></div>
+    <div class="facts"><div><small>HEALTH</small><strong id="health">—</strong></div><div><small>HIT DAMAGE</small><strong id="damage">—</strong></div><div><small>ATTACK RATE</small><strong id="cadence">—</strong></div><div><small>ATTACK RANGE</small><strong id="range">—</strong></div></div>
+    <div class="sectionTitle">03 / LIVE SIMULATOR</div>
+    <p class="instructions" id="instructions">Select a unit to inspect its actual stats, or fire a synchronized volley from the whole lineup.</p>
+    <div class="controls">
+     <button id="fire" class="primary" type="button">✳ FIRE / ATTACK</button>
+     <button id="auto" type="button" aria-pressed="false">▶ AUTO FIRE: OFF</button>
+     <button id="hit" type="button">✛ APPLY 25 DAMAGE</button>
+     <button id="reset" type="button">↻ RESET HEALTH</button>
+    </div>
+    <div class="telemetry"><div><span>SHOTS / ATTACKS</span><strong id="shots">000</strong></div><div><span>ENEMIES DOWN</span><strong id="downs">00 / 05</strong></div></div>
+    <p class="shortcut">KEYBOARD <b>1–5</b> SELECT <b>0</b> ALL <b>F</b> ATTACK <b>H</b> HIT <b>R</b> RESET</p>
+   </aside>
+  </div>
+  <footer><span>GETAWAY CLUB / R&D DIVISION · VISUAL SIMULATION</span><span>ISOLATED TRAINING · NO PROFILE OR SAVE CHANGES</span></footer>
+ </main>
+</body>
+</html>

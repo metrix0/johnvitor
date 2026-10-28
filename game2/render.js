@@ -25,12 +25,12 @@ export class View{
   this.ambient=new THREE.HemisphereLight(0xdfebff,0x1d2633,1.8);this.scene.add(this.ambient);
   this.sun=new THREE.DirectionalLight(0xffffff,1.55);this.sun.position.set(7,16,18);this.scene.add(this.sun);
   this.visuals=new Visuals(this);
-  this.mission=-1;this.currentRun='';this.enemies=new Map();this.allies=new Map();this.bags=new Map();this.objectives=new Map();this.pickups=new Map();this.lights=[];this.tracerMeshes=new Map();this.clock=0;this.lastShots=0;this.cameraReady=false;this.hitFlash=0;
+  this.mission=-1;this.currentRun='';this.enemies=new Map();this.allies=new Map();this.bags=new Map();this.objectives=new Map();this.pickups=new Map();this.lights=[];this.tracerMeshes=new Map();this.enemyRounds=new Map();this.clock=0;this.lastShots=0;this.cameraReady=false;this.hitFlash=0;
   this.makeGun();this.resize();
   this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(container);
  }
  resize(){const w=this.el.clientWidth||960,h=this.el.clientHeight||520;this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}
- clear(){this.world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.dispose&&!Array.isArray(o.material))o.material.dispose();});this.world.clear();this.enemies.clear();this.allies.clear();this.bags.clear();this.objectives.clear();this.rain=null;this.pickups.clear();this.tracerMeshes.clear();this.lights=[];this.visuals.clear();}
+ clear(){this.world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.dispose&&!Array.isArray(o.material))o.material.dispose();});this.world.clear();this.enemies.clear();this.allies.clear();this.bags.clear();this.objectives.clear();this.rain=null;this.pickups.clear();this.tracerMeshes.clear();this.enemyRounds.clear();this.lights=[];this.visuals.clear();}
  box(parent,x,y,z,w,h,d,color,metal=0){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),typeof color==='number'?mat(color,metal):color);m.position.set(x,y,z);parent.add(m);return m;}
  cyl(parent,x,y,z,r,depth,color,segments=12){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,depth,segments),mat(color,.25));m.position.set(x,y,z);parent.add(m);return m;}
  textTexture(text,fg='#e7f9ed',bg='#10181c',w=512,h=128){
@@ -298,7 +298,65 @@ export class View{
   const hpFill=this.box(g,-.49,kind==='drone'?2.65:2.49,.035,.98,.08,.045,0x8affbd);
   g.userData.hpFill=hpFill;g.userData.hpBack=hpBack;
   this.visuals.detailEnemy(g,e);
+  // The same weapon rigs are shared with /game2/enemies.
+  const rig=new THREE.Group();g.add(rig);
+  const drone=kind==='drone',rusher=kind==='rusher',heavy=kind==='heavy',sniper=kind==='sniper';
+  rig.position.set(drone?0:.17,drone?1.99:1.30,drone?-.44:-.37);
+  if(rusher){
+   this.box(rig,.17,-.04,-.1,.25,.23,.35,0x343e43,.4);
+   this.box(rig,.16,-.08,-.45,.085,.12,.53,0xb8c6ca,.7);
+   this.box(rig,.16,-.08,-.74,.07,.07,.2,0xdce7e4,.5);
+  }else{
+   const dark=0x18242b,steel=heavy?0x59636b:sniper?0x627880:0x354951;
+   this.box(rig,0,0,-.27,heavy?.65:sniper?.31:.37,heavy?.33:.23,heavy?.77:sniper?.85:.56,steel,.65);
+   this.box(rig,0,-.14,-.09,.18,.23,.23,dark,.45);
+   this.box(rig,.06,.15,-.27,.17,.13,.29,0x15232b,.55);
+   const front=heavy?-.99:sniper?-1.13:-.77;
+   const barrel=this.cyl(rig,0,.015,front,heavy?.085:sniper?.047:.052,heavy?.86:sniper?.91:.61,dark,10);
+   barrel.rotation.x=Math.PI/2;
+   if(heavy)for(const x of [-.15,.15]){
+    const tube=this.cyl(rig,x,.015,-1.0,.055,.78,0x202e37,10);tube.rotation.x=Math.PI/2;
+   }
+   if(sniper){
+    this.box(rig,0,.2,-.30,.16,.13,.56,0x151f25,.65);
+    this.cyl(rig,0,.22,-.3,.095,.3,0x151f25,12).rotation.x=Math.PI/2;
+   }
+   if(drone){
+    this.box(rig,0,-.15,-.31,.43,.15,.48,0x283b46,.65);
+   }else{
+    this.box(g,.18,1.16,-.54,.21,.23,.57,0x343d42,.24);
+    this.box(g,-.21,1.17,-.42,.18,.22,.45,0x3b484f,.25);
+   }
+  }
+  const tip=drone?-.98:heavy?-1.45:sniper?-1.61:-1.07;
+  const flare=new THREE.Mesh(new THREE.ConeGeometry(heavy?.20:.135,heavy?.67:.48,8),
+   new THREE.MeshBasicMaterial({color:drone?0x89edff:0xffd596,transparent:true,opacity:.87,depthWrite:false,blending:THREE.AdditiveBlending}));
+  flare.rotation.x=-Math.PI/2;flare.position.set(0,.015,tip);
+  flare.visible=false;rig.add(flare);
+  const slide=this.box(rig,0,.13,-.23,.17,.05,.22,0x8c9da0,.55);
+  const casing=this.cyl(rig,.27,.12,-.27,.048,.14,0xd9b578,8);
+  casing.rotation.z=Math.PI/2;casing.visible=false;
+  g.userData.weaponRig=rig;g.userData.flare=flare;g.userData.slide=slide;g.userData.casing=casing;
+  g.userData.lastFireSeq=e.fireSeq||0;g.userData.fireTime=0;
   return g;
+ }
+ // Animate the same rig in missions and in the interactive enemy gallery.
+ animateEnemy(model,e,dt=0){
+  const u=model.userData;if(!u.weaponRig)return;
+  if((e.fireSeq||0)!==u.lastFireSeq){u.lastFireSeq=e.fireSeq||0;u.fireTime=.26;}
+  u.fireTime=Math.max(0,u.fireTime-Math.max(0,dt));
+  const kick=Math.min(1,u.fireTime/.21),melee=e.type==='rusher';
+  u.weaponRig.rotation.x=melee?-.68*kick:-.22*kick;
+  u.weaponRig.rotation.z=melee?-.16*kick:(e.type==='heavy'?.09*kick:0);
+  u.weaponRig.position.z=(e.type==='drone'?-.44:-.37)+kick*(melee?-.33:.15);
+  u.flare.visible=!melee&&u.fireTime>.10;
+  if(u.flare.visible){u.flare.scale.setScalar(.85+kick*.72);u.flare.rotation.z+=dt*20;}
+  u.slide.position.z=-.23+kick*.16;
+  u.casing.visible=!melee&&e.type!=='drone'&&u.fireTime>.055&&u.fireTime<.19;
+  if(u.casing.visible)u.casing.position.set(.27+(1-kick)*.32,.12+(1-kick)*.20,-.27+(1-kick)*.07);
+  if(e.type==='drone')model.position.y=Math.sin(this.clock*3+(e.id||0))*.15;
+  if(e.flinch>0)model.rotation.z=Math.sin(this.clock*45)*.06;
+  else model.rotation.z=0;
  }
  makeGun(){
   this.gun=new THREE.Group();this.camera.add(this.gun);this.scene.add(this.camera);
@@ -457,13 +515,28 @@ export class View{
    if(!this.enemies.has(e.id)){const model=this.enemyMesh(e);this.world.add(model);this.enemies.set(e.id,model);}
    const m=this.enemies.get(e.id);m.visible=e.hp>0;if(e.hp<=0)continue;
    m.position.lerp(new THREE.Vector3(e.x,0,e.z),Math.min(1,dt*13));
-   m.rotation.y=e.dir;
+   m.rotation.y=e.dir+Math.PI;
    const bar=m.userData.hpFill,ratio=e.hp/e.maxHp;bar.scale.x=ratio;bar.position.x=-(1-ratio)*.49;
    bar.material.color.setHex(ratio<.4?0xffa18a:0x8affbd);
-   if(e.flinch>0)m.rotation.z=Math.sin(this.clock*55)*.07;else m.rotation.z=0;
-   if(e.type==='drone')m.position.y=Math.sin(this.clock*3+e.id)*.15;
+   this.animateEnemy(m,e,dt);
   }
   for(const [id,m] of this.enemies)if(!alive.has(id)){this.world.remove(m);this.enemies.delete(id);}
+  // The projectiles are simulated already; give active shots a visible, inexpensive streak.
+  const liveRounds=new Set();
+  for(const shot of run.projectiles){
+   liveRounds.add(shot.id);
+   let mesh=this.enemyRounds.get(shot.id);
+   if(!mesh){
+    mesh=new THREE.Mesh(new THREE.BoxGeometry(.038,.038,.57),
+     new THREE.MeshBasicMaterial({color:shot.type==='drone'?0x8af3ff:shot.type==='sniper'?0xffb4ac:0xffd58b}));
+    this.world.add(mesh);this.enemyRounds.set(shot.id,mesh);
+   }
+   mesh.position.set(shot.x,shot.y||1.3,shot.z);
+   mesh.rotation.y=Math.atan2(shot.dx,shot.dz);
+  }
+  for(const [id,mesh] of this.enemyRounds)if(!liveRounds.has(id)){
+   this.world.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();this.enemyRounds.delete(id);
+  }
   const visibleBags=new Set();
   for(const bag of run.loot||[]){
    visibleBags.add(bag.id);
