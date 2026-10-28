@@ -1,6 +1,6 @@
-import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js';
-import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=6';
-import {View} from './render.js?v=7';
+import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=4';
+import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=7';
+import {View} from './render.js?v=8';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=5';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
@@ -297,7 +297,7 @@ function escapeText(s){return String(s).replaceAll('&','&amp;').replaceAll('<','
 function hideOverlay(){activeOverlay='';$('centerOverlay').classList.add('hidden');}
 function showBrief(){
  if(!run)return;const m=MISSIONS[run.mission];
- showOverlay('CASE FILE / '+m.number,m.name,m.description+(run.mission===0?' Scout the neighborhood, get the credentials, breach the backroom safe, carry EACH bag to the parked van, then signal the driver and hold out for extraction. Optional jobs reduce risk or increase your payout.':''),host?'BEGIN OPERATION ↗':'WAITING FOR THE HOST',host?()=>{run.phase='play';lastPhase='';hideOverlay();softPaused=false;sendState();requestLock();}:null,[['TARGET',m.site],['THREAT LEVEL',String(run.mission+1)+' / 5'],['EST. PAYOUT',coins(m.payout)]]);
+ showOverlay('CASE FILE / '+m.number,m.name,m.description,host?'BEGIN OPERATION ↗':'WAITING FOR THE HOST',host?()=>{run.phase='play';lastPhase='';hideOverlay();softPaused=false;sendState();requestLock();}:null,[['TARGET',m.site],['THREAT LEVEL',String(run.mission+1)+' / 5'],['EST. PAYOUT',coins(m.payout)]]);
  if(!host)$('overlayAction').classList.add('hidden');
 }
 function closeGameMenu(){
@@ -451,7 +451,7 @@ function updateHud(){
   else if(run.escapeAt>0)heading=run.escapeAt>run.time?'PROTECT THE VAN · '+Math.ceil(run.escapeAt-run.time)+'S':'BOARD THE GETAWAY VAN';
  }
  $('hudObjective').textContent=heading;
- $('objectiveProgress').textContent=(run.mission===0?'CHAPTER '+Math.min(6,run.chapter||1)+' / 6 · ':'')+done+' / '+total+' PHASES · '+formatTime(run.time);
+ $('objectiveProgress').textContent=(run.mission===0?'CHAPTER '+Math.min(4,run.chapter||1)+' / 4 · ':'')+done+' / '+total+' PHASES · '+formatTime(run.time);
  $('crew').innerHTML=run.players.map((player,i)=>`<div class="crewCard ${player.hp<=0?'downed':''}" style="border-color:${i===0?'#b7f7d4':'#8bd8ff'}"><div class="crewName">${escapeText(player.name.toUpperCase())}${i===(host?0:1)?' / YOU':''}</div><div class="crewHp">${player.hp>0?Math.ceil(player.hp)+' / '+player.maxHp+' HP':'DOWN — NEEDS REVIVE'}</div><div class="crewMiniBar"><div style="width:${Math.max(0,player.hp/player.maxHp*100)}%"></div></div></div>`).join('');
  $('tasks').innerHTML=run.objectives.map(o=>`<div class="task ${o.done?'done':objectiveReady(run,o)?'':'locked'}"><span class="taskIcon">${o.done?'✓':objectiveReady(run,o)?'◇':o.optional?'✧':'⊠'}</span><span>${escapeText(o.name)}${o.optional?' · BONUS':''}</span></div>`).join('');
  $('hpLabel').textContent=Math.ceil(p.hp)+' / '+p.maxHp;$('hpFill').style.width=(p.hp/p.maxHp*100)+'%';$('hpFill').style.background=p.hp/p.maxHp<.3?'#ff786c':'#b8f8d0';

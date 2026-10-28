@@ -1,7 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
-import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js';
-import {LEVEL1_ZONES} from './level1.js';
-import {Visuals} from './visuals.js?v=3';
+import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=4';
+import {LEVEL1_ZONES} from './level1.js?v=4';
+import {Visuals} from './visuals.js?v=4';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
  office:{floor:0x303b44,wall:0x778998,accent:0x82d7fb,light:0xcce8ff,sky:0x101b2a},
@@ -88,23 +88,23 @@ export class View{
  buildCityBlock(run,p){
   const mission=MISSIONS[0],world=this.world,cols=run.grid[0].length,rows=run.grid.length;
   const w=(cols-1)*CELL,h=(rows-1)*CELL;
-  this.scene.background=new THREE.Color(0x0a1420);
-  this.scene.fog=new THREE.FogExp2(0x0a1420,.0075);
+  this.scene.background=new THREE.Color(0x0a1219);
+  this.scene.fog=new THREE.FogExp2(0x0a1219,.008);
   this.ambient.intensity=.94;this.sun.intensity=.55;
   this.box(world,w/2,-.32,h/2,cols*CELL,.65,rows*CELL,this.visuals.surface('asphalt',0x29343c,cols*CELL,rows*CELL));
   for(const zone of LEVEL1_ZONES){
-   this.box(world,(zone.x+zone.w/2)*CELL,-.03,(zone.z+zone.h/2)*CELL,zone.w*CELL,.085,zone.h*CELL,this.visuals.surface(zone.name==='NIGHTSHIFT MARKET'?'tile':zone.name==='STAFF OFFICES'?'wood':zone.name==='STOCKROOM'?'concrete':'asphalt',zone.floor,zone.w*CELL,zone.h*CELL));
+   this.box(world,(zone.x+zone.w/2)*CELL,-.03,(zone.z+zone.h/2)*CELL,zone.w*CELL,.085,zone.h*CELL,this.visuals.surface(zone.name==='SHOP FLOOR'||zone.name==='RESTROOM'?'tile':zone.name==='BACK OFFICE'?'wood':zone.name==='STOCKROOM'?'concrete':'asphalt',zone.floor,zone.w*CELL,zone.h*CELL));
   }
-  // Street lanes, taxi bays, sidewalks and painted parking slots.
-  for(let z=5;z<54;z+=5)this.box(world,7*CELL,.035,z*CELL,.16,.01,4.1,0xd1b275);
-  for(const x of [3,12,17])this.box(world,x*CELL,.038,26*CELL,.1,.01,105,x===17?0x9ca6a5:0x6e7d84);
-  for(const z of [7,13,19,25,31,37,43,49]){
-   this.box(world,13*CELL,.041,z*CELL,8,.012,.13,0xe0dbc1);
+  // Parking bays, pedestrian sidewalk, front threshold and delivery hazard paint.
+  this.box(world,28*CELL,.038,35*CELL,70,.08,4.2,0x989994,.08);
+  for(const x of [12,20,28,36,44]){
+   this.box(world,x*CELL,.085,40*CELL,.13,.019,17,0xe8ddc5);
+   this.box(world,(x+4)*CELL,.087,34.5*CELL,3,.015,.19,0xe8ddc5);
   }
-  for(let z=5;z<56;z+=6){
-   this.box(world,1.5*CELL,.03,z*CELL,1.2,.03,1.6,0x3d4c55);
-   this.box(world,18.5*CELL,.04,z*CELL,1,.04,1.8,0x3d4c55);
-  }
+  for(const z of [14,19,24,29])this.box(world,8*CELL,.061,z*CELL,8,.02,.16,0xd9b165);
+  this.box(world,46*CELL,.04,22*CELL,3,.09,34,0x8a8d86,.1);
+  for(const z of [9,17,25,33])this.box(world,46*CELL,.092,z*CELL,2.8,.014,.06,0x525a60);
+
   // Thousands of metres of wall are batched into a handful of GPU instanced meshes.
   // The previous per-segment BoxGeometry/Material approach stalled software WebGL.
   const batches=new Map();
@@ -119,11 +119,11 @@ export class View{
     let end=x+1;
     while(end<cols&&run.grid[z][end]==='#')end++;
     const mx=(x+end-1)*CELL/2,mz=z*CELL,len=(end-x)*CELL;
-    const storefront=x>=19&&x<63&&z>10&&z<44;
-    const col=storefront?0x625c58:z<12?0x46515d:0x45515b;
+    const storefront=x>=12&&x<=44&&z>=7&&z<=33;
+    const col=storefront?(z===33?0x5b5b58:0x878078):0x43505b;
     batch(col,mx,2.28,mz,len,4.56,CELL);
     batch(0x232b32,mx,.23,mz,len+.03,.46,CELL+.03);
-    batch(storefront?0xc49f70:0x52687a,mx,4.51,mz,len+.03,.17,CELL+.03);
+    batch(storefront?0xd2b99b:0x52687a,mx,4.51,mz,len+.03,.17,CELL+.03);
     if(len>7&&storefront)batch(0xd1bc9a,mx,3.25,mz,len*.69,.06,CELL+.06);
     x=end;
    }
@@ -138,39 +138,41 @@ export class View{
    }
    mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;world.add(mesh);
   }
-  // Neon canopy, facade columns, windows and warm light spilling onto pavement.
-  this.box(world,20*CELL,3.64,25.6*CELL,.65,.17,11,0xf1b462,.55);
-  this.box(world,19.5*CELL,3.78,25.6*CELL,2,.12,12,0x2c3f47,.45);
-  this.box(world,20*CELL,.07,26*CELL,5,.07,7,0xd6bd95,.2);
-  for(const z of [16,19,33,37]){
-   this.box(world,19.1*CELL,2.4,z*CELL,.11,2.4,2.3,0x253644,.6);
-   this.box(world,19*CELL,2.55,z*CELL,.05,1.55,1.75,new THREE.MeshPhysicalMaterial({color:0x5b9ab1,metalness:.22,roughness:.14,clearcoat:.85,transparent:true,opacity:.83}));
+  // A recognizable south-facing 24-hour storefront with windows and lit awning.
+  for(const x of [15,17,19,21,23,34,36,38,40,42]){
+   this.box(world,x*CELL,2.32,33.9*CELL,2.5,2.65,.1,0x263a42,.62);
+   this.box(world,x*CELL,2.35,33.95*CELL,2.1,2.15,.035,new THREE.MeshPhysicalMaterial({color:0x8cc2d0,metalness:.13,roughness:.16,clearcoat:.7,transparent:true,opacity:.48}));
   }
+  this.box(world,28.5*CELL,4.38,34*CELL,17,.23,2.75,0x42505b,.4);
+  this.box(world,28.5*CELL,4.24,34.55*CELL,16.2,.12,.26,0xf5c68d,.2);
+  for(const x of [26,30]){this.box(world,x*CELL,1.18,30*CELL,.85,.36,.55,0x303a40,.65);this.box(world,x*CELL,1.36,29.8*CELL,.77,.22,.16,0x9bd3ae,.28);}
+  for(const x of [38,42]){this.box(world,x*CELL,.35,9*CELL,.7,.5,.85,0xdbe6dc);this.box(world,x*CELL,.73,9.4*CELL,.44,.2,.27,0xeef1eb);}
+
   for(const [x,z,kind] of mission.decor)this.prop(kind,x*CELL,z*CELL,p);
   // Fixed world landmarks and billboards; no downloaded textures/models.
   for(const sign of mission.signs)this.sign(sign.text,sign.x*CELL,sign.y,sign.z*CELL,sign.rot,sign.color,sign.size);
-  this.sign('24H / OPEN',19.15*CELL,3.5,35*CELL,Math.PI/2,'#ffe89a',2.8);
-  this.sign('FRONT ENTRY',19.6*CELL,4.2,26*CELL,Math.PI/2,'#ffffff',3.2);
-  this.sign('NEON AVE',6*CELL,4.5,3*CELL,0,'#8de6ff',3.7);
-  this.sign('BAY 03',68*CELL,3,43*CELL,0,'#fae3a4',3.5);
+  this.sign('OPEN / 24H',22*CELL,3.2,33.98*CELL,Math.PI,'#a3e9c9',2.8);
+  this.sign('PARKING',35*CELL,2.2,42*CELL,Math.PI,'#95d7eb',3.1);
+
   // Keep the existing street lights lightweight; the visuals layer adds limited nearby accent/alarm lights.
-  for(const at of [[11,26],[53,33],[67,45]]){
-   const lamp=new THREE.PointLight(at[0]<20?0xffd199:0xb6d9ff,7,26,2);
-   lamp.position.set(at[0]*CELL,4,at[1]*CELL);world.add(lamp);this.lights.push(lamp);
+  for(const [x,z,color] of [[9,16,0xffd199],[10,40,0xffcf91],[45,40,0xffc68c],[50,11,0xffb876],[23,23,0xffedce],[36,23,0xffefdf],[30,11,0xffe2b7],[16,22,0x91cce8]]){
+   const lamp=new THREE.PointLight(color,4.1,24,2);
+   lamp.position.set(x*CELL,3.85,z*CELL);world.add(lamp);this.lights.push(lamp);
   }
-  for(const at of [[26,18],[39,34],[51,18],[57,37],[68,30]]){
-   const fixture=this.box(world,at[0]*CELL,4.55,at[1]*CELL,4.2,.13,.7,0xf4e7ca,.15);
-   fixture.material.emissive=new THREE.Color(0xffdb9c);fixture.material.emissiveIntensity=1.5;
+  for(const [x,z,w] of [[19,20,4.2],[29,20,4.2],[39,20,4.2],[19,27,4.2],[29,27,4.2],[39,27,4.2],[29,11,3.2],[18,11,3.2]]){
+   const panel=this.box(world,x*CELL,4.5,z*CELL,w,.13,.65,0xfff0d6,.16);
+   panel.material.emissive=new THREE.Color(0xffe9c6);panel.material.emissiveIntensity=1.35;
   }
+
   // Billboard signs and alarms.
-  for(const at of [[40,16],[55,19],[47,36]]){
-   const cam=this.box(world,at[0]*CELL,3.68,at[1]*CELL,.45,.2,.75,0x1b292e,.75);
-   this.box(world,at[0]*CELL,3.68,at[1]*CELL-.39,.22,.1,.1,0xe35d5c,.8);
-   const ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,.035,6,32),new THREE.MeshBasicMaterial({color:0xff8a74,transparent:true,opacity:.35}));
-   ring.rotation.x=Math.PI/2;ring.position.set(at[0]*CELL,.07,at[1]*CELL);world.add(ring);
+  for(const at of [[37,18],[31,13]]){
+   this.box(world,at[0]*CELL,3.7,at[1]*CELL,.45,.2,.7,0x233138,.6);
+   this.box(world,at[0]*CELL,3.7,(at[1]-.2)*CELL,.17,.1,.1,0xe16d5e,.8);
   }
+
   // Guide lights along the route towards the getaway.
-  for(let z=22;z<=47;z+=5)this.box(world,17*CELL,.05,z*CELL,.42,.026,1.65,0xaeb785,.25);
+  for(let x=19;x<=28;x+=4)this.box(world,x*CELL,.055,36*CELL,.42,.026,1.65,0xaec28e,.25);
+
   const ring=new THREE.Mesh(new THREE.TorusGeometry(3.2,.12,8,48),new THREE.MeshBasicMaterial({color:0x314c49}));
   ring.rotation.x=Math.PI/2;ring.position.set(run.exit.x,.1,run.exit.z);world.add(ring);this.exitRing=ring;
   const beacon=new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.4,4,20,1,true),new THREE.MeshBasicMaterial({color:0x80ffb5,transparent:true,opacity:.08,side:THREE.DoubleSide,depthWrite:false}));
@@ -180,7 +182,7 @@ export class View{
    const g=this.objectiveMesh(obj,p);world.add(g);this.objectives.set(obj.id,g);
   }
   // Subtle night rain, a cheap animated particle system.
-  const count=560,pts=new Float32Array(count*3),random=new Float32Array(count);
+  const count=350,pts=new Float32Array(count*3),random=new Float32Array(count);
   for(let i=0;i<count;i++){
    pts[i*3]=Math.random()*w;pts[i*3+1]=Math.random()*12;pts[i*3+2]=Math.random()*h;
    random[i]=9+Math.random()*7;

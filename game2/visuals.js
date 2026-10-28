@@ -138,17 +138,17 @@ export class Visuals {
   const v=this.view,city=run.mission===0;
   if(city){
    // Pools of amber street light and colder storefront spill create a readable night-time route.
-   for(const [x,z,tone,r] of [[11,9,0xffbb73,15],[10,39,0xffca87,18],[70,53,0xffce9c,15],[19,26,0xffca85,23],[38,20,0xffdd9d,17],[53,34,0xa3ecff,16],[67,45,0xb1d5ff,20]]){
+   for(const [x,z,tone,r] of [[8,16,0xffbb73,15],[9,40,0xffca87,18],[45,39,0xffce9c,15],[27,35,0xffca85,23],[23,22,0xffefcd,17],[36,22,0xffefcd,17],[50,28,0xb1d5ff,19]]){
     this.pool(x*2,z*2,r,tone,.27);
    }
-   this.lamp(20*2,3.55,26*2,0xffb66e,3.4,16);
-   this.lamp(53*2,3.5,34*2,0x87dfff,3.1,17);
-   for(const [x,z] of [[40,16],[55,19],[47,36]]){
+   this.lamp(28*2,3.55,34*2,0xffb66e,3.4,16);
+   this.lamp(48*2,3.5,26*2,0x87dfff,3.1,17);
+   for(const [x,z] of [[37,18],[31,13]]){
     const l=this.lamp(x*2,3.45,z*2,0xff463d,0,10,true);
     this.pool(x*2,z*2,7,0xff3930,.11);
    }
    // Simple luminous canopy strips, always visible without per-window shadow maps.
-   for(const [x,z,w] of [[19.2,26,7],[19.2,35,6],[53,13.1,10]]){
+   for(const [x,z,w] of [[28.5,33.8,11],[16.5,21,6],[43.5,12.5,6]]){
     const bar=v.box(v.world,x*2,3.05,z*2,w,.055,.075,0xffdfa4);
     bar.material.emissive.setHex(0xffbc72);bar.material.emissiveIntensity=2.1;
    }

@@ -1,107 +1,95 @@
-// AFTER HOURS / expanded introductory heist: an entire connected city block.
-// Coordinates use the same 2-metre tile units as the campaign.
-export const LEVEL1_SIZE={width:74,height:58};
+// NIGHTSHIFT MARKET — reference-map-inspired first robbery.
+// North is the stockroom / office / restroom wing; store aisles to the south,
+// delivery bay to the west, side alley to the east, parking / getaway to the south.
+// Geometry intentionally adapts the reference for open first-person sightlines.
+export const LEVEL1_SIZE={width:57,height:46};
 export const LEVEL1_ZONES=[
- {name:'NEON AVENUE',x:1,z:1,w:18,h:55,floor:0x1d2935},
- {name:'SERVICE ALLEY',x:18,z:1,w:46,h:11,floor:0x263039},
- {name:'NIGHTSHIFT MARKET',x:21,z:13,w:23,h:29,floor:0x66594b},
- {name:'STAFF OFFICES',x:45,z:13,w:16,h:16,floor:0x35444b},
- {name:'STOCKROOM',x:45,z:29,w:16,h:13,floor:0x3b3f3d},
- {name:'LOADING YARD',x:62,z:12,w:11,h:44,floor:0x293138},
- {name:'REAR COURTYARD',x:19,z:44,w:43,h:12,floor:0x28323a}
-];
-const edges=[
- // Long store facade, three distinct ways inside.
- [20,12,42,1,[[36,39]]],
- [20,43,42,1,[[45,48]]],
- [20,13,1,30,[[24,28]]],
- [61,13,1,30,[[34,38]]],
- // Internal shop / office division and office security corridor.
- [44,13,1,17,[[19,22],[26,28]]],
- [45,28,16,1,[[49,52]]],
- [51,29,1,14,[[35,38]]],
- // Stockroom side cages. Doors face a wide central service aisle.
- [52,32,9,1,[[55,58]]],
- [52,40,9,1,[[56,59]]],
- // Office partitions and meeting rooms.
- [46,20,15,1,[[50,53],[56,58]]],
- [53,14,1,14,[[23,26]]],
- // Shipping yard walls and cover with alternative navigation routes.
- [65,21,1,11,[[25,28]]],
- [66,40,1,12,[[45,49]]],
- [28,47,1,8,[[51,54]]]
+ {name:'PARKING LOT',x:9,z:34,w:37,h:11,floor:0x283038},
+ {name:'DELIVERY AREA',x:1,z:12,w:11,h:23,floor:0x33363a},
+ {name:'SIDE ALLEY',x:45,z:5,w:11,h:39,floor:0x242b30},
+ {name:'SHOP FLOOR',x:12,z:16,w:33,h:18,floor:0x8f8777},
+ {name:'STOCKROOM',x:12,z:7,w:13,h:9,floor:0x666057},
+ {name:'BACK OFFICE',x:25,z:7,w:11,h:9,floor:0x69645c},
+ {name:'RESTROOM',x:36,z:7,w:9,h:9,floor:0x768082}
 ];
 const fixtures=[
- // Grocery aisles, spaced so firefights have usable cover and flanking routes.
- [25,17,'shelf'],[25,22,'shelf'],[25,31,'shelf'],[25,37,'shelf'],
- [31,17,'shelf'],[31,24,'shelf'],[31,34,'shelf'],[37,17,'shelf'],
- [37,24,'shelf'],[37,34,'shelf'],[22,30,'counter'],[39,38,'counter'],
- [40,15,'fridge'],[38,40,'fridge'],[30,40,'fridge'],
- // Management offices, monitors, filing cabinets.
- [47,15,'desk'],[49,24,'desk'],[57,15,'desk'],[58,25,'desk'],
- [46,25,'plant'],[60,18,'plant'],[56,26,'filing'],[58,22,'filing'],
- // Cargo warehouse with stacked stock, cages, pallets and machinery.
- [47,32,'crate'],[47,37,'crate'],[55,31,'crate'],[59,34,'crate'],
- [56,39,'safe'],[48,40,'pallet'],[49,34,'pallet'],
- // Street furniture and distinct street silhouettes.
- [5,7,'car'],[10,14,'car'],[5,34,'car'],[13,43,'car'],
- [9,51,'van'],[10,39,'streetlamp'],[11,9,'streetlamp'],
- [13,19,'tree'],[13,32,'tree'],[14,52,'tree'],[4,20,'barrier'],
- // Alleys, external equipment and loading dock obstacles.
- [23,5,'dumpster'],[33,5,'dumpster'],[49,5,'generator'],
- [61,6,'container'],[67,16,'container'],[67,36,'pallet'],
- [69,46,'container'],[55,49,'dumpster'],[37,50,'car'],
- [43,52,'barrier'],[70,53,'streetlamp'],
+ // The southwest entry wall is lined with coolers, while front displays
+ // and the cashier's counter frame the main door.
+ [14,19,'fridge'],[14,22,'fridge'],[14,25,'fridge'],
+ [15,29,'shelf'],[19,30,'shelf'],[24,30,'counter'],[27,30,'counter'],[31,30,'counter'],
+ [38,30,'counter'],[41,30,'shelf'],[42,21,'shelf'],[42,26,'shelf'],
+ // Five visible grocery aisles with navigable gaps and endcaps.
+ [19,20,'shelf'],[19,24,'shelf'],[24,20,'shelf'],[24,24,'shelf'],
+ [29,20,'shelf'],[29,24,'shelf'],[34,20,'shelf'],[34,24,'shelf'],
+ [39,20,'shelf'],[39,24,'shelf'],
+ // Overpacked stock room.
+ [14,9,'pallet'],[15,13,'crate'],[18,9,'shelf'],[18,13,'crate'],
+ [21,9,'pallet'],[22,13,'shelf'],
+ // Manager's office, cash safe, paperwork.
+ [27,9,'filing'],[30,10,'safe'],[33,9,'filing'],[32,13,'desk'],
+ // Restroom and staff facilities.
+ [37,9,'filing'],[41,9,'filing'],[42,13,'crate'],
+ // Parking cars, delivery truck, and getaway vehicle.
+ [7,22,'van'],[6,15,'pallet'],[9,30,'pallet'],[15,40,'van'],
+ [34,40,'car'],[45,40,'car'],[9,40,'streetlamp'],[44,38,'streetlamp'],
+ // Realistic cover near the employee exit; reinforcements enter here.
+ [49,10,'dumpster'],[51,22,'dumpster'],[50,33,'dumpster'],[53,16,'pallet'],
+ [4,8,'container'],[5,37,'barrier'],[52,39,'barrier']
 ];
 const accents=[
- {text:'NIGHTSHIFT',x:40,z:12.08,y:2.6,size:6.2,rot:0,color:'#fff2d4'},
- {text:'MARKET + DELI',x:40,z:43.06,y:2.65,size:4.5,rot:Math.PI,color:'#ffe39c'},
- {text:'EMPLOYEES ONLY',x:44.95,z:24,y:2.3,size:3,rot:Math.PI/2,color:'#b6f6fb'},
- {text:'LOADING DOCK 03',x:61.2,z:39,y:2.4,size:3.3,rot:Math.PI/2,color:'#b1cbe6'},
- {text:'EASTSIDE · 02:17 AM',x:8,z:56.1,y:2.6,size:5.8,rot:0,color:'#90b9e8'},
- {text:'WAREHOUSE',x:50,z:42.85,y:2.4,size:3.4,rot:0,color:'#f1ca8f'}
+ {text:'NIGHTSHIFT MARKET',x:28,z:33.35,y:3.6,size:6.2,rot:Math.PI,color:'#f0d5a4'},
+ {text:'24 HOURS',x:37,z:33.31,y:2.8,size:2.3,rot:Math.PI,color:'#9deaff'},
+ {text:'EMPLOYEES ONLY',x:44.27,z:12,y:2.5,size:3.1,rot:-Math.PI/2,color:'#f2d8aa'},
+ {text:'DELIVERIES',x:11.72,z:12,y:2.5,size:3,rot:Math.PI/2,color:'#f4cb8a'},
+ {text:'STOCKROOM',x:19,z:15.72,y:2.5,size:2.8,rot:Math.PI,color:'#f2d9b5'},
+ {text:'MANAGER',x:30.2,z:15.72,y:2.5,size:2.4,rot:Math.PI,color:'#f2d9b5'},
+ {text:'RESTROOM',x:40,z:15.72,y:2.5,size:2.3,rot:Math.PI,color:'#d5ecf2'},
+ {text:'COLD DRINKS',x:14.6,z:21.9,y:3,size:2.8,rot:Math.PI/2,color:'#91ddfb'},
+ {text:'SIDE EXIT',x:46.8,z:17.6,y:2.3,size:2.7,rot:Math.PI/2,color:'#f0d2b4'}
 ];
 export const LEVEL1={
- id:'bodega',number:'01',name:'AFTER HOURS',site:'NIGHTSHIFT MARKET',type:'CITY-BLOCK HEIST',tag:'ONE NIGHT. SIX DISTRICTS.',
- description:'2:17 AM. A corner store hides a cash-transfer operation. Scope out the block, infiltrate the shop, breach the offices, crack the warehouse safe, haul the bags through the city and survive until your driver arrives. An optional security hack and extra register cash are worth the detour.',
- theme:'store',accent:'#ffcf79',payout:800,reinforce:27,alarmRate:.018,
- size:LEVEL1_SIZE,zones:LEVEL1_ZONES,edgeSpecs:edges,decor:fixtures,signs:accents,
- spawn:[7,26],exit:[9,49],dropoff:[9,49],waveSpawns:[[68,48],[68,14],[31,5],[9,6],[39,54],[69,53]],
- enemies:[
-  [29,18,'guard'],[42,29,'guard'],[51,17,'guard'],[56,36,'guard'],
-  [58,24,'sniper'],[67,27,'rusher'],[34,48,'guard'],[63,7,'guard'],
-  [38,12,'guard'],[18,39,'rusher']
- ],
+ id:'bodega',number:'01',name:'NIGHTSHIFT MARKET',site:'NIGHTSHIFT MARKET',type:'LATE-NIGHT STORE ROBBERY',tag:'THE FIRST SCORE',
+ description:'After closing, the Nightshift Market still has cash in the register and the manager\'s office. Enter from the parking lot or staff side door, take the till, crack the office safe, bring the loot to your van, and get away. A few guards are on duty; the reinforcements only arrive after the robbery starts.',
+ theme:'store',accent:'#e8c487',payout:500,reinforce:24,alarmRate:.0015,
+ size:LEVEL1_SIZE,zones:LEVEL1_ZONES,decor:fixtures,signs:accents,
+ spawn:[28,39],exit:[19,40],dropoff:[19,40],checkpoint:[28,35],
+ waveSpawns:[[52,11],[52,30],[9,21],[41,40],[11,38]],
+ enemies:[[17,22,'guard'],[38,22,'guard'],[32,12,'guard']],
  objectives:[
-  {id:'recon',at:[14,29],name:'Survey the market entrances',kind:'recon',duration:2.1,chapter:1},
-  {id:'manifest',at:[32,18],name:'Find the delivery manifest',kind:'data',duration:3,chapter:2,requires:['recon']},
-  {id:'badge',at:[48,16],name:'Acquire the office access card',kind:'keycard',duration:2.7,chapter:2,requires:['manifest']},
-  {id:'breaker',at:[57,24],name:'Override the stockroom shutter',kind:'hack',duration:4.5,chapter:3,requires:['badge']},
-  {id:'safe',at:[57,37],name:'Crack the armored cash safe',kind:'safe',duration:12,chapter:4,requires:['breaker']},
-  {id:'bags-secured',at:[9,49],name:'Carry 3 cash bags to the van',kind:'haul',duration:0,chapter:5,requires:['safe'],synthetic:true},
-  {id:'radio',at:[10,47],name:'Signal the getaway driver',kind:'radio',duration:3.5,chapter:6,requires:['bags-secured']},
-  {id:'cctv',at:[58,16],name:'Optional: disable surveillance',kind:'hack',duration:4,chapter:2,optional:true,requires:['badge']},
-  {id:'register',at:[40,36],name:'Optional: grab the till cash',kind:'cash',duration:2.5,chapter:3,optional:true,requires:['manifest']},
-  {id:'cache',at:[67,38],name:'Optional: steal the shipment cache',kind:'case',duration:3.3,chapter:3,optional:true,requires:['breaker']}
+  {id:'till',at:[29,29],name:'Empty the front cash register',kind:'cash',duration:4.4,chapter:1},
+  {id:'safe',at:[29,12],name:'Open the manager\'s office safe',kind:'safe',duration:7,chapter:2,requires:['till']},
+  {id:'bags-secured',at:[19,40],name:'Carry 2 cash bags to the getaway van',kind:'haul',duration:0,chapter:3,requires:['safe'],synthetic:true},
+  {id:'radio',at:[20,39],name:'Call the getaway driver',kind:'radio',duration:2.8,chapter:4,requires:['bags-secured']},
+  {id:'stock',at:[17,11],name:'Optional: take the stockroom shipment',kind:'case',duration:2.7,optional:true,requires:['till']},
+  {id:'cctv',at:[33,12],name:'Optional: cut the security feed',kind:'hack',duration:3.3,optional:true,requires:['till']},
+  {id:'lottery',at:[39,29],name:'Optional: collect lottery scratchers',kind:'cash',duration:2.2,optional:true,requires:['till']}
  ],
- completion:'The Vector 9 SMG and smoke grenades are now available. The city belongs to your crew.'
+ completion:'Your first successful store robbery is in the books. The crew is ready for its next job.'
 };
 export function makeLevel1Grid(){
  const {width,height}=LEVEL1_SIZE;
  const grid=Array.from({length:height},(_,z)=>Array.from({length:width},(_,x)=>x===0||z===0||x===width-1||z===height-1?'#':'.'));
- const add=(x,z,w,h,gaps=[])=>{
-  for(let iz=z;iz<z+h;iz++)for(let ix=x;ix<x+w;ix++){
-   if(gaps.some(([a,b])=>(h===1?ix>=a&&ix<=b:iz>=a&&iz<=b)))continue;
-   if(grid[iz]?.[ix])grid[iz][ix]='#';
+ const set=(x,z,w,h,gaps=[])=>{
+  for(let zz=z;zz<z+h;zz++)for(let xx=x;xx<x+w;xx++){
+   if(gaps.some(([lo,hi])=>h===1?xx>=lo&&xx<=hi:zz>=lo&&zz<=hi))continue;
+   if(grid[zz]?.[xx]!==undefined)grid[zz][xx]='#';
   }
  };
- for(const [x,z,w,h,gaps] of edges)add(x,z,w,h,gaps);
- // Street-side blocks are visually and physically substantial, but never obstruct primary approaches.
- for(const [x,z,w,h] of [[15,2,4,7],[2,2,3,4],[2,44,2,8],[65,3,6,5],[23,47,3,4],[36,47,3,4]])add(x,z,w,h);
- // Aisle end-caps and service containers provide real cover.
- for(const [x,z,w,h] of [[27,17,1,3],[27,31,1,4],[33,18,1,4],[33,32,1,5],[39,19,1,4],[39,31,1,4],[67,18,2,4],[67,34,2,3]])add(x,z,w,h);
- // Interactable locations, spawn positions, and getaway remain clear.
- const keyPoints=[LEVEL1.spawn,LEVEL1.exit,LEVEL1.dropoff,...LEVEL1.objectives.map(x=>x.at),...LEVEL1.enemies.map(x=>x.slice(0,2))];
- for(const [x,z] of keyPoints)grid[z][x]='.';
+ // Exterior walls; front door points south at the parking lot.
+ set(12,7,33,1);
+ set(12,33,33,1,[[27,30]]);
+ set(12,7,1,27,[[11,13]]);    // loading / employee bay opening
+ set(44,7,1,27,[[11,13]]);    // side employee entrance
+ // Deep rear storeroom, office and restroom wing.
+ set(12,16,33,1,[[21,23],[29,31],[39,40]]);
+ set(24,7,1,10,[[11,13]]);
+ set(35,7,1,10,[[11,13]]);
+ // Shelving cores have physical collision; wide rows leave flanking routes.
+ for(const x of [19,24,29,34,39])for(const z of [20,24])set(x,z,1,2);
+ // Stockroom racks, bathroom partitions and exterior dumpsters.
+ for(const [x,z,w,h] of [[18,9,1,2],[21,9,1,2],[40,9,1,2],[49,10,2,1],[51,22,2,1],[50,33,2,1],[4,8,3,3]])set(x,z,w,h);
+ // Maintain accessible floor around mandatory objectives, doors and spawns.
+ const access=[LEVEL1.spawn,LEVEL1.exit,LEVEL1.dropoff,...LEVEL1.objectives.map(o=>o.at),...LEVEL1.enemies.map(e=>e.slice(0,2)),...LEVEL1.waveSpawns];
+ for(const [x,z] of access)grid[z][x]='.';
  return grid;
 }

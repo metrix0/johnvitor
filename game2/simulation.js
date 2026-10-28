@@ -1,4 +1,4 @@
-import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS,GADGETS,makeGrid,clamp,pos} from './data.js';
+import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS,GADGETS,makeGrid,clamp,pos} from './data.js?v=4';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const unit=(x,z)=>{const d=Math.hypot(x,z)||1;return {x:x/d,z:z/d};};
 const T=(p)=>({x:Math.round(p.x/CELL),z:Math.round(p.z/CELL)});
@@ -75,7 +75,7 @@ export function spawnEnemy(run,type,at){
 }
 export function makeRun(n=0,count=1,loadouts=[]){
  const mission=MISSIONS[n],start=pos(mission.spawn);
- const run={mission:n,runId:Math.random().toString(36).slice(2),phase:'brief',time:0,alarm:0,grid:makeGrid(mission),serial:0,players:[],enemies:[],objectives:[],pickups:[],projectiles:[],tracers:[],toast:'',toastUntil:0,exit:pos(mission.exit),reinforce:mission.reinforce,lockdown:false,kills:0,shots:0,hitShots:0,earned:0,loot:[],secured:0,dropoff:pos(mission.dropoff||mission.exit),checkpoint:pos(mission.spawn),continues:n===0&&count===1?1:0,usedContinue:false,jamUntil:0,empUntil:0,escapeAt:0,nextWave:0,escapeReady:false,camerasOff:false,cameraAlert:0,chapter:1,optionalBonus:0};
+ const run={mission:n,runId:Math.random().toString(36).slice(2),phase:'brief',time:0,alarm:0,grid:makeGrid(mission),serial:0,players:[],enemies:[],objectives:[],pickups:[],projectiles:[],tracers:[],toast:'',toastUntil:0,exit:pos(mission.exit),reinforce:mission.reinforce,lockdown:false,kills:0,shots:0,hitShots:0,earned:0,loot:[],secured:0,dropoff:pos(mission.dropoff||mission.exit),checkpoint:pos(mission.spawn),continues:n===0&&count===1?1:0,usedContinue:false,jamUntil:0,empUntil:0,escapeAt:0,nextWave:0,escapeReady:false,camerasOff:false,cameraAlert:0,chapter:1,optionalBonus:0,robberyStarted:false};
  for(let i=0;i<count;i++){
   const kit=loadouts[i]||{},wid=WEAPONS[kit.weapon]?kit.weapon:'pistol',gid=GADGETS[kit.gadget]?kit.gadget:null,w=WEAPONS[wid];
   const maxHp=(n===0?125:100)+25*clamp(kit.upgrades?.armor||0,0,3),mag=Math.round(w.mag*(1+clamp(kit.upgrades?.mag||0,0,3)*.2));
@@ -84,9 +84,9 @@ export function makeRun(n=0,count=1,loadouts=[]){
  }
  run.objectives=mission.objectives.map(o=>({...o,x:o.at[0]*CELL,z:o.at[1]*CELL,requires:o.requires||[],done:false}));
  if(n===0){
-  run.objectives.find(o=>o.id==='bags-secured').name=(count===1?'3':'4')+' loot bags secured';
-  run.bagGoal=count===1?3:4;
-  for(const [x,z,type] of [[9,32,'ammo'],[35,29,'med'],[48,24,'ammo'],[55,36,'med'],[12,45,'ammo'],[65,42,'ammo']]){
+  run.objectives.find(o=>o.id==='bags-secured').name='2 cash bags loaded in the van';
+  run.bagGoal=2;
+  for(const [x,z,type] of [[16,28,'ammo'],[22,12,'med'],[42,19,'ammo'],[47,33,'med'],[18,39,'ammo']]){
    const location=pos([x,z]);run.pickups.push({id:++run.serial,x:location.x,z:location.z,type,taken:false});
   }
  }
@@ -248,18 +248,22 @@ function tickPlayer(run,p,input,dt){
    if(task.kind==='objective'){
     task.target.done=true;
     if(task.target.id==='cctv'){run.camerasOff=true;run.alarm=Math.max(0,run.alarm-26);}
+    else if(task.target.id==='till'){
+     run.robberyStarted=true;run.nextWave=run.time+9;run.alarm=Math.max(34,run.alarm);
+     announce(run,'REGISTER EMPTIED · SECURITY CALLED · GUARDS INBOUND');
+    }
     else if(task.target.optional){run.optionalBonus+=130;}
     else if(run.mission===0){run.chapter=Math.max(run.chapter,(task.target.chapter||1)+1);}
     run.alarm=clamp(run.alarm+(task.target.optional?0:task.target.kind==='safe'?28:task.target.kind==='radio'?38:7),0,100);
     if(task.target.id==='safe'){
-     run.checkpoint={x:task.target.x-5,z:task.target.z-4};
+     run.checkpoint=pos(MISSIONS[0].checkpoint||MISSIONS[0].spawn);
      for(let j=0;j<run.bagGoal;j++){const dx=(j%2)*2.1-.9,dz=Math.floor(j/2)*1.9-.8;
       run.loot.push({id:++run.serial,x:task.target.x+dx,z:task.target.z+dz,carrier:null,secured:false});}
      announce(run,'SAFE BREACHED · CASH BAGS READY');
     }else if(task.target.id==='radio'){
-     run.escapeAt=run.time+32;run.nextWave=run.time+2;run.alarm=Math.max(68,run.alarm);
-     announce(run,'DRIVER INBOUND · DEFEND THE EXTRACTION ZONE');
-    }else announce(run,'SECURED: '+task.target.name.toUpperCase());
+     run.escapeAt=run.time+24;run.nextWave=Math.min(run.nextWave,run.time+4);run.alarm=Math.max(68,run.alarm);
+     announce(run,'DRIVER 24 SECONDS OUT · HOLD THE PARKING LOT');
+    }else if(task.target.id!=='till')announce(run,'SECURED: '+task.target.name.toUpperCase());
    }
    if(task.kind==='extract'){
     if(run.players.every(m=>m.hp>0&&distance(m,run.exit)<3.5)){run.phase='won';run.earned=MISSIONS[run.mission].payout+Math.round(run.kills*14)+Math.max(0,Math.floor((100-run.alarm)*2))+run.optionalBonus+(run.mission===0&&run.alarm<35?350:0)-(run.usedContinue?175:0);}
@@ -339,8 +343,8 @@ export function stepRun(run,inputs,dt){
  if(run.phase!=='play')return;
  if(run.mission===0){
   // The security network spots exposed intruders. Sabotage CCTV to shut this down.
-  if(!run.camerasOff&&run.time>run.empUntil&&run.time>run.jamUntil){
-   const cameras=[[39,16],[55,19],[47,36]].map(at=>pos(at));
+  if(run.robberyStarted&&!run.camerasOff&&run.time>run.empUntil&&run.time>run.jamUntil){
+   const cameras=[[37,18],[31,13]].map(at=>pos(at));
    for(const cam of cameras)for(const p of run.players){
     if(p.hp>0&&distance(cam,p)<14&&lineClear(run,cam,p)){run.cameraAlert+=dt;break;}
    }
@@ -350,16 +354,19 @@ export function stepRun(run,inputs,dt){
    const carrier=run.players.find(p=>p.id===bag.carrier);
    if(carrier){bag.x=carrier.x;bag.z=carrier.z;}
   }
-  if(run.escapeAt>0&&run.time>=run.nextWave&&run.time<run.escapeAt+1){
-   const incoming=run.enemies.filter(e=>e.hp>0).length;
-   if(incoming<14){
+  // Only small guard response teams, and only after the register robbery.
+  if(run.robberyStarted&&run.time>=run.nextWave){
+   const alive=run.enemies.filter(e=>e.hp>0).length;
+   if(alive<8){
     const seeds=MISSIONS[0].waveSpawns;
-    const n=run.players.length===1?2:3;
-    for(let i=0;i<n;i++){const spot=seeds[(Math.floor(run.time/7)+i)%seeds.length];
-     const e=spawnEnemy(run,i===0&&run.time>22?'heavy':i%2?'rusher':'guard',spot);e.alert=true;}
-    announce(run,'POLICE ASSAULT WAVE INBOUND');
+    const count=run.players.length===1?1:2;
+    for(let k=0;k<count;k++){
+     const spot=seeds[(Math.floor(run.time/13)+k)%seeds.length];
+     const e=spawnEnemy(run,'guard',spot);e.alert=true;e.alertUntil=run.time+20;
+    }
+    announce(run,run.escapeAt?'MORE GUARDS ARRIVING · HOLD THE VAN':'SECURITY REINFORCEMENTS ENTER THE PROPERTY');
    }
-   run.nextWave=run.time+10;
+   run.nextWave=run.time+(run.escapeAt?13:19);
   }
   if(run.escapeAt>0&&run.time>=run.escapeAt&&!run.escapeReady){
    run.escapeReady=true;announce(run,'GETAWAY VAN ARRIVED · BOARD NOW');
@@ -368,7 +375,7 @@ export function stepRun(run,inputs,dt){
  run.enemies.forEach(e=>tickEnemy(run,e,dt));
  run.projectiles.forEach(b=>tickProjectile(run,b,dt));run.projectiles=run.projectiles.filter(b=>b.life>0);
  if(run.alarm>62&&!run.lockdown){run.lockdown=true;announce(run,'LOCKDOWN — SECURITY REINFORCEMENTS INBOUND');}
- if(run.alarm>32&&run.time>run.jamUntil){
+ if(run.mission!==0&&run.alarm>32&&run.time>run.jamUntil){
   run.reinforce-=dt;
   if(run.reinforce<=0){
    const alive=run.enemies.filter(e=>e.hp>0).length;
