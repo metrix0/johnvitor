@@ -176,13 +176,14 @@ function tickPlayer(run,p,input,dt){
  p.pitch=Number.isFinite(input?.pitch)?clamp(input.pitch,-1.35,1.35):p.pitch;
  const f=Number(!!input?.forward)-Number(!!input?.back),s=Number(!!input?.right)-Number(!!input?.left),norm=Math.hypot(f,s)||1;
  // Run by default in any direction. Shift is the slower, quieter walk.
- const carrying=p.bagId!==null,walking=!!input?.walk,moving=f!==0||s!==0;
- const spd=(walking?3.2:7.4)*(carrying?.72:1);
+ const carrying=p.bagId!==null,walking=!!input?.walk,aiming=!!input?.aim,moving=f!==0||s!==0;
+ // Aim-down-sights movement is deliberately slower, including while silent-walking.
+ const spd=(walking?3.2:7.4)*(aiming?.54:1)*(carrying?.72:1);
  const dx=(-Math.sin(p.yaw)*f+Math.cos(p.yaw)*s)*spd*dt/norm;
  const dz=(-Math.cos(p.yaw)*f-Math.sin(p.yaw)*s)*spd*dt/norm;
  move(run,p,dx,dz,.36);
- p.walking=walking;p.moving=moving;p.aiming=!!input?.aim;
- p.stamina=100;p.noise=Math.max(moving?(walking?1.5:11):0,run.time<(p.noiseUntil||0)?(p.noiseGun||30):0);
+ p.walking=walking;p.moving=moving;p.aiming=aiming;
+ p.stamina=100;p.noise=Math.max(moving?(walking?1.5:aiming?5.5:11):0,run.time<(p.noiseUntil||0)?(p.noiseGun||30):0);
  if(input?.reload||p.ammo===0)beginReload(p);
  if(input?.fire&&p.reload===0)shoot(run,p);
  if(input?.gadget&&p.gadgets>0&&p.gadCool===0){

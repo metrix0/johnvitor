@@ -306,8 +306,24 @@ export class View{
   this.box(this.gunBody,0,0,0,.23,.2,.54,0x2d3a3c,.7);
   this.box(this.gunBody,0,.09,-.23,.16,.14,.37,0x4c5d62,.75);
   const barrel=this.cyl(this.gunBody,0,.065,-.48,.043,.49,0x161f21);barrel.rotation.x=Math.PI/2;
-  this.magazine=this.box(this.gunBody,-.06,-.22,.16,.16,.37,.19,0x2b3535);
+  // Magazine is its own rig so it can physically leave the magwell.
+  this.magazine=new THREE.Group();this.magazine.position.set(-.06,-.22,.16);this.gunBody.add(this.magazine);
+  this.box(this.magazine,0,0,0,.16,.35,.19,0x2b3535,.62);
+  this.box(this.magazine,0,-.19,0,.19,.045,.22,0x879ba3,.75);
+  this.freshMagazine=this.magazine.clone(true);this.freshMagazine.visible=false;this.gunBody.add(this.freshMagazine);
+  // Visible mechanisms and hands instead of only rotating the entire gun.
+  this.chargingHandle=this.box(this.gunBody,.14,.16,-.15,.11,.085,.14,0x172228,.7);
+  this.cylinder=this.cyl(this.gunBody,0,-.055,-.04,.12,.24,0x687984,12);
+  this.cylinder.rotation.x=Math.PI/2;this.cylinder.visible=false;
+  this.pump=this.box(this.gunBody,0,-.095,-.38,.205,.15,.33,0x384744,.45);this.pump.visible=false;
   this.box(this.gunBody,.17,-.17,.26,.24,.24,.48,0x4a5962);
+  this.box(this.gunBody,.23,-.24,.32,.23,.16,.26,0x26353d,.8);
+  this.box(this.gunBody,.29,-.35,.48,.25,.23,.29,0x313a41,.6);
+  this.reloadHand=new THREE.Group();this.gunBody.add(this.reloadHand);
+  this.box(this.reloadHand,0,0,0,.22,.15,.23,0x27353c,.8);
+  for(const x of [-.072,-.025,.022,.069])this.box(this.reloadHand,x,-.072,-.075,.039,.11,.095,0x34444c,.7);
+  this.box(this.reloadHand,-.035,-.155,.13,.23,.24,.32,0x414b52,.6);
+  this.reloadHand.visible=false;
   // Sight line is at the camera's screen center when the gun is raised to ADS.
   this.sightHeight=.235;
   this.irons=new THREE.Group();this.gunBody.add(this.irons);
@@ -329,8 +345,11 @@ export class View{
   const w=WEAPONS[weapon]||WEAPONS.pistol;
   const shotgun=w.pellets>1,long=['rifle','lmg','dmr','sniper','burst'].includes(weapon),compact=['smg','silenced'].includes(weapon);
   this.gunBody.scale.set(shotgun?1.35:weapon==='lmg'?1.5:compact?.94:1,1,weapon==='sniper'?1.9:long?1.5:shotgun?1.4:compact?1.2:1);
+  this.weaponType=weapon;
   this.optic.visible=long||compact;
   this.irons.visible=!this.optic.visible;
+  this.cylinder.visible=weapon==='revolver';
+  this.pump.visible=weapon==='shotgun';
   this.gunBody.traverse(x=>{if(x.material?.color&&x!==this.reticle)x.material.color.lerp(new THREE.Color(w.color),.3);});
  }
  update(run,playerIndex,angles,dt=0,input={}){
@@ -342,20 +361,54 @@ export class View{
   const desired=new THREE.Vector3(p.x,1.67-(p.hp<=0?.9:0),p.z);
   camera.position.copy(desired);this.cameraReady=true;
   camera.rotation.set(angles.pitch||0,angles.yaw||0,0,'YXZ');
-  const moving=!!(input.forward||input.back||input.left||input.right),bob=moving&&p.hp>0?Math.sin(this.clock*(input.walk?8:14))*(input.walk?.008:.02):0;
-  const reloading=p.reload>0,aiming=!!input.aim&&!reloading&&p.hp>0;
+  const moving=!!(input.forward||input.back||input.left||input.right);
+  const bob=moving&&p.hp>0?Math.sin(this.clock*(input.aim?9:input.walk?8:14))*(input.aim?.005:input.walk?.008:.02):0;
+  const reloading=p.reload>0,wantsAim=!!input.aim&&p.hp>0,aiming=wantsAim&&!reloading;
   const duration=WEAPONS[p.weapon]?.reload||1;
   const progress=reloading?Math.max(0,Math.min(1,1-p.reload/duration)):0;
-  const ease=(from,to)=>{const t=Math.max(0,Math.min(1,(progress-from)/(to-from)));return t*t*(3-2*t);};
-  // Magazine removal and insertion are timed to the real simulation reload countdown.
-  const dip=reloading?Math.sin(Math.PI*progress):0;
-  const magazineDrop=reloading?ease(.12,.39)*(1-ease(.54,.86)):0;
-  this.magazine.position.y=-.22-magazineDrop*.40;
-  this.magazine.rotation.x=magazineDrop*.13;
-  this.gunBody.rotation.set(-dip*.17,0,dip*.34);
-  this.gunTarget.set((aiming?0:.37)+dip*.11,(aiming?-this.sightHeight:-.36+bob)-dip*.22,-.55+p.recoil*.08);
-  this.gun.position.lerp(this.gunTarget,Math.min(1,dt*17));
+  const ease=(a,b)=>{const t=Math.max(0,Math.min(1,(progress-a)/(b-a)));return t*t*(3-2*t);};
+  // Bring the entire firearm back into view before operating the magazine and action.
+  const pose=reloading?ease(0,.15)*(1-ease(.85,1)):0;
+  const baseX=wantsAim?0:.37,baseY=wantsAim?-this.sightHeight:-.36+bob;
+  this.gunTarget.set(baseX+(.24-baseX)*pose,baseY+(-.095-baseY)*pose,-.55-pose*.48+p.recoil*.08);
+  this.gun.position.lerp(this.gunTarget,Math.min(1,dt*19));
   this.gun.rotation.x=(aiming?0:Math.sin(this.clock*6)*.01)-p.recoil*.13;
+  this.gunBody.rotation.set(-pose*.22,pose*.29,-pose*.32);
+  const revolver=this.weaponType==='revolver',shotgun=this.weaponType==='shotgun';
+  const magFed=!revolver&&!shotgun;
+  // Deliberate phases: release -> extract -> fetch fresh mag -> seat -> rack -> settle.
+  const release=ease(.15,.37),seat=ease(.48,.72);
+  this.magazine.visible=magFed&&(!reloading||progress<.42);
+  this.magazine.position.set(-.06-release*.14,-.22-release*.51,.16+release*.08);
+  this.magazine.rotation.z=-release*.2;
+  this.freshMagazine.visible=magFed&&reloading&&progress>=.42;
+  this.freshMagazine.position.set(-.20+seat*.14,-.79+seat*.57,.25-seat*.09);
+  this.freshMagazine.rotation.z=-.2*(1-seat);
+  const rack=ease(.77,.83)*(1-ease(.89,.96));
+  this.chargingHandle.position.z=-.15+rack*.20;
+  this.cylinder.position.x=-ease(.18,.37)*.20*(1-ease(.72,.89));
+  this.cylinder.rotation.z=progress*Math.PI*3;
+  this.pump.position.z=-.38+ease(.79,.85)*(1-ease(.88,.96))*.22;
+  // Support hand travels with the old/new magazine, then racks the action.
+  this.reloadHand.visible=reloading&&progress>.055&&progress<.97;
+  if(this.reloadHand.visible){
+   let hx,hy,hz;
+   if(revolver){
+    hx=-.22-ease(.22,.42)*.12;hy=-.06;hz=.08;
+    if(progress>.72){hx=-.17;hy=.05;hz=-.12;}
+   }else if(shotgun){
+    hx=-.14;hy=-.17-ease(.20,.42)*.12;hz=.04;
+    if(progress>.78){hx=-.14;hy=-.105;hz=this.pump.position.z;}
+   }else if(progress<.42){
+    hx=this.magazine.position.x-.12;hy=this.magazine.position.y-.06;hz=this.magazine.position.z+.10;
+   }else if(progress<.77){
+    hx=this.freshMagazine.position.x-.12;hy=this.freshMagazine.position.y-.06;hz=this.freshMagazine.position.z+.10;
+   }else{
+    hx=.15;hy=.17;hz=this.chargingHandle.position.z+.025;
+   }
+   this.reloadHand.position.set(hx,hy,hz);
+   this.reloadHand.rotation.set(0,0,progress<.77?-.18:.24);
+  }
   camera.fov+=((aiming?56:input.walk?74:moving?80:76)-camera.fov)*Math.min(1,dt*9);camera.updateProjectionMatrix();
   this.muzzle.intensity=Math.max(0,this.muzzle.intensity-dt*70);
   this.flash.visible=this.muzzle.intensity>2;
