@@ -1,6 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
 import {View} from '../render.js?v=6';
-import {ENEMY_ARCHETYPES} from '../simulation.js';
+import {ENEMY_ARCHETYPES,ENEMY_PROJECTILE_SPEED} from '../simulation.js?v=8';
 
 const $=id=>document.getElementById(id);
 const definitions=[
@@ -91,7 +91,7 @@ function fire(){
     new THREE.MeshBasicMaterial({color:spec.type==='drone'?0x80eaff:spec.type==='sniper'?0xffb8a3:0xffd08c,transparent:true,opacity:.95,depthWrite:false}));
    bullet.position.set(x+(spec.type==='heavy'?.09:0),spec.type==='drone'?2.02:1.34,1.2);
    view.world.add(bullet);
-   shots.push({mesh:bullet,speed:spec.type==='sniper'?34:spec.type==='drone'?20:18,life:.53});
+   shots.push({mesh:bullet,speed:ENEMY_PROJECTILE_SPEED[spec.type]||42,life:spec.type==='sniper'?.25:.35});
   }
  }
  $('shots').textContent=String(totalShots).padStart(3,'0');
@@ -187,7 +187,7 @@ if(view){
      if(u.spec.type!=='rusher'){
       const bullet=new THREE.Mesh(new THREE.BoxGeometry(.05,.045,.68),new THREE.MeshBasicMaterial({color:u.spec.type==='drone'?0x84edff:0xffcd91}));
       bullet.position.set(u.x,u.spec.type==='drone'?2.02:1.34,1.2);
-      view.world.add(bullet);shots.push({mesh:bullet,speed:u.spec.type==='sniper'?31:18,life:.54});
+      view.world.add(bullet);shots.push({mesh:bullet,speed:ENEMY_PROJECTILE_SPEED[u.spec.type]||42,life:u.spec.type==='sniper'?.25:.35});
      }
     }
    }

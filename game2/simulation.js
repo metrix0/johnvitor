@@ -167,12 +167,13 @@ function blast(run,point,player,damage,radius){
  }
  run.alarm=clamp(run.alarm+12,0,100);
 }
+export const ENEMY_PROJECTILE_SPEED=Object.freeze({guard:42,sniper:64,heavy:45,drone:46});
 function enemyFire(run,e,target){
  if(e.type==='rusher')return;
  e.fireSeq=(e.fireSeq||0)+1;
  const d=unit(target.x-e.x,target.z-e.z),miss=rng(-.09,.09)*(e.type==='sniper'?.4:1);
  const v=unit(d.x+miss,d.z+miss);
- run.projectiles.push({id:++run.serial,x:e.x,z:e.z,sourceX:e.x,sourceZ:e.z,y:e.type==='drone'?2.15:1.3,dx:v.x,dz:v.z,damage:e.damage,speed:e.type==='sniper'?23:17,life:2.7,type:e.type});
+ run.projectiles.push({id:++run.serial,x:e.x,z:e.z,sourceX:e.x,sourceZ:e.z,y:e.type==='drone'?2.15:1.3,dx:v.x,dz:v.z,damage:e.damage,speed:ENEMY_PROJECTILE_SPEED[e.type]||ENEMY_PROJECTILE_SPEED.guard,life:2.7,type:e.type});
  e.cool=e.cadence;
  if(e.type==='heavy')e.cool*=.75;
 }

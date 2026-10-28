@@ -1,5 +1,5 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=4';
-import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=7';
+import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=8';
 import {View} from './render.js?v=8';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=6';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
@@ -145,7 +145,7 @@ function refreshMenu(){
  }).join('');
  $('upgrades').querySelectorAll('[data-upgrade]').forEach(b=>b.onclick=()=>buyUpgrade(b.dataset.upgrade));
  renderArmoryShop();
- $('safehouseName').textContent=loadedName?profile.name.toUpperCase():'OPERATOR';
+ updateSafehouseHud();
  $('shDeployMission').textContent=MISSIONS[selectedMission].name+' / '+MISSIONS[selectedMission].site;
  $('shDeployKit').textContent=WEAPONS[selectedWeapon].name+' · '+(selectedGadget?GADGETS[selectedGadget].name:'NO GADGET')+' · '+coins(profileWallet())+' AVAILABLE';
 }
@@ -198,10 +198,12 @@ function openStation(id){
  for(const button of document.querySelectorAll('.shTabs [data-station]'))button.classList.toggle('selected',button.dataset.station===id);
  for(const section of document.querySelectorAll('.shStation'))section.classList.toggle('hidden',section.id!=='station-'+id);
  $('safehousePrompt').classList.add('hidden');$('shHoverCard').classList.add('hidden');
+ $('shMenuToggle').setAttribute('aria-expanded','true');
  refreshMenu();
 }
 function closeStation(){
- activeStation='';$('safehousePanel').classList.add('hidden');$('safehousePrompt').classList.remove('hidden');
+ activeStation='';$('safehousePanel').classList.add('hidden');$('safehousePrompt').classList.add('hidden');
+ $('shMenuToggle').setAttribute('aria-expanded','false');
  safehouse?.setActive(true);
  try{const promise=safehouse?.canvas.requestPointerLock();promise?.catch?.(()=>{});}catch{}
 }
@@ -223,23 +225,23 @@ function cabinItemState(target){
 }
 function showCabinFocus(target){
  const hover=$('shHoverCard'),prompt=$('safehousePrompt');
- if(!target){hover.classList.add('hidden');prompt.textContent='WASD MOVE · SHIFT QUIET WALK · E INTERACT · TAB OPEN MENU';return;}
+ if(!target){hover.classList.add('hidden');prompt.classList.add('hidden');return;}
  if(target.type==='station'){
-  hover.classList.remove('hidden');
-  $('shHoverType').textContent='INTERACT';
-  $('shHoverName').textContent='[E] OPEN';
-  $('shHoverPrice').textContent='';
-  $('shHoverState').textContent='[TAB] MENU';
-  prompt.textContent='[E] INTERACT · [TAB] FULL MENU';
+  hover.classList.add('hidden');
+  const station=SAFEHOUSE_STATIONS.find(s=>s.id===target.station);
+  $('shInteractionLabel').textContent=station.name+' · '+station.hint;
+  prompt.classList.remove('hidden');
   return;
  }
- const state=cabinItemState(target);if(!state)return;
+ const state=cabinItemState(target);
+ if(!state){hover.classList.add('hidden');prompt.classList.add('hidden');return;}
  hover.classList.remove('hidden');
  $('shHoverName').textContent=state.item.name;
- $('shHoverType').textContent=target.kind==='upgrade'?'UPGRADE · LEVEL '+state.tier+'/3':(target.kind==='weapon'?state.item.class:'TACTICAL GADGET')+(target.kind==='gadget'?' · '+state.stock+' CHARGES OWNED':'');
+ $('shHoverType').textContent=(target.kind==='weapon'?state.item.class:'TACTICAL GADGET')+(target.kind==='gadget'?' · '+state.stock+' CHARGES OWNED':'');
  $('shHoverPrice').textContent=state.price;
  $('shHoverState').textContent=state.note;
- prompt.textContent='[E] '+(target.kind==='upgrade'?'OPEN':state.owned?'EQUIP / VIEW':'INSPECT')+' · [TAB] OPEN FULL MENU';
+ $('shInteractionLabel').textContent=(state.owned?'EQUIP / VIEW':'INSPECT')+' '+state.item.name;
+ prompt.classList.remove('hidden');
 }
 function inspectCabin(target){
  if(!target)return;
@@ -264,6 +266,44 @@ function inspectCabin(target){
   card.querySelector('button[data-buy-id]')?.focus({preventScroll:true});
  }
 }
+// The same combat HUD components are displayed while preparing equipment at the safehouse.
+function updateSafehouseHud(){
+ const w=WEAPONS[selectedWeapon]||WEAPONS.pistol;
+ const hp=125+25*(profile.upgrades?.armor||0);
+ const mag=Math.round(w.mag*(1+(profile.upgrades?.mag||0)*.2));
+ $('shCrew').innerHTML=`<div class="crewCard"><div class="crewName">${escapeText((loadedName?profile.name:'OPERATOR').toUpperCase())} / YOU</div><div class="crewHp">${hp} / ${hp} HP</div><div class="crewMiniBar"><div style="width:100%"></div></div></div>`;
+ $('shHpLabel').textContent=hp+' / '+hp;
+ $('shHpFill').style.width='100%';
+ $('shGunName').textContent=w.name;
+ $('shAmmoValue').innerHTML=mag+' <em>/ '+w.reserve+'</em>';
+ $('shGadgetValue').textContent=selectedGadget?(GADGETS[selectedGadget].name+' × '+(profile.gadgetStock[selectedGadget]||0)):'NO GADGET';
+}
+function drawSafehouseMinimap(){
+ if(!safehouse)return;
+ const canvas=$('shMinimap'),ctx=canvas.getContext('2d');
+ if(!ctx)return;
+ const W=canvas.width,H=canvas.height;
+ ctx.clearRect(0,0,W,H);
+ const cx=W/2,cz=H/2,scale=Math.min((W-26)/15.4,(H-20)/15.4);
+ ctx.fillStyle='#24363c';ctx.fillRect(cx-7.7*scale,cz-7.7*scale,15.4*scale,15.4*scale);
+ ctx.strokeStyle='#7a9591';ctx.lineWidth=2;ctx.strokeRect(cx-7.7*scale,cz-7.7*scale,15.4*scale,15.4*scale);
+ ctx.fillStyle='#42565b';ctx.fillRect(cx-1.7*scale,cz-.05*scale,3.4*scale,2.1*scale);
+ for(const station of SAFEHOUSE_STATIONS){
+  const x=cx+station.x*scale,z=cz+station.z*scale;
+  ctx.fillStyle='#edc388';ctx.fillRect(x-3.1,z-3.1,6.2,6.2);
+ }
+ const x=cx+safehouse.pos.x*scale,z=cz+safehouse.pos.z*scale;
+ const walking=safehouse.move.shift,moving=safehouse.move.w||safehouse.move.a||safehouse.move.s||safehouse.move.d;
+ if(moving){
+  const radius=(walking?1.5:11)*scale;
+  ctx.fillStyle=walking?'#b7f7d40c':'#ff927917';
+  ctx.strokeStyle=walking?'#9be6bc':'#ff9279';ctx.lineWidth=1.25;
+  ctx.beginPath();ctx.arc(x,z,radius,0,Math.PI*2);ctx.fill();ctx.stroke();
+ }
+ ctx.save();ctx.translate(x,z);ctx.rotate(-safehouse.yaw);
+ ctx.fillStyle='#b7ffd8';ctx.strokeStyle='#09231d';ctx.lineWidth=1.3;
+ ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(4.7,5);ctx.lineTo(0,2.5);ctx.lineTo(-4.7,5);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+}
 function enterSafehouse(){
  $('menu').classList.add('hidden');$('gameScreen').classList.add('hidden');$('safehouse').classList.remove('hidden');$('shHoverCard').classList.add('hidden');
  if(!safehouse){
@@ -271,7 +311,8 @@ function enterSafehouse(){
   catch(e){$('fatalText').textContent='Could not load the 3D safehouse: '+e.message;$('fatal').classList.remove('hidden');return false;}
  }
  safehouse.setActive(true);safehouse.resize();if(mode!=='coop')mode='safehouse';
- $('safehousePanel').classList.add('hidden');$('safehousePrompt').classList.remove('hidden');activeStation='';
+ $('safehousePanel').classList.add('hidden');$('safehousePrompt').classList.add('hidden');activeStation='';
+ $('shMenuToggle').setAttribute('aria-expanded','false');
  refreshMenu();if(invite&&!room)openStation('crew');return true;
 }
 function enterScreen(){
@@ -566,8 +607,8 @@ function frame(time){
  const dt=Math.min(.05,Math.max(0,(time-last)/1000||0));last=time;
  if(safehouse&&safehouseIsVisible()){
   safehouse.update(dt);
-  if(!activeStation&&time-lastSafehousePrompt>100){
-   showCabinFocus(safehouse.focus());
+  if(time-lastSafehousePrompt>100){
+   if(!activeStation){drawSafehouseMinimap();showCabinFocus(safehouse.focus());}
    lastSafehousePrompt=time;
   }
   return;
@@ -624,6 +665,7 @@ $('roomCode').onkeydown=e=>{if(e.key==='Enter')$('join').click();};
 $('overlayLeave').onclick=returnMenu;
 $('closeSafehouse').onclick=closeStation;
 $('changeOperator').onclick=changeOperator;
+$('shMenuToggle').onclick=()=>{if(activeStation)closeStation();else openStation(lastStation);};
 document.querySelectorAll('.shTabs [data-station], [data-jump]').forEach(button=>button.onclick=()=>openStation(button.dataset.station||button.dataset.jump));
 $('copyRoomInvite').onclick=async()=>{const url=location.origin+location.pathname+'?room='+room;try{await navigator.clipboard.writeText(url);status('INVITE LINK COPIED');}catch{window.prompt('Copy invite:',url);}};
 $('invite').onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname+'?room='+room);$('invite').textContent='✓';setTimeout(()=>$('invite').textContent='↗',1500);}catch{window.prompt('Copy invitation URL:',location.origin+location.pathname+'?room='+room);}};

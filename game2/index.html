@@ -6,11 +6,11 @@
 <title>GETAWAY CLUB — The Heist Campaign</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=10">
+<link rel="stylesheet" href="./style.css?v=11">
 <script defer src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-<script type="module" src="./main.js?v=15"></script>
+<script type="module" src="./main.js?v=16"></script>
 </head><body>
-<aside id="gameVersion" class="gameVersion" aria-label="Game version"><span>VERSION</span> v0.4.1</aside>
+<aside id="gameVersion" class="gameVersion" aria-label="Game version"><span>VERSION</span> v0.4.2</aside>
 <div id="menu" class="entryScreen">
  <div class="entryNoise"></div>
  <div class="entryForm">
@@ -27,14 +27,13 @@
 <div id="safehouse" class="safehouse hidden" aria-label="3D interactive safehouse lobby">
  <div id="safehouseStage" class="safehouseStage"></div>
  <div class="shHud">
-  <div class="shTop">
-   <div class="shBrand"><b>G·C</b></div>
-   <div class="shTopRight"><span class="shGreenDot">● OFF THE GRID</span><span id="safehouseName">OPERATOR</span><button id="changeOperator" type="button">SWITCH OPERATOR</button></div>
-  </div>
-  <div class="shCrosshair" aria-hidden="true">+</div>
+  <button id="shMenuToggle" class="gameMenuToggle" type="button" aria-label="Open equipment menu" aria-expanded="false" aria-controls="safehousePanel">☰ <span>MENU</span></button>
+  <div class="leftRail"><div class="railLabel">CREW STATUS</div><div id="shCrew" class="crew"></div></div>
+  <div class="rightRail"><div class="mapFrame"><canvas id="shMinimap" width="270" height="210"></canvas><div class="mapCaption"><span>TACTICAL MAP</span><span>0 HOSTILES</span></div></div></div>
+  <div class="crosshair" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <div id="shHoverCard" class="shHoverCard hidden" aria-live="polite"><small id="shHoverType">WEAPON</small><strong id="shHoverName">EQUIPMENT</strong><div class="shHoverMeta"><b id="shHoverPrice">₵ 0</b><span id="shHoverState">E TO INSPECT</span></div></div>
-  <div class="shPrompt" id="safehousePrompt" aria-live="polite">CLICK TO LOOK · WASD MOVE · SHIFT WALK · E INSPECT · TAB OPEN MENU</div>
-  <div class="shBottom"><div>W A S D <span>MOVE</span> · E <span>INTERACT</span> · TAB <span>GEAR & JOBS</span></div></div>
+  <div id="safehousePrompt" class="interaction shInteraction hidden" aria-live="polite"><div class="interactText"><kbd>E</kbd><span id="shInteractionLabel">INSPECT EQUIPMENT</span></div></div>
+  <div class="gameBottom"><div class="vital"><div class="vitalTop"><span>HEALTH / ARMOR</span><strong id="shHpLabel">125 / 125</strong></div><div class="hpTrack"><div id="shHpFill"></div></div></div><div class="ammo"><div><small id="shGunName">M9 SIDEARM</small><strong id="shAmmoValue">15 <em>/ 90</em></strong></div><div class="gadgetBadge" id="shGadgetValue">NO GADGET</div></div></div>
  </div>
  <div id="safehousePanel" class="shPanel hidden" aria-label="Safehouse station">
   <header class="shPanelHeader"><div><small>GETAWAY CLUB / SAFEHOUSE TERMINAL</small><h2 id="safehousePanelTitle">OPERATIONS</h2></div><button id="closeSafehouse" type="button" aria-label="Close station">×</button></header>
@@ -70,7 +69,7 @@
    <section id="station-crew" class="shStation hidden">
     <p class="shLead">Bring one partner. Share a private six-character code, or enter one to join their crew.</p>
     <div class="shMiniStats"><div><small>OPERATOR</small><b id="operator">UNREGISTERED</b></div><div><small>NETWORK</small><b>PEER TO PEER</b></div></div>
-    <button id="create" class="btn btnPrimary shAction" type="button">CREATE PRIVATE ROOM ↗</button>
+    <button id="create" class="btn btnPrimary shAction" type="button">CREATE PRIVATE ROOM ↗</button><button id="changeOperator" class="btn btnOutline shAction" type="button">SWITCH OPERATOR</button>
     <div class="shJoin"><label for="roomCode">INVITE CODE</label><div><input id="roomCode" maxlength="6" autocomplete="off" placeholder="6-CHAR CODE" aria-label="Invite code"><button id="join" class="btn btnOutline" type="button">JOIN ROOM</button></div></div>
     <div id="connectStatus" class="status" aria-live="polite"></div>
     <div id="shRoomInvite" class="shRoomInvite hidden"><span id="shRoomCode"></span><button id="copyRoomInvite" class="btn btnOutline" type="button">COPY INVITE LINK</button></div>
