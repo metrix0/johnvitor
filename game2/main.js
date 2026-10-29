@@ -21,7 +21,7 @@ function rememberedOperator(){
 }
 // Isolated one-click level-one run, without touching real operator saves.
 const quickTest=/^\/game2\/test\/?$/.test(location.pathname);
-const perfActive=quickTest&&new URLSearchParams(location.search).has('perf');
+const perfActive=quickTest;
 let perfHud=null,perfStart=0,perfFrames=0;
 let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
 let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
@@ -684,15 +684,15 @@ function frame(time){
   if(!perfHud){
    perfHud=document.createElement('output');
    perfHud.setAttribute('aria-label','Gameplay performance');
-   Object.assign(perfHud.style,{position:'fixed',bottom:'16px',right:'16px',zIndex:'99999',padding:'8px 12px',background:'rgba(4,16,21,.9)',color:'#b7ffe3',font:'bold 13px monospace',pointerEvents:'none',whiteSpace:'pre'});
-   perfHud.textContent='Measuring FPS...';
+   Object.assign(perfHud.style,{position:'fixed',bottom:'96px',right:'16px',zIndex:'99999',padding:'7px 11px',background:'rgba(4,16,21,.92)',border:'1px solid rgba(142,232,190,.65)',color:'#b7ffe3',font:'bold 13px monospace',pointerEvents:'none',whiteSpace:'pre'});
+   perfHud.textContent='FPS: measuring…';
    document.body.append(perfHud);
   }
   if(!perfStart)perfStart=time;
   perfFrames++;
   if(time-perfStart>=1400){
    const fps=Math.round(perfFrames*1000/(time-perfStart)),info=view.renderer.info.render;
-   perfHud.textContent=fps+' FPS | '+info.calls+' draws | '+info.triangles+' tris';
+   perfHud.textContent='FPS: '+fps+'  |  '+info.calls+' draws  |  '+info.triangles+' tris';
    perfStart=time;perfFrames=0;
   }
  }
