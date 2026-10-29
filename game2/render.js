@@ -415,6 +415,9 @@ export class View{
   else if(!marketCash)this.box(g,0,.65,0,.75,.48,.53,0xd7b47c,.3);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.94,.045,8,40),new THREE.MeshBasicMaterial({color:p.accent}));ring.rotation.x=Math.PI/2;ring.position.y=.1;g.add(ring);g.userData.ring=ring;
   const beam=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,2.7,12,1,true),new THREE.MeshBasicMaterial({color:p.accent,transparent:true,opacity:.14,depthWrite:false,side:THREE.DoubleSide}));beam.position.y=1.45;g.add(beam);g.userData.beam=beam;
+  // At the market checkout, keep interactable cash goals on the minimap without
+  // floating light columns or oversized rings obscuring the actual registers.
+  if(marketCash){ring.visible=false;beam.visible=false;}
   return g;
  }
  enemyMesh(e){
