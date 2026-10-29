@@ -1,6 +1,6 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=6';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=11';
-import {View} from './render.js?v=12';
+import {View} from './render.js?v=13';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=6';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);

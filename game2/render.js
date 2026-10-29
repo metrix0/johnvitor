@@ -4,6 +4,7 @@ import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=6';
 import {buildCheckoutArea} from './level1-zone-3.js?v=1';
 import {Visuals} from './visuals.js?v=6';
 import {buildLevel1Zone4} from './level1-zone-4.js?v=1';
+import {buildLevel1Zone1} from './level1-zone-1.js?v=1';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
  office:{floor:0x303b44,wall:0x778998,accent:0x82d7fb,light:0xcce8ff,sky:0x101b2a},
@@ -97,12 +98,7 @@ export class View{
   for(const zone of LEVEL1_ZONES){
    this.box(world,(zone.x+zone.w/2)*CELL,-.03,(zone.z+zone.h/2)*CELL,zone.w*CELL,.085,zone.h*CELL,this.visuals.surface(zone.name==='SHOP FLOOR'||zone.name==='RESTROOM'?'market-tile':zone.name==='BACK OFFICE'?'wood':zone.name==='STOCKROOM'?'concrete':'asphalt',zone.name==='SHOP FLOOR'?0xe7dfcf:zone.floor,zone.w*CELL,zone.h*CELL));
   }
-  // Parking bays, pedestrian sidewalk, front threshold and delivery hazard paint.
-  this.box(world,28*CELL,.038,35*CELL,70,.08,4.2,0x989994,.08);
-  for(const x of [12,20,28,36,44]){
-   this.box(world,x*CELL,.085,40*CELL,.13,.019,17,0xe8ddc5);
-   this.box(world,(x+4)*CELL,.087,34.5*CELL,3,.015,.19,0xe8ddc5);
-  }
+  // Zone 1 owns parking and sidewalk; preserve Area 5 delivery and alley markings.
   for(const z of [14,19,24,29])this.box(world,8*CELL,.061,z*CELL,8,.02,.16,0xd9b165);
   this.box(world,46*CELL,.04,22*CELL,3,.09,34,0x8a8d86,.1);
   for(const z of [9,17,25,33])this.box(world,46*CELL,.092,z*CELL,2.8,.014,.06,0x525a60);
@@ -148,15 +144,10 @@ export class View{
    ceiling.emissive.setHex(0x98988d);ceiling.emissiveIntensity=.25;
    this.box(world,(zone.x+zone.w/2)*CELL,4.78,(zone.z+zone.h/2)*CELL,zone.w*CELL,.24,zone.h*CELL,ceiling);
   }
-  for(const x of [13,20,27,34,41])this.box(world,x*CELL,4.62,25*CELL,.055,.055,33*CELL,0x9ba3a2,.31);
+  for(const x of [13,20,27,34,41])this.box(world,x*CELL,4.62,25*CELL,.055,.055,17*CELL,0x9ba3a2,.31);
   for(const z of [17,23,29])this.box(world,28*CELL,4.62,z*CELL,33*CELL,.055,.065,0x9ba3a2,.31);
-  // A recognizable south-facing 24-hour storefront with windows and lit awning.
-  for(const x of [15,17,19,21,23,34,36,38,40,42]){
-   this.box(world,x*CELL,2.32,33.9*CELL,2.5,2.65,.1,0x263a42,.62);
-   this.box(world,x*CELL,2.35,33.95*CELL,2.1,2.15,.035,new THREE.MeshPhysicalMaterial({color:0x8cc2d0,metalness:.13,roughness:.16,clearcoat:.7,transparent:true,opacity:.48}));
-  }
-  this.box(world,28.5*CELL,4.38,34*CELL,17,.23,2.75,0x42505b,.4);
-  this.box(world,28.5*CELL,4.24,34.55*CELL,16.2,.12,.26,0xf5c68d,.2);
+  // The facade, approach and parking belong exclusively to Level 1 Area 1.
+  buildLevel1Zone1(this,world,CELL);
   for(const x of [26,30]){this.box(world,x*CELL,1.18,30*CELL,.85,.36,.55,0x303a40,.65);this.box(world,x*CELL,1.36,29.8*CELL,.77,.22,.16,0x9bd3ae,.28);}
   for(const x of [38,42]){this.box(world,x*CELL,.35,9*CELL,.7,.5,.85,0xdbe6dc);this.box(world,x*CELL,.73,9.4*CELL,.44,.2,.27,0xeef1eb);}
 
@@ -165,14 +156,14 @@ export class View{
   for(const [x,z,kind] of mission.decor){
    if(kind==='counter'&&z>=28&&z<=34)continue; // Zone 3 owns checkout fixtures.
    if(x>=12&&x<45&&z>=7&&z<17)continue; // Zone 4 builds its back rooms separately.
+   if(z===40&&(kind==='car'||kind==='van')&&[15,34,45].includes(x))continue; // Zone 1 vehicles.
+   if(kind==='streetlamp'&&x===44&&z===38)continue; // Zone 1 lamp.
    this.prop(kind,x*CELL,z*CELL,p);
   }
   this.finishMarketBatches();
   buildCheckoutArea(this);
   buildLevel1Zone4(this);
-  // Fixed world landmarks and billboards; no downloaded textures/models.
-  for(const sign of mission.signs)this.sign(sign.text,sign.x*CELL,sign.y,sign.z*CELL,sign.rot,sign.color,sign.size);
-  // Only the market fascia carries a wordmark; no hovering location labels.
+  // Only the one fascia wordmark from Area 1 is visible; no floating signs.
 
   // Keep the existing street lights lightweight; the visuals layer adds limited nearby accent/alarm lights.
   for(const [x,z,color] of [[28,23,0xffedce],[28,35,0xffd199]]){
