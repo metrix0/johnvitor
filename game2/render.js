@@ -2,7 +2,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.m
 import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=7';
 import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=8';
 import {buildCheckoutArea} from './level1-zone-3.js?v=1';
-import {buildArea2Fixture,finishArea2} from './level1-zone-2.js?v=1';
+import {buildArea2Fixture,finishArea2} from './level1-zone-2.js?v=2';
 import {Visuals} from './visuals.js?v=7';
 import {buildLevel1Zone4} from './level1-zone-4.js?v=3';
 import {buildLevel1Zone1} from './level1-zone-1.js?v=1';
@@ -331,20 +331,20 @@ export class View{
   if(kind==='shelf'){
    // Freestanding gondola shelves with metal uprights, stocked products and price rails.
    for(const x of [-1.23,1.23])this.box(g,x,1.03,0,.075,2.04,.94,shell,.55);
-   for(const y of [.29,.81,1.34,1.87]){
+   for(const y of [.34,.99,1.64]){
     this.box(g,0,y,0,2.55,.095,1.03,metal,.55);
     this.box(g,0,y-.075,-.52,2.4,.048,.055,0xe7d0a3,.25);
     this.box(g,0,y-.075,.52,2.4,.048,.055,0xe7d0a3,.25);
    }
    this.box(g,0,2.13,0,2.6,.09,1.08,shell,.56);
-   const count=60,geom=new THREE.BoxGeometry(.27,.33,.34);
+   const count=30,geom=new THREE.BoxGeometry(.34,.37,.38);
    const packaging=new THREE.InstancedMesh(geom,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.81}),count);
-   const accents=new THREE.InstancedMesh(new THREE.BoxGeometry(.25,.08,.014),new THREE.MeshStandardMaterial({color:0xe9dfce,roughness:.77}),count);
+   const accents=new THREE.InstancedMesh(new THREE.BoxGeometry(.29,.08,.014),new THREE.MeshStandardMaterial({color:0xe9dfce,roughness:.77}),count);
    const matrix=new THREE.Matrix4(),v=new THREE.Vector3(),q=new THREE.Quaternion(),scale=new THREE.Vector3(1,1,1);
    const palette=[0xba6a4c,0xe0c66f,0x7196a3,0x8da179,0xd69b72,0x9680a2,0x5c867e,0xc4b39a];
    let i=0;
-   for(let tier=0;tier<4;tier++)for(let side=0;side<2;side++)for(let ix=0;ix<7;ix++){
-    const xx=-1.02+ix*.34,yy=.39+tier*.525,zz=side?-.22:.22;
+   for(let tier=0;tier<3;tier++)for(let side=0;side<2;side++)for(let ix=0;ix<5;ix++){
+    const xx=-.90+ix*.45,yy=.42+tier*.65,zz=side?-.22:.22;
     matrix.compose(v.set(xx,yy,zz),q,scale.set(.88+(ix%3)*.07,.89+(tier%2)*.12,.94));
     packaging.setMatrixAt(i,matrix);packaging.setColorAt(i,new THREE.Color(palette[(ix+tier*2+side*3)%palette.length]));
     matrix.compose(v.set(xx,yy,zz+(side?-.18:.18)),q,scale.set(.86,.7,1));
