@@ -7,6 +7,7 @@ import {Visuals} from './visuals.js?v=7';
 import {buildLevel1Zone4} from './level1-zone-4.js?v=3';
 import {buildLevel1Zone1} from './level1-zone-1.js?v=1';
 import {buildLevel1Zone5} from './level1-zone-5.js?v=1';
+import {buildNightSky} from './night-sky.js?v=1';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
  office:{floor:0x303b44,wall:0x778998,accent:0x82d7fb,light:0xcce8ff,sky:0x101b2a},
@@ -35,12 +36,12 @@ export class View{
   this.ambient=new THREE.HemisphereLight(0xdfebff,0x1d2633,1.8);this.scene.add(this.ambient);
   this.sun=new THREE.DirectionalLight(0xffffff,1.55);this.sun.position.set(7,16,18);this.scene.add(this.sun);
   this.visuals=new Visuals(this);
-  this.mission=-1;this.currentRun='';this.enemies=new Map();this.allies=new Map();this.bags=new Map();this.objectives=new Map();this.pickups=new Map();this.lights=[];this.tracerMeshes=new Map();this.enemyRounds=new Map();this.clock=0;this.lastShots=0;this.cameraReady=false;this.hitFlash=0;
+  this.mission=-1;this.currentRun='';this.enemies=new Map();this.allies=new Map();this.bags=new Map();this.objectives=new Map();this.pickups=new Map();this.lights=[];this.tracerMeshes=new Map();this.enemyRounds=new Map();this.clock=0;this.lastShots=0;this.cameraReady=false;this.hitFlash=0;this.skyDome=null;
   this.makeGun();this.resize();
   this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(container);
  }
  resize(){const w=this.el.clientWidth||960,h=this.el.clientHeight||520;this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}
- clear(){this.world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.dispose&&!Array.isArray(o.material))o.material.dispose();});this.world.clear();this.enemies.clear();this.allies.clear();this.bags.clear();this.objectives.clear();this.rain=null;this.pickups.clear();this.tracerMeshes.clear();this.enemyRounds.clear();this.lights=[];this.visuals.clear();this.marketBatches=null;}
+ clear(){if(this.skyDome){this.skyDome.material.map?.dispose();this.skyDome=null;}this.world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.dispose&&!Array.isArray(o.material))o.material.dispose();});this.world.clear();this.enemies.clear();this.allies.clear();this.bags.clear();this.objectives.clear();this.rain=null;this.pickups.clear();this.tracerMeshes.clear();this.enemyRounds.clear();this.lights=[];this.visuals.clear();this.marketBatches=null;}
  box(parent,x,y,z,w,h,d,color,metal=0){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),typeof color==='number'?mat(color,metal):color);m.position.set(x,y,z);parent.add(m);return m;}
  cyl(parent,x,y,z,r,depth,color,segments=12){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,depth,segments),mat(color,.25));m.position.set(x,y,z);parent.add(m);return m;}
  textTexture(text,fg='#e7f9ed',bg='#10181c',w=512,h=128){
@@ -56,7 +57,7 @@ export class View{
  build(run){
   const mission=MISSIONS[run.mission],p=palette[mission.theme];
   this.clear();this.mission=run.mission;this.currentRun=run.runId;this.cameraReady=false;this.scene.background=new THREE.Color(p.sky);this.scene.fog=new THREE.FogExp2(p.sky,.018);
-  this.ambient.color.setHex(p.light);this.sun.color.setHex(p.light);
+  this.ambient.color.setHex(p.light);this.ambient.groundColor.setHex(0x1d2633);this.sun.color.setHex(p.light);this.sun.position.set(7,16,18);
   this.canvas.style.background='#0b141a';this.visuals.setup(run,p);
   if(run.mission===0){this.buildCityBlock(run,p);return;}
   const world=this.world;
@@ -98,9 +99,17 @@ export class View{
  buildCityBlock(run,p){
   const mission=MISSIONS[0],world=this.world,cols=run.grid[0].length,rows=run.grid.length;
   const w=(cols-1)*CELL,h=(rows-1)*CELL;
-  this.scene.background=new THREE.Color(0x0a1219);
-  this.scene.fog=new THREE.FogExp2(0x0a1219,.008);
-  this.ambient.intensity=.94;this.sun.intensity=.55;
+  // Level 1: one unlit skydome plus cool, broad moonlight. Existing lamps stay warm.
+  this.scene.background=new THREE.Color(0x0f1c2b);
+  this.scene.fog=new THREE.FogExp2(0x142336,.0065);
+  this.ambient.color.setHex(0x9fbcd8);
+  this.ambient.groundColor.setHex(0x3b4857);
+  this.ambient.intensity=1.12;
+  this.sun.color.setHex(0xa8c8e4);
+  this.sun.position.set(-34,48,-24);
+  this.sun.intensity=.76;
+  this.renderer.toneMappingExposure=1.30;
+  this.skyDome=buildNightSky(this);
   this.box(world,w/2,-.32,h/2,cols*CELL,.65,rows*CELL,this.visuals.surface('asphalt',0x29343c,cols*CELL,rows*CELL));
   for(const zone of LEVEL1_ZONES){
    this.box(world,(zone.x+zone.w/2)*CELL,-.03,(zone.z+zone.h/2)*CELL,zone.w*CELL,.085,zone.h*CELL,this.visuals.surface(zone.name==='SHOP FLOOR'||zone.name==='RESTROOM'?'market-tile':zone.name==='BACK OFFICE'?'wood':zone.name==='STOCKROOM'?'concrete':'asphalt',zone.name==='SHOP FLOOR'?0xe7dfcf:zone.floor,zone.w*CELL,zone.h*CELL));
@@ -797,6 +806,7 @@ export class View{
   }
   for(const [id,mesh] of this.tracerMeshes)if(!activeTracers.has(id)){this.world.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();this.tracerMeshes.delete(id);}
   this.visuals.update(run,this.clock,aiming,dt);
+  if(this.skyDome)this.skyDome.position.copy(camera.position);
   this.renderer.render(this.scene,camera);
   this.updateAdaptiveResolution();
  }
