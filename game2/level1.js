@@ -33,7 +33,7 @@ const fixtures=[
  // Restroom and staff facilities.
  [37,9,'filing'],[41,9,'filing'],[42,13,'crate'],
  // Parking cars, delivery truck, and getaway vehicle.
- [7,22,'van'],[6,15,'pallet'],[9,30,'pallet'],[15,40,'van'],
+ [5,22,'van'],[6,15,'pallet'],[9,30,'pallet'],[15,40,'van'],
  [34,40,'car'],[45,40,'car'],[9,40,'streetlamp'],[44,38,'streetlamp'],
  // Realistic cover near the employee exit; reinforcements enter here.
  [49,10,'dumpster'],[51,22,'dumpster'],[50,33,'dumpster'],[53,16,'pallet'],
@@ -65,6 +65,9 @@ export const LEVEL1={
 // These tiles must block movement but NOT render as ceiling-height masonry.
 // Their own shelf, carton, bathroom and dumpster meshes are authored in decor.
 export const LEVEL1_PROP_CELLS=new Set([
+ // West-side truck and pallet cover match the physical props.
+ ...[[4,20,3,5],[6,15,1,1],[9,30,1,1],[53,16,1,1]].flatMap(([x,z,w,h])=>
+  Array.from({length:w*h},(_,i)=>(x+i%w)+','+(z+Math.floor(i/w)))),
  ...Array.from({length:11},(_,i)=>'14,'+(17+i)), // Refrigerator cores, never rendered as solid walls.
  ...[24,27,31,38].map(x=>x+',30'),
  ...[19,21,24,26,29,31,34,36,39].flatMap(x=>[20,21,24,25].map(z=>x+','+z)),
@@ -99,6 +102,8 @@ export function makeLevel1Grid(){
  for(const x of [24,27,31,38])set(x,30,1,1);
  // Stockroom racks, bathroom partitions and exterior dumpsters.
  for(const [x,z,w,h] of [[18,9,1,2],[21,9,1,2],[40,9,1,2],[49,10,2,1],[51,22,2,1],[50,33,2,1],[4,8,3,3]])set(x,z,w,h);
+ // Match the relocated truck and alley cover to player collision.
+ for(const [x,z,w,h] of [[4,20,3,5],[6,15,1,1],[9,30,1,1],[53,16,1,1]])set(x,z,w,h);
  // Maintain accessible floor around mandatory objectives, doors and spawns.
  const access=[LEVEL1.spawn,LEVEL1.exit,LEVEL1.dropoff,...LEVEL1.objectives.map(o=>o.at),...LEVEL1.enemies.map(e=>e.slice(0,2)),...LEVEL1.waveSpawns];
  for(const [x,z] of access)grid[z][x]='.';

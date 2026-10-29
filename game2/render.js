@@ -1,11 +1,12 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
-import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=6';
-import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=7';
+import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=7';
+import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=8';
 import {buildCheckoutArea} from './level1-zone-3.js?v=1';
 import {buildArea2Fixture,finishArea2} from './level1-zone-2.js?v=1';
 import {Visuals} from './visuals.js?v=6';
 import {buildLevel1Zone4} from './level1-zone-4.js?v=1';
 import {buildLevel1Zone1} from './level1-zone-1.js?v=1';
+import {buildLevel1Zone5} from './level1-zone-5.js?v=1';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
  office:{floor:0x303b44,wall:0x778998,accent:0x82d7fb,light:0xcce8ff,sky:0x101b2a},
@@ -162,6 +163,7 @@ export class View{
    this.prop(kind,x*CELL,z*CELL,p);
   }
   this.finishMarketBatches();
+  buildLevel1Zone5(this,CELL);
   buildCheckoutArea(this);
   finishArea2(this);
   buildLevel1Zone4(this);

@@ -1,4 +1,4 @@
-import {LEVEL1,makeLevel1Grid} from './level1.js?v=7';
+import {LEVEL1,makeLevel1Grid} from './level1.js?v=8';
 // GETAWAY CLUB / mission and equipment definitions. All coordinates are authored in tiles.
 export const CELL = 2;
 export const WIDTH = 27;
