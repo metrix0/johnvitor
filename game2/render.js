@@ -3,6 +3,7 @@ import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=6';
 import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=6';
 import {buildCheckoutArea} from './level1-zone-3.js?v=1';
 import {Visuals} from './visuals.js?v=6';
+import {buildLevel1Zone4} from './level1-zone-4.js?v=1';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
  office:{floor:0x303b44,wall:0x778998,accent:0x82d7fb,light:0xcce8ff,sky:0x101b2a},
@@ -163,10 +164,12 @@ export class View{
   this.marketBatches=new Map();
   for(const [x,z,kind] of mission.decor){
    if(kind==='counter'&&z>=28&&z<=34)continue; // Zone 3 owns checkout fixtures.
+   if(x>=12&&x<45&&z>=7&&z<17)continue; // Zone 4 builds its back rooms separately.
    this.prop(kind,x*CELL,z*CELL,p);
   }
   this.finishMarketBatches();
   buildCheckoutArea(this);
+  buildLevel1Zone4(this);
   // Fixed world landmarks and billboards; no downloaded textures/models.
   for(const sign of mission.signs)this.sign(sign.text,sign.x*CELL,sign.y,sign.z*CELL,sign.rot,sign.color,sign.size);
   // Only the market fascia carries a wordmark; no hovering location labels.
