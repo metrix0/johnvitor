@@ -35,7 +35,7 @@ export class View{
   this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(container);
  }
  resize(){const w=this.el.clientWidth||960,h=this.el.clientHeight||520;this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}
- clear(){this.world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.dispose&&!Array.isArray(o.material))o.material.dispose();});this.world.clear();this.enemies.clear();this.allies.clear();this.bags.clear();this.objectives.clear();this.rain=null;this.pickups.clear();this.tracerMeshes.clear();this.enemyRounds.clear();this.lights=[];this.visuals.clear();}
+ clear(){this.world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.dispose&&!Array.isArray(o.material))o.material.dispose();});this.world.clear();this.enemies.clear();this.allies.clear();this.bags.clear();this.objectives.clear();this.rain=null;this.pickups.clear();this.tracerMeshes.clear();this.enemyRounds.clear();this.lights=[];this.visuals.clear();this.marketBatches=null;}
  box(parent,x,y,z,w,h,d,color,metal=0){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),typeof color==='number'?mat(color,metal):color);m.position.set(x,y,z);parent.add(m);return m;}
  cyl(parent,x,y,z,r,depth,color,segments=12){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,depth,segments),mat(color,.25));m.position.set(x,y,z);parent.add(m);return m;}
  textTexture(text,fg='#e7f9ed',bg='#10181c',w=512,h=128){
@@ -153,7 +153,8 @@ export class View{
   for(const x of [26,30]){this.box(world,x*CELL,1.18,30*CELL,.85,.36,.55,0x303a40,.65);this.box(world,x*CELL,1.36,29.8*CELL,.77,.22,.16,0x9bd3ae,.28);}
   for(const x of [38,42]){this.box(world,x*CELL,.35,9*CELL,.7,.5,.85,0xdbe6dc);this.box(world,x*CELL,.73,9.4*CELL,.44,.2,.27,0xeef1eb);}
 
-  // Render original market fixtures individually; newer areas remain intact.
+  // Collect Area 2's detailed products into GPU batches (instead of 10k+ draw calls).
+  this.marketBatches=new Map();
   for(const [x,z,kind] of mission.decor){
    if(kind==='counter'&&z>=28&&z<=34)continue; // Zone 3 owns checkout fixtures.
    if(x>=12&&x<45&&z>=7&&z<17)continue; // Zone 4 builds its back rooms separately.
@@ -161,6 +162,7 @@ export class View{
    if(kind==='streetlamp'&&x===44&&z===38)continue; // Zone 1 lamp.
    this.prop(kind,x*CELL,z*CELL,p);
   }
+  this.finishMarketBatches();
   buildLevel1Zone5(this,CELL);
   buildCheckoutArea(this);
   finishArea2(this);
@@ -278,12 +280,45 @@ export class View{
   }
   this.visuals.detailProp(g,kind);
  }
- // Newer Area 2 fixtures use this API; restore regular meshes instead of batching.
+ // Spatially grouped instances retain every product and fixture while reducing draw calls.
+ marketInstance(group,shape,x,y,z,w,h,d,color,metal=0){
+  const px=group.position.x+x,py=group.position.y+y,pz=group.position.z+z;
+  const finish=metal>=.52?'metal':metal>=.2?'semi':'matte';
+  const key=shape+':'+finish+':'+Math.floor(px/16)+':'+Math.floor(pz/16);
+  let batch=this.marketBatches.get(key);
+  if(!batch){batch={shape,finish,items:[]};this.marketBatches.set(key,batch);}
+  batch.items.push({x:px,y:py,z:pz,w,h,d,color});
+ }
  marketBox(group,x,y,z,w,h,d,color,metal=0){
+  if(this.marketBatches){this.marketInstance(group,'box',x,y,z,w,h,d,color,metal);return null;}
   return this.box(group,x,y,z,w,h,d,color,metal);
  }
  marketCylinder(group,x,y,z,r,height,color){
+  if(this.marketBatches){this.marketInstance(group,'cylinder',x,y,z,r*2,height,r*2,color,.25);return null;}
   return this.cyl(group,x,y,z,r,height,color,9);
+ }
+ finishMarketBatches(){
+  const matrix=new THREE.Matrix4(),tint=new THREE.Color();
+  const shapes={
+   box:new THREE.BoxGeometry(1,1,1),
+   cylinder:new THREE.CylinderGeometry(.5,.5,1,9)
+  };
+  const styles={matte:{metalness:0,roughness:.82},semi:{metalness:.31,roughness:.66},metal:{metalness:.65,roughness:.48}};
+  for(const batch of this.marketBatches.values()){
+   const material=new THREE.MeshStandardMaterial({color:0xffffff,...styles[batch.finish]});
+   const mesh=new THREE.InstancedMesh(shapes[batch.shape],material,batch.items.length);
+   for(let i=0;i<batch.items.length;i++){
+    const item=batch.items[i];
+    matrix.makeScale(item.w,item.h,item.d);
+    matrix.setPosition(item.x,item.y,item.z);
+    mesh.setMatrixAt(i,matrix);
+    mesh.setColorAt(i,tint.setHex(item.color));
+   }
+   mesh.instanceMatrix.needsUpdate=true;mesh.instanceColor.needsUpdate=true;
+   mesh.computeBoundingSphere();
+   this.world.add(mesh);
+  }
+  this.marketBatches=null;
  }
  marketProp(g,kind){
   // Distinct real-looking store fixtures; the collision grid is handled in level1.js.

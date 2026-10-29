@@ -1,6 +1,6 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=8';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=12';
-import {View} from './render.js?v=17';
+import {View} from './render.js?v=18';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=6';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
@@ -21,6 +21,8 @@ function rememberedOperator(){
 }
 // Isolated one-click level-one run, without touching real operator saves.
 const quickTest=/^\/game2\/test\/?$/.test(location.pathname);
+const perfActive=quickTest&&new URLSearchParams(location.search).has('perf');
+let perfHud=null,perfStart=0,perfFrames=0;
 let profile=profileDefaults('OPERATOR'),loadedName='',cloudAvailable=false;
 let mode='menu',host=true,peer=null,conn=null,room='',remoteKit=null,remoteInput={};
 let view=null,run=null,softPaused=false,activeOverlay='',lastPhase='',lastRunId='',credited=new Set(),gearSettled=new Set();
@@ -678,6 +680,22 @@ function frame(time){
   if(host)sendState();else send({type:'input',input:controls});lastNetwork=time;
  }
  view.update(run,host?0:1,controls,dt,controls);
+ if(perfActive){
+  if(!perfHud){
+   perfHud=document.createElement('output');
+   perfHud.setAttribute('aria-label','Gameplay performance');
+   Object.assign(perfHud.style,{position:'fixed',bottom:'16px',right:'16px',zIndex:'99999',padding:'8px 12px',background:'rgba(4,16,21,.9)',color:'#b7ffe3',font:'bold 13px monospace',pointerEvents:'none',whiteSpace:'pre'});
+   perfHud.textContent='Measuring FPS...';
+   document.body.append(perfHud);
+  }
+  if(!perfStart)perfStart=time;
+  perfFrames++;
+  if(time-perfStart>=1400){
+   const fps=Math.round(perfFrames*1000/(time-perfStart)),info=view.renderer.info.render;
+   perfHud.textContent=fps+' FPS | '+info.calls+' draws | '+info.triangles+' tris';
+   perfStart=time;perfFrames=0;
+  }
+ }
  if(time-lastHud>85){updateHud();lastHud=time;}
 }
 window.addEventListener('keydown',e=>{
