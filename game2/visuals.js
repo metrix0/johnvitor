@@ -7,7 +7,6 @@ export class Visuals {
   this.canvases=new Map();
   this.textures=new Map();
   this.alerts=[];
-  this.alarmGlows=[];
   this.glows=[];
   this.lamps=[];
   this.flashlight=new THREE.SpotLight(0xe9f3ff,2.65,23,Math.PI/5,.82,1.65);
@@ -120,10 +119,11 @@ export class Visuals {
  surface(kind,color,width=5,depth=5) {
   const tex=this.texture(kind,Math.max(1,width/3),Math.max(1,depth/3));
   const roughness=kind==='market-tile'?.67:kind==='market-ceiling'?.92:kind==='market-wall'?.85:kind==='asphalt'?.57:kind==='metal'?.42:kind==='tile'?.45:.86;
-  // Large floors, walls and ceilings should not pay for an extra bump-map sample
-  // on every pixel. Keep subtle relief only on small wooden surfaces.
-  const m=new THREE.MeshStandardMaterial({color,map:tex,roughness,metalness:kind==='metal'?.48:.06});
-  if(kind==='wood'&&width<9&&depth<9){m.bumpMap=tex;m.bumpScale=.014;}
+  const m=new THREE.MeshStandardMaterial({
+   color,map:tex,roughness,metalness:kind==='metal'?.48:.06,
+   // One shared cached map gives subtle relief without more texture downloads.
+   bumpMap:tex,bumpScale:kind==='market-tile'?.004:kind==='market-ceiling'?.002:kind==='market-wall'?.005:kind==='metal'?.012:kind==='wood'?.022:kind==='tile'?.018:.035
+  });
   if(kind==='asphalt'||kind==='tile')m.envMapIntensity=.8;
   return m;
  }
@@ -169,9 +169,9 @@ export class Visuals {
    }
    this.lamp(28*2,3.55,34*2,0xffb66e,3.4,16);
    this.lamp(48*2,3.5,26*2,0x87dfff,3.1,17);
-   // Alarm color pulses through cheap additive glows, not additional dynamic lights.
    for(const [x,z] of [[37,18],[31,13]]){
-    this.alarmGlows.push(this.pool(x*2,z*2,7,0xff3930,.04));
+    const l=this.lamp(x*2,3.45,z*2,0xff463d,0,10,true);
+    this.pool(x*2,z*2,7,0xff3930,.11);
    }
    // Simple luminous canopy strips, always visible without per-window shadow maps.
    for(const [x,z,w] of [[28.5,33.8,11],[16.5,21,6],[43.5,12.5,6]]){
@@ -249,10 +249,8 @@ export class Visuals {
   this.flashlight.intensity=aiming?0:this.flashlight.intensity+(lightLevel-this.flashlight.intensity)*blend;
   for(const {light,base} of this.alerts)
    light.intensity=a*(base+2.9)*(0.74+.26*Math.sin(seconds*7.3+light.position.x*.11)**2);
-  for(const glow of this.alarmGlows)
-   glow.material.opacity=.04+a*(.10+.16*Math.sin(seconds*7.3+glow.position.x*.11)**2);
  }
- clear(){this.alerts=[];this.alarmGlows=[];this.glows=[];this.lamps=[];}
+ clear(){this.alerts=[];this.glows=[];this.lamps=[];}
  dispose(){
   for(const t of this.textures.values())t.dispose();
   this.textures.clear();this.canvases.clear();
