@@ -335,9 +335,11 @@ export function buildLevel1Zone4(view){
  // Grout grid is shallow, not duplicate full-size walls.
  for(let k=0;k<8;k++){
   const yy=.26+k*.23;
-  steel(40.0,yy,15.46,15.4,.016,.022,0xb7c9ca);
+  // Two real wall segments; never draw grout across the x39..40 doorway.
+  steel(37.4,yy,15.46,5.6,.016,.022,0xb7c9ca);
+  steel(42.3,yy,15.46,5.5,.016,.022,0xb7c9ca);
  }
- for(const x of [36.6,38.1,39.6,41.1,42.6,43.6]){
+ for(const x of [36.6,38.1,41.1,42.6,43.6]){
   steel(x,.95,15.47,.018,1.42,.022,0xb2c3c1);
  }
  // Realistic toilet seat rims, bolted hinges, waste pipe and flush controls.
