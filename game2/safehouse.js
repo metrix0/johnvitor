@@ -1,6 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
 import {Visuals} from './visuals.js?v=3';
-import {buildCabin} from './cabin.js?v=3';
+import {buildCabin} from './cabin.js?v=4';
 
 // Physical stations, all reachable from the compact walkable safehouse.
 export const SAFEHOUSE_STATIONS = [

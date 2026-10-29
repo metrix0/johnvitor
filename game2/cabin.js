@@ -1,5 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
-import {WEAPONS,GADGETS,UPGRADES} from './data.js';
+import {WEAPONS,GADGETS,UPGRADES} from './data.js?v=9';
 
 const standard=(hex,metalness=0,roughness=.76)=>new THREE.MeshStandardMaterial({color:hex,metalness,roughness});
 const plank=standard(0x64432c),darkWood=standard(0x39291f),trimWood=standard(0x80583b);
@@ -53,7 +53,7 @@ function gadgetModel(id){
  }
  return g;
 }
-// Visible models for the three real permanent upgrades. Each object has a separate focus target.
+// Physical models for permanent equipment upgrades; each has its own focus target.
 function upgradeModel(id){
  const g=new THREE.Group();
  if(id==='armor'){
@@ -75,7 +75,7 @@ function upgradeModel(id){
    cylinder(g,x,.27,.04,.078,.32,brass);
    cylinder(g,x,.47,.04,.066,.09,steel);
   }
- }else{
+ }else if(id==='mag'){
   // Extended curved magazines, follower plates and visible cartridge tips.
   for(const x of [-.32,.32]){
    const mag=box(g,x,-.04,0,.29,.88,.31,iron);mag.rotation.z=x<0?-.15:.15;
@@ -83,6 +83,27 @@ function upgradeModel(id){
    for(const z of [-.075,.075])cylinder(g,x,.49,z,.05,.1,brass,10);
    box(g,x,-.44,.01,.29,.09,.33,leather);
   }
+ }else if(id==='safeKit'){
+  box(g,0,-.22,0,.85,.28,.46,iron);
+  for(const x of [-.25,0,.25]){cylinder(g,x,.13,0,.07,.46,brass);box(g,x,.32,0,.13,.08,.15,steel);}
+  box(g,0,-.36,.27,.7,.09,.04,steel);
+ }else if(id==='cyberdeck'){
+  box(g,0,0,0,.94,.67,.15,iron);
+  box(g,0,.04,.09,.75,.48,.03,standard(0x255d65,.1,.1));
+  for(let i=0;i<5;i++)box(g,-.28+i*.14,-.09,.125,.08,.04,.018,sage);
+ }else if(id==='handling'){
+  for(const x of [-.26,.26]){box(g,x,-.15,0,.29,.47,.25,canvasTan);box(g,x,.15,0,.32,.22,.25,leather);}
+  box(g,0,-.46,.1,.68,.1,.22,brass);
+ }else if(id==='bagRig'){
+  for(const x of [-.31,.31]){box(g,x,-.12,0,.44,.59,.36,canvasTan);box(g,x,.26,0,.46,.1,.38,leather);}
+  box(g,0,.44,-.07,1.1,.11,.1,steel);
+  for(const x of [-.43,.43])box(g,x,.14,.23,.07,.57,.07,leather);
+ }else if(id==='medicTools'){
+  box(g,0,0,0,.9,.65,.4,canvasTan);
+  box(g,0,.34,0,.97,.09,.45,iron);
+  box(g,0,.01,.22,.52,.12,.025,paper);
+  box(g,0,.01,.25,.1,.37,.023,brass);
+  box(g,0,-.34,.13,.26,.13,.12,steel);
  }
  return g;
 }
@@ -122,11 +143,11 @@ function createRack(house,station){
   for(const x of [-1.65,0,1.65])cylinder(g,x,3.56,.35,.09,.07,brass);
  }else if(station.id==='upgrades'){
   // Show the actual upgrade types, with individual E-to-inspect targets like the armory.
-  box(g,0,2.04,.39,5.15,.15,.55,trimWood);
+  for(const y of [1.58,2.72])box(g,0,y,.38,5.15,.12,.55,trimWood);
   Object.keys(UPGRADES).forEach((id,i)=>{
-   const x=(i-1)*1.62,icon=upgradeModel(id);
-   icon.position.set(x,2.76,.51);g.add(icon);
-   const pick=box(g,x,2.74,.73,1.42,1.35,.36,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+   const x=-1.95+(i%4)*1.3,y=i<4?3.25:2.08,icon=upgradeModel(id);
+   icon.position.set(x,y,.51);icon.scale.setScalar(.78);g.add(icon);
+   const pick=box(g,x,y,.73,1.12,.85,.36,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
    pick.userData.focus={type:'item',station:'upgrades',kind:'upgrade',id};
    house.targets.push(pick);
   });

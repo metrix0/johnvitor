@@ -1,4 +1,4 @@
-import {WEAPONS,GADGETS,clamp} from './data.js';
+import {WEAPONS,GADGETS,clamp} from './data.js?v=9';
 // Purchased gear stays in the stash until deployed and lost. Consumable stock is
 // deducted when used; the issued pistol is always available to prevent softlocks.
 export function canEquipWeapon(profile,id){return id==='pistol'||!!(WEAPONS[id]&&profile.weapons?.includes(id));}

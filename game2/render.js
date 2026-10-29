@@ -1,5 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
-import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=7';
+import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=9';
 import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=8';
 import {buildCheckoutArea} from './level1-zone-3.js?v=1';
 import {buildArea2Fixture,finishArea2} from './level1-zone-2.js?v=2';

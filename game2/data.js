@@ -32,7 +32,12 @@ export const GADGETS = {
 export const UPGRADES = {
   armor:{name:'BALLISTIC VEST',desc:'+25 maximum health per tier',cost:[200,350,550],icon:'◈'},
   damage:{name:'ARMOR-PIERCING',desc:'+13% weapon damage per tier',cost:[240,400,650],icon:'✳'},
-  mag:{name:'EXTENDED MAG',desc:'+20% magazine size per tier',cost:[180,300,500],icon:'▤'}
+  mag:{name:'EXTENDED MAG',desc:'+20% magazine size per tier',cost:[180,300,500],icon:'▤'},
+  safeKit:{name:'PRECISION SAFE TOOLS',desc:'Safes and vault drills 20% / 35% / 50% faster',cost:[220,400,650],icon:'⌁',unlock:0},
+  cyberdeck:{name:'PORTABLE CYBERDECK',desc:'Terminal hacks 20% / 35% / 50% faster',cost:[260,430,680],icon:'⌘',unlock:1},
+  handling:{name:'QUICK-HAND GLOVES',desc:'Collect, handle and load items 15% / 30% / 45% faster',cost:[150,290,460],icon:'◇',unlock:0},
+  bagRig:{name:'DUAL-BAG HARNESS',desc:'Pick up and carry TWO loot bags together, then load both at once',cost:[340],icon:'▣',unlock:0},
+  medicTools:{name:'FIELD RESCUE KIT',desc:'Teammate revives 25% / 45% faster',cost:[210,390],icon:'✚',unlock:1}
 };
 export const MISSIONS = [
  LEVEL1,
@@ -69,14 +74,14 @@ export function makeGrid(mission){
   return grid;
 }
 export const pos=([x,z])=>({x:x*CELL,z:z*CELL});
-export function profileDefaults(name){return {name,unlocked:0,completed:false,earned:0,spent:0,upgrades:{armor:0,damage:0,mag:0},weapons:['pistol'],gadgetStock:{},gearRev:0,gearUpdatedAt:0,cleared:[],best:{}};}
+export function profileDefaults(name){return {name,unlocked:0,completed:false,earned:0,spent:0,upgrades:Object.fromEntries(Object.keys(UPGRADES).map(id=>[id,0])),weapons:['pistol'],gadgetStock:{},gearRev:0,gearUpdatedAt:0,cleared:[],best:{}};}
 export function normalizeProfile(raw,name){
  const p=profileDefaults(name),r=raw&&typeof raw==='object'?raw:{};
  p.unlocked=clamp(Math.floor(Number(r.unlocked)||0),0,4);
  p.completed=r.completed===true;
  p.earned=clamp(Math.floor(Number(r.earned)||0),0,9999999);
  p.spent=clamp(Math.floor(Number(r.spent)||0),0,p.earned);
- for(const k of Object.keys(UPGRADES))p.upgrades[k]=clamp(Math.floor(Number(r.upgrades?.[k])||0),0,3);
+ for(const k of Object.keys(UPGRADES))p.upgrades[k]=clamp(Math.floor(Number(r.upgrades?.[k])||0),0,UPGRADES[k].cost.length);
  p.weapons=['pistol',...new Set((Array.isArray(r.weapons)?r.weapons:[]).filter(id=>id!=='pistol'&&WEAPONS[id]))];
  for(const id of Object.keys(GADGETS)){const qty=clamp(Math.floor(Number(r.gadgetStock?.[id])||0),0,30);if(qty>0)p.gadgetStock[id]=qty;}
  p.gearRev=clamp(Math.floor(Number(r.gearRev)||0),0,999999999);

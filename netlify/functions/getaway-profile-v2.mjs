@@ -2,14 +2,15 @@ import { getStore } from '@netlify/blobs';
 const json=(status,body)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const cap=(n,max=9999999)=>Number.isFinite(Number(n))?Math.max(0,Math.min(max,Math.floor(Number(n)))):0;
 const allowedJobs=['bodega','offices','datacenter','penthouse','bank'];
-const tiers=['armor','damage','mag'];
+const tiers=['armor','damage','mag','safeKit','cyberdeck','handling','bagRig','medicTools'];
+const tierCaps={armor:3,damage:3,mag:3,safeKit:3,cyberdeck:3,handling:3,bagRig:1,medicTools:2};
 const weaponIds=['pistol','compact','revolver','smg','silenced','burst','shotgun','autoshotgun','rifle','lmg','dmr','sniper'];
 const gadgetIds=['smoke','med','flash','frag','ammo','emp','jammer','shield','decoy','mine'];
 function normalize(data,name){
  const p=data&&typeof data==='object'?data:{};
- const profile={name,unlocked:Math.min(4,cap(p.unlocked,4)),completed:p.completed===true,earned:cap(p.earned),spent:cap(p.spent),upgrades:{armor:0,damage:0,mag:0},cleared:[],best:{},weapons:['pistol'],gadgetStock:{},gearRev:0,gearUpdatedAt:0};
+ const profile={name,unlocked:Math.min(4,cap(p.unlocked,4)),completed:p.completed===true,earned:cap(p.earned),spent:cap(p.spent),upgrades:Object.fromEntries(tiers.map(id=>[id,0])),cleared:[],best:{},weapons:['pistol'],gadgetStock:{},gearRev:0,gearUpdatedAt:0};
  profile.spent=Math.min(profile.spent,profile.earned);
- for(const k of tiers)profile.upgrades[k]=cap(p.upgrades?.[k],3);
+ for(const k of tiers)profile.upgrades[k]=cap(p.upgrades?.[k],tierCaps[k]);
  profile.weapons=['pistol',...new Set((Array.isArray(p.weapons)?p.weapons:[]).filter(id=>id!=='pistol'&&weaponIds.includes(id)))];
  for(const id of gadgetIds){const qty=cap(p.gadgetStock?.[id],30);if(qty)profile.gadgetStock[id]=qty;}
  profile.gearRev=cap(p.gearRev,999999999);

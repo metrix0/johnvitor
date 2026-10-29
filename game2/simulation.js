@@ -1,4 +1,4 @@
-import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS,GADGETS,makeGrid,clamp,pos} from './data.js?v=7';
+import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS,GADGETS,UPGRADES,makeGrid,clamp,pos} from './data.js?v=9';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const unit=(x,z)=>{const d=Math.hypot(x,z)||1;return {x:x/d,z:z/d};};
 const T=(p)=>({x:Math.round(p.x/CELL),z:Math.round(p.z/CELL)});
@@ -37,24 +37,42 @@ function path(run,src,target){
 }
 export function objectiveReady(run,o){return !o.done&&!o.synthetic&&o.requires.every(id=>run.objectives.find(x=>x.id===id)?.done);}
 export function allRequiredDone(run){return run.objectives.every(o=>o.done||o.optional);}
+function carriedBags(run,p){return run.loot.filter(b=>!b.secured&&b.carrier===p.id);}
+function equippedTask(p,task){
+ const t=p.toolTiers||{},tier=(name,max)=>Math.max(0,Math.min(max,Math.floor(t[name]||0)));
+ let scale=1;
+ if(task.kind==='revive')scale=[1,.75,.55][tier('medicTools',2)];
+ else if(task.kind==='objective'){
+  const kind=task.target.kind;
+  scale=kind==='safe'||kind==='drill'?[1,.8,.65,.5][tier('safeKit',3)]:
+   kind==='hack'?[1,.8,.65,.5][tier('cyberdeck',3)]:
+   [1,.85,.7,.55][tier('handling',3)];
+ }else if(['pickup','takeBag','deposit'].includes(task.kind))scale=[1,.85,.7,.55][tier('handling',3)];
+ return {...task,duration:task.duration>0?Math.max(.12,task.duration*scale):0};
+}
 export function nearbyTask(run,p){
  if(!p)return null;
- for(const mate of run.players){if(mate!==p&&mate.hp<=0&&distance(p,mate)<2.6)return {kind:'revive',target:mate,label:'REVIVE PARTNER',duration:3};}
+ for(const mate of run.players)if(mate!==p&&mate.hp<=0&&distance(p,mate)<2.6)
+  return equippedTask(p,{kind:'revive',target:mate,label:'REVIVE PARTNER',duration:3});
  const pickup=run.pickups.find(k=>!k.taken&&(k.type==='med'||k.type==='ammo')&&distance(p,k)<2.4);
- if(pickup)return {kind:'pickup',target:pickup,label:pickup.type==='med'?'TAKE FIELD MEDICINE':'TAKE AMMO',duration:.4};
+ if(pickup)return equippedTask(p,{kind:'pickup',target:pickup,label:pickup.type==='med'?'TAKE FIELD MEDICINE':'TAKE AMMO',duration:.4});
  if(run.mission===0&&run.objectives.find(o=>o.id==='safe')?.done){
-  if(p.bagId!==null&&p.bagId!==undefined&&distance(p,run.dropoff)<3.6)
-   return {kind:'deposit',target:run.dropoff,label:'LOAD CASH BAG INTO GETAWAY VAN',duration:1.2};
-  if(p.bagId===null||p.bagId===undefined){
+  const carrying=carriedBags(run,p).length,capacity=p.toolTiers?.bagRig?2:1;
+  if(carrying&&distance(p,run.dropoff)<3.6)
+   return equippedTask(p,{kind:'deposit',target:run.dropoff,label:carrying>1?'LOAD BOTH BAGS INTO GETAWAY VAN':'LOAD CASH BAG INTO GETAWAY VAN',duration:1.2});
+  if(carrying<capacity){
    const bag=run.loot.find(o=>!o.secured&&o.carrier===null&&distance(p,o)<2.8);
-   if(bag)return {kind:'takeBag',target:bag,label:'PICK UP CASH BAG',duration:.6};
+   if(bag){
+    const pair=capacity===2&&carrying===0&&run.loot.some(o=>o!==bag&&!o.secured&&o.carrier===null&&distance(o,bag)<4.5&&distance(p,o)<4.2);
+    return equippedTask(p,{kind:'takeBag',target:bag,label:pair?'PICK UP BOTH CASH BAGS':'PICK UP CASH BAG',duration:.6});
+   }
   }
  }
  const o=run.objectives.filter(x=>objectiveReady(run,x)&&distance(p,x)<3.25).sort((a,b)=>distance(p,a)-distance(p,b))[0];
- if(o)return {kind:'objective',target:o,label:o.name.toUpperCase(),duration:o.duration};
+ if(o)return equippedTask(p,{kind:'objective',target:o,label:o.name.toUpperCase(),duration:o.duration});
  if(allRequiredDone(run)&&distance(p,run.exit)<3.5){
   if(run.mission===0&&run.time<run.escapeAt)return {kind:'wait',target:run.exit,label:'DEFEND THE VAN · '+Math.ceil(run.escapeAt-run.time)+'S',duration:0};
-  return {kind:'extract',target:run.exit,label:'BOARD THE GETAWAY VAN',duration:1.6};
+  return equippedTask(p,{kind:'extract',target:run.exit,label:'BOARD THE GETAWAY VAN',duration:1.6});
  }
  return null;
 }
@@ -80,7 +98,8 @@ export function makeRun(n=0,count=1,loadouts=[]){
   const kit=loadouts[i]||{},wid=WEAPONS[kit.weapon]?kit.weapon:'pistol',gid=GADGETS[kit.gadget]?kit.gadget:null,w=WEAPONS[wid];
   const maxHp=(n===0?125:100)+25*clamp(kit.upgrades?.armor||0,0,3),mag=Math.round(w.mag*(1+clamp(kit.upgrades?.mag||0,0,3)*.2));
   const gadgetStart=gid?clamp(Number.isFinite(kit.charges)?kit.charges:GADGETS[gid].charges,0,GADGETS[gid].charges):0;
-  run.players.push({bagId:null,id:i,name:String(kit.name||'CREW '+(i+1)).slice(0,24),x:start.x,z:start.z+(i?1.2:0),yaw:-Math.PI/2,pitch:0,hp:maxHp,maxHp,stamina:100,noise:0,noiseUntil:0,bloom:0,weapon:wid,gadget:gid,mag,ammo:mag,reserve:w.reserve,reload:0,cool:0,gadgets:gadgetStart,gadgetStart,gadCool:0,shieldUntil:0,damageTier:clamp(kit.upgrades?.damage||0,0,3),invuln:0,interact:0,interactId:'',bleed:0,down:false,stats:{kills:0,shots:0,hits:0},recoil:0,lastDamageFrom:null});
+  const toolTiers=Object.fromEntries(Object.entries(UPGRADES).map(([id,u])=>[id,clamp(Math.floor(Number(kit.upgrades?.[id])||0),0,u.cost.length)]));
+  run.players.push({toolTiers,bagId:null,id:i,name:String(kit.name||'CREW '+(i+1)).slice(0,24),x:start.x,z:start.z+(i?1.2:0),yaw:-Math.PI/2,pitch:0,hp:maxHp,maxHp,stamina:100,noise:0,noiseUntil:0,bloom:0,weapon:wid,gadget:gid,mag,ammo:mag,reserve:w.reserve,reload:0,cool:0,gadgets:gadgetStart,gadgetStart,gadCool:0,shieldUntil:0,damageTier:clamp(kit.upgrades?.damage||0,0,3),invuln:0,interact:0,interactId:'',bleed:0,down:false,stats:{kills:0,shots:0,hits:0},recoil:0,lastDamageFrom:null});
  }
  run.objectives=mission.objectives.map(o=>({...o,x:o.at[0]*CELL,z:o.at[1]*CELL,requires:o.requires||[],done:false}));
  if(n===0){
@@ -98,7 +117,7 @@ function damagePlayer(run,p,dmg,source){
  if(p.hp<=0||p.invuln>0)return;
  p.hp=Math.max(0,p.hp-Math.max(1,Math.round(dmg*(p.shieldUntil>run.time?.35:1))));p.invuln=.28;p.recoil=Math.min(1,p.recoil+.18);
  if(source&&Number.isFinite(source.x)&&Number.isFinite(source.z))p.lastDamageFrom={x:source.x,z:source.z};
- if(p.hp===0){p.down=true;p.bleed=28;if(p.bagId!==null){const bag=run.loot.find(x=>x.id===p.bagId);if(bag){bag.carrier=null;bag.x=p.x;bag.z=p.z;}p.bagId=null;}announce(run,p.name+' IS DOWN — REVIVE THEM');}
+ if(p.hp===0){p.down=true;p.bleed=28;for(const bag of carriedBags(run,p)){bag.carrier=null;bag.x=p.x;bag.z=p.z;}p.bagId=null;announce(run,p.name+' IS DOWN — REVIVE THEM');}
 }
 function damageEnemy(run,e,amount,player){
  e.hp=Math.max(0,e.hp-amount);e.flinch=.15;e.alert=true;
@@ -204,9 +223,9 @@ function tickPlayer(run,p,input,dt){
  p.pitch=Number.isFinite(input?.pitch)?clamp(input.pitch,-1.35,1.35):p.pitch;
  const f=Number(!!input?.forward)-Number(!!input?.back),s=Number(!!input?.right)-Number(!!input?.left),norm=Math.hypot(f,s)||1;
  // Run by default in any direction. Shift is the slower, quieter walk.
- const carrying=p.bagId!==null,walking=!!input?.walk,aiming=!!input?.aim,moving=f!==0||s!==0;
+ const bagCount=carriedBags(run,p).length,walking=!!input?.walk,aiming=!!input?.aim,moving=f!==0||s!==0;
  // Aim-down-sights movement is deliberately slower, including while silent-walking.
- const spd=(walking?3.2:7.4)*.92*(aiming?.54:1)*(carrying?.72:1);
+ const spd=(walking?3.2:7.4)*.92*(aiming?.54:1)*(bagCount>=2?.63:bagCount===1?.72:1);
  const dx=(-Math.sin(p.yaw)*f+Math.cos(p.yaw)*s)*spd*dt/norm;
  const dz=(-Math.cos(p.yaw)*f-Math.sin(p.yaw)*s)*spd*dt/norm;
  move(run,p,dx,dz,.36);
@@ -257,9 +276,24 @@ function tickPlayer(run,p,input,dt){
   if(p.interact>=task.duration){
    if(task.kind==='revive'){task.target.hp=Math.round(task.target.maxHp*.4);task.target.down=false;task.target.bleed=0;task.target.invuln=2;announce(run,task.target.name+' REVIVED');}
    if(task.kind==='pickup'){task.target.taken=true;if(task.target.type==='med')p.hp=Math.min(p.maxHp,p.hp+35);else p.reserve+=Math.round(WEAPONS[p.weapon].mag*1.5);announce(run,'SUPPLIES RESTOCKED');}
-   if(task.kind==='takeBag'){task.target.carrier=p.id;p.bagId=task.target.id;announce(run,'CASH BAG ACQUIRED · RETURN TO GETAWAY VAN');}
+   if(task.kind==='takeBag'&&task.target.carrier===null){
+    const current=carriedBags(run,p),capacity=p.toolTiers?.bagRig?2:1;
+    if(current.length<capacity){
+     const picked=[task.target];
+     if(capacity===2&&current.length===0){
+      const second=run.loot.find(b=>b!==task.target&&!b.secured&&b.carrier===null&&distance(b,task.target)<4.5&&distance(p,b)<4.2);
+      if(second)picked.push(second);
+     }
+     for(const bag of picked)bag.carrier=p.id;
+     p.bagId=current[0]?.id||picked[0].id;
+     announce(run,picked.length>1?'TWO CASH BAGS ACQUIRED · TAKE BOTH TO THE VAN':'CASH BAG ACQUIRED · RETURN TO GETAWAY VAN');
+    }
+   }
    if(task.kind==='deposit'){
-    const bag=run.loot.find(x=>x.id===p.bagId);if(bag){bag.carrier=null;bag.secured=true;bag.x=run.dropoff.x;bag.z=run.dropoff.z;run.secured++;p.bagId=null;}
+    for(const bag of carriedBags(run,p)){
+     bag.carrier=null;bag.secured=true;bag.x=run.dropoff.x;bag.z=run.dropoff.z;run.secured++;
+    }
+    p.bagId=null;
     const progress=run.objectives.find(x=>x.id==='bags-secured');
     if(run.secured>=run.bagGoal&&!progress.done){progress.done=true;run.checkpoint={...run.dropoff};announce(run,'ALL BAGS SECURED · SIGNAL THE DRIVER');}
     else announce(run,'BAG SECURED · '+run.secured+' / '+run.bagGoal);

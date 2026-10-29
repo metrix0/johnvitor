@@ -1,8 +1,8 @@
-import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=8';
-import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=12';
-import {View} from './render.js?v=24';
-import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=6';
-import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
+import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=9';
+import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=13';
+import {View} from './render.js?v=25';
+import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=7';
+import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js?v=2';
 const $=id=>document.getElementById(id);
 const key=name=>'getaway-v3-'+name.toLowerCase();
 const operatorCookie='getaway-operator';
@@ -156,8 +156,9 @@ function refreshMenu(){
  const w=WEAPONS[selectedWeapon];$('weaponStats').textContent=w.damage+' BASE DAMAGE · '+w.mag+' ROUNDS · '+Math.round(1/w.rate*60)+' RPM';
  $('gadgetStats').textContent=selectedGadget?GADGETS[selectedGadget].description+' · '+profile.gadgetStock[selectedGadget]+' CHARGES OWNED':'Purchase a gadget below to prepare for your next mission.';
  $('upgrades').innerHTML=Object.entries(UPGRADES).map(([id,u])=>{
-  const tier=profile.upgrades[id],cost=u.cost[tier],can=loadedName&&tier<3&&profileWallet()>=cost;
-  return `<div class="upgrade"><div><b>${u.icon} ${u.name} <span style="color:#9eeabe">LVL ${tier}/3</span></b><small>${u.desc}</small></div><button data-upgrade="${id}" ${can?'':'disabled'}>${tier>=3?'MAXED':cost?coins(cost):'—'}</button></div>`;
+  const tier=profile.upgrades[id],max=u.cost.length,cost=u.cost[tier],unlocked=(u.unlock||0)<=profile.unlocked;
+  const can=loadedName&&unlocked&&tier<max&&profileWallet()>=cost;
+  return `<div class="upgrade"><div><b>${u.icon} ${u.name} <span style="color:#9eeabe">LVL ${tier}/${max}</span></b><small>${u.desc}</small></div><button data-upgrade="${id}" ${can?'':'disabled'}>${!unlocked?'JOB '+(u.unlock+1)+' REQUIRED':tier>=max?'MAXED':cost?coins(cost):'—'}</button></div>`;
  }).join('');
  $('upgrades').querySelectorAll('[data-upgrade]').forEach(b=>b.onclick=()=>buyUpgrade(b.dataset.upgrade));
  renderArmoryShop();
@@ -167,7 +168,7 @@ function refreshMenu(){
 }
 function buyUpgrade(id){
  if(!loadedName||!UPGRADES[id])return;
- const tier=profile.upgrades[id],cost=UPGRADES[id].cost[tier];if(tier>=3||profileWallet()<cost)return;
+ const u=UPGRADES[id],tier=profile.upgrades[id],cost=u.cost[tier];if((u.unlock||0)>profile.unlocked||tier>=u.cost.length||profileWallet()<cost)return;
  profile.upgrades[id]++;profile.spent+=cost;scheduleSave();refreshMenu();beep('purchase');
 }
 function sound(type){
@@ -228,7 +229,8 @@ function cabinItemState(target){
  if(!item)return null;
  if(kind==='upgrade'){
   const tier=profile.upgrades[id]||0,finished=tier>=item.cost.length,cost=finished?0:item.cost[tier];
-  const note=finished?'MAX LEVEL · E TO OPEN':profileWallet()<cost?'LEVEL '+tier+'/3 · NEED '+coins(cost-profileWallet())+' MORE':'LEVEL '+tier+'/3 · E TO OPEN';
+  const locked=(item.unlock||0)>profile.unlocked,max=item.cost.length;
+  const note=locked?'JOB '+(item.unlock+1)+' REQUIRED':finished?'MAX LEVEL · E TO OPEN':profileWallet()<cost?'LEVEL '+tier+'/'+max+' · NEED '+coins(cost-profileWallet())+' MORE':'LEVEL '+tier+'/'+max+' · E TO OPEN';
   return {item,price:finished?'MAXED':coins(cost),note,tier,owned:false};
  }
  const unlock=item.unlock<=profile.unlocked,owned=kind==='weapon'?canEquipWeapon(profile,id):canEquipGadget(profile,id);
@@ -253,7 +255,7 @@ function showCabinFocus(target){
  if(!state){hover.classList.add('hidden');prompt.classList.add('hidden');return;}
  hover.classList.remove('hidden');
  $('shHoverName').textContent=state.item.name;
- $('shHoverType').textContent=(target.kind==='weapon'?state.item.class:'TACTICAL GADGET')+(target.kind==='gadget'?' · '+state.stock+' CHARGES OWNED':'');
+ $('shHoverType').textContent=(target.kind==='weapon'?state.item.class:target.kind==='upgrade'?'PERMANENT EQUIPMENT':'TACTICAL GADGET')+(target.kind==='gadget'?' · '+state.stock+' CHARGES OWNED':'');
  $('shHoverPrice').textContent=state.price;
  $('shHoverState').textContent=state.note;
  $('shInteractionLabel').textContent=(state.owned?'EQUIP / VIEW':'INSPECT')+' '+state.item.name;
@@ -504,6 +506,9 @@ function sanitizedInput(raw){
  safe.yaw=Number.isFinite(raw?.yaw)?clamp(raw.yaw,-2000,2000):-Math.PI/2;
  safe.pitch=Number.isFinite(raw?.pitch)?clamp(raw.pitch,-1.35,1.35):0;return safe;
 }
+function sanitizedUpgrades(raw){
+ return Object.fromEntries(Object.entries(UPGRADES).map(([id,u])=>[id,clamp(Math.floor(Number(raw?.[id])||0),0,u.cost.length)]));
+}
 function setupConnection(c){
  if(conn?.open){c.close();return;}
  conn=c;
@@ -517,11 +522,11 @@ function setupConnection(c){
   if(host){
    if(packet.type==='hello'&&!run){
     const k=packet.kit||{},w=WEAPONS[k.weapon]?k.weapon:'pistol',g=GADGETS[k.gadget]?k.gadget:null;
-    remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:w,gadget:g,charges:g?clamp(Number(k.charges)||0,0,GADGETS[g].charges):0,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};
+    remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:w,gadget:g,charges:g?clamp(Number(k.charges)||0,0,GADGETS[g].charges):0,upgrades:sanitizedUpgrades(k.upgrades)};
     startBrief(selectedMission);
    }
    if(packet.type==='input')remoteInput=sanitizedInput(packet.input);
-   if(packet.type==='kit-update'&&packet.kit){const k=packet.kit;remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:WEAPONS[k.weapon]?k.weapon:'pistol',gadget:GADGETS[k.gadget]?k.gadget:null,charges:GADGETS[k.gadget]?clamp(Number(k.charges)||0,0,GADGETS[k.gadget].charges):0,upgrades:{armor:clamp(Number(k.upgrades?.armor)||0,0,3),damage:clamp(Number(k.upgrades?.damage)||0,0,3),mag:clamp(Number(k.upgrades?.mag)||0,0,3)}};}
+   if(packet.type==='kit-update'&&packet.kit){const k=packet.kit;remoteKit={name:String(k.name||'PARTNER').slice(0,24),weapon:WEAPONS[k.weapon]?k.weapon:'pistol',gadget:GADGETS[k.gadget]?k.gadget:null,charges:GADGETS[k.gadget]?clamp(Number(k.charges)||0,0,GADGETS[k.gadget].charges):0,upgrades:sanitizedUpgrades(k.upgrades)};}
   }else if(packet.type==='state'&&packet.run){
    if($('gameScreen').classList.contains('hidden')&&!enterScreen())return;
    const previous=run?.runId;run=packet.run;run.grid=makeGrid(MISSIONS[run.mission]);onRunChange();if(previous!==run.runId)view?.build(run);
@@ -557,7 +562,11 @@ function updateHud(){
  const required=run.objectives.filter(o=>!o.optional),done=required.filter(o=>o.done).length,total=required.length;
  let next=required.find(o=>objectiveReady(run,o)),heading=next?next.name.toUpperCase():'GET TO EXTRACTION';
  if(run.mission===0){
-  if(run.players[host?0:1]?.bagId!==null&&run.players[host?0:1]?.bagId!==undefined)heading='DELIVER THE BAG TO THE VAN';
+  if(p.bagId!==null&&p.bagId!==undefined){
+   const unclaimed=run.loot.some(b=>!b.secured&&b.carrier===null);
+   const count=run.loot.filter(b=>!b.secured&&b.carrier===p.id).length;
+   heading=p.toolTiers?.bagRig&&count<2&&unclaimed?'COLLECT THE SECOND CASH BAG':'DELIVER '+(count>1?'BOTH BAGS':'THE BAG')+' TO THE VAN';
+  }
   else if(run.loot.length&&run.secured<run.bagGoal)heading='TRANSPORT THE CASH · '+run.secured+'/'+run.bagGoal+' BAGS';
   else if(run.escapeAt>0)heading=run.escapeAt>run.time?'PROTECT THE VAN · '+Math.ceil(run.escapeAt-run.time)+'S':'BOARD THE GETAWAY VAN';
  }
@@ -609,9 +618,10 @@ function updateHud(){
 }
 function mapGoal(player){
  if(run.mission===0){
-  if(player.bagId!==null&&player.bagId!==undefined)return {at:run.dropoff,label:'VAN'};
   if(run.loot.length&&run.secured<run.bagGoal){
    const bag=run.loot.find(b=>!b.secured&&b.carrier===null);
+   const carried=run.loot.filter(b=>!b.secured&&b.carrier===player.id).length;
+   if(carried&&(!bag||carried>=(player.toolTiers?.bagRig?2:1)))return {at:run.dropoff,label:'VAN'};
    return bag?{at:bag,label:'BAG'}:{at:run.dropoff,label:'VAN'};
   }
   if(run.escapeAt>0)return {at:run.exit,label:run.escapeReady?'EXIT':'VAN'};
