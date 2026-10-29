@@ -21,7 +21,12 @@ export class View{
   this.camera=new THREE.PerspectiveCamera(76,1,.07,140);
   this.camera.rotation.order='YXZ';
   this.renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-  this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
+  // Full resolution whenever possible, with gradual render-scale fallback on slow GPUs.
+  this.nativePixelRatio=Math.min(window.devicePixelRatio||1,1.6);
+  this.renderPixelRatio=this.nativePixelRatio;
+  this.resolutionStart=0;this.resolutionFrames=0;this.resolutionLows=0;this.resolutionHighs=0;
+  this.resolutionLastChange=0;
+  this.renderer.setPixelRatio(this.renderPixelRatio);
   this.renderer.outputColorSpace=THREE.SRGBColorSpace;
   this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.35;
   this.renderer.shadowMap.enabled=false;
@@ -793,6 +798,44 @@ export class View{
   for(const [id,mesh] of this.tracerMeshes)if(!activeTracers.has(id)){this.world.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();this.tracerMeshes.delete(id);}
   this.visuals.update(run,this.clock,aiming,dt);
   this.renderer.render(this.scene,camera);
+  this.updateAdaptiveResolution();
+ }
+ updateAdaptiveResolution(){
+  // Use real animation-frame timestamps, not simulation dt (which is clamped).
+  // Ignore hidden-tab throttling; otherwise a background tab becomes blurry.
+  const now=performance.now();
+  if(document.hidden){
+   this.resolutionStart=0;this.resolutionFrames=0;
+   this.resolutionLows=0;this.resolutionHighs=0;
+   return;
+  }
+  if(!this.resolutionStart){this.resolutionStart=now;this.resolutionFrames=0;return;}
+  this.resolutionFrames++;
+  const elapsed=now-this.resolutionStart;
+  if(elapsed<1500)return;
+  const fps=this.resolutionFrames*1000/elapsed;
+  this.resolutionStart=now;this.resolutionFrames=0;
+  if(now-this.resolutionLastChange<2400)return;
+  if(fps<49){
+   this.resolutionLows++;this.resolutionHighs=0;
+   if(this.resolutionLows>=2){
+    const next=Math.max(Math.min(this.nativePixelRatio,.75),Math.round(this.renderPixelRatio*.84*100)/100);
+    if(next<this.renderPixelRatio-.01){
+     this.renderPixelRatio=next;this.renderer.setPixelRatio(next);
+     this.resolutionLastChange=now;
+    }
+    this.resolutionLows=0;
+   }
+  }else if(fps>58){
+   this.resolutionLows=0;this.resolutionHighs++;
+   if(this.resolutionHighs>=3&&this.renderPixelRatio<this.nativePixelRatio-.01){
+    const next=Math.min(this.nativePixelRatio,Math.round((this.renderPixelRatio+.06)*100)/100);
+    this.renderPixelRatio=next;this.renderer.setPixelRatio(next);
+    this.resolutionLastChange=now;this.resolutionHighs=0;
+   }
+  }else{
+   this.resolutionLows=0;this.resolutionHighs=0;
+  }
  }
  dispose(){this.observer.disconnect();this.clear();this.visuals.dispose();this.renderer.dispose();}
 }

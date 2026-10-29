@@ -1,6 +1,6 @@
 import {MISSIONS,WEAPONS,GADGETS,UPGRADES,profileDefaults,normalizeProfile,availableWeapons,availableGadgets,clamp,CELL,makeGrid} from './data.js?v=8';
 import {makeRun,stepRun,nearbyTask,objectiveReady} from './simulation.js?v=12';
-import {View} from './render.js?v=20';
+import {View} from './render.js?v=21';
 import {Safehouse,SAFEHOUSE_STATIONS} from './safehouse.js?v=6';
 import {canEquipWeapon,canEquipGadget,equippedKit,purchaseGear,settleGear,chooseGearSnapshot} from './armory.js';
 const $=id=>document.getElementById(id);
@@ -619,10 +619,21 @@ function mapGoal(player){
  const goal=run.objectives.find(o=>!o.optional&&objectiveReady(run,o))||run.objectives.find(o=>objectiveReady(run,o));
  return goal?{at:goal,label:'GOAL'}:{at:run.exit,label:'EXIT'};
 }
+let minimapBase=null,minimapBaseGrid=null,minimapBaseWidth=0,minimapBaseHeight=0;
 function drawMinimap(player){
  const c=$('minimap'),ctx=c.getContext('2d'),W=c.width,H=c.height;ctx.clearRect(0,0,W,H);
  if(!run)return;const grid=run.grid,sx=W/grid[0].length,sz=H/grid.length;
- for(let z=0;z<grid.length;z++)for(let x=0;x<grid[z].length;x++){ctx.fillStyle=grid[z][x]==='#'?'#53616b':'#142832';ctx.fillRect(x*sx,z*sz,sx-.4,sz-.4);}
+ // Cache static walls/floors once per mission; dynamic markers remain live.
+ if(!minimapBase||minimapBaseGrid!==grid||minimapBaseWidth!==W||minimapBaseHeight!==H){
+  minimapBase=document.createElement('canvas');minimapBase.width=W;minimapBase.height=H;
+  minimapBaseGrid=grid;minimapBaseWidth=W;minimapBaseHeight=H;
+  const bg=minimapBase.getContext('2d');
+  for(let z=0;z<grid.length;z++)for(let x=0;x<grid[z].length;x++){
+   bg.fillStyle=grid[z][x]==='#'?'#53616b':'#142832';
+   bg.fillRect(x*sx,z*sz,sx-.4,sz-.4);
+  }
+ }
+ ctx.drawImage(minimapBase,0,0);
  for(const o of run.objectives)if(!o.done){ctx.fillStyle=objectiveReady(run,o)?'#ffce7a':'#576568';ctx.fillRect(o.x/CELL*sx-2,o.z/CELL*sz-2,4,4);}
  ctx.fillStyle=run.objectives.every(o=>o.done||o.optional)?'#91ffb3':'#36664f';ctx.fillRect(run.exit.x/CELL*sx-3,run.exit.z/CELL*sz-3,6,6);
  if(run.mission===0){
@@ -692,7 +703,7 @@ function frame(time){
   perfFrames++;
   if(time-perfStart>=1400){
    const fps=Math.round(perfFrames*1000/(time-perfStart)),info=view.renderer.info.render;
-   perfHud.textContent='FPS: '+fps+'  |  '+info.calls+' draws  |  '+info.triangles+' tris';
+   perfHud.textContent='FPS: '+fps+'  |  '+info.calls+' draws  |  '+info.triangles+' tris  |  '+view.renderPixelRatio.toFixed(2)+'x';
    perfStart=time;perfFrames=0;
   }
  }
