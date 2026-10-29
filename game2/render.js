@@ -1,7 +1,8 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
 import {CELL,WIDTH,HEIGHT,MISSIONS,WEAPONS} from './data.js?v=6';
-import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=6';
+import {LEVEL1_ZONES,LEVEL1_PROP_CELLS} from './level1.js?v=7';
 import {buildCheckoutArea} from './level1-zone-3.js?v=1';
+import {buildArea2Fixture,finishArea2} from './level1-zone-2.js?v=1';
 import {Visuals} from './visuals.js?v=6';
 import {buildLevel1Zone4} from './level1-zone-4.js?v=1';
 import {buildLevel1Zone1} from './level1-zone-1.js?v=1';
@@ -162,6 +163,7 @@ export class View{
   }
   this.finishMarketBatches();
   buildCheckoutArea(this);
+  finishArea2(this);
   buildLevel1Zone4(this);
   // Only the one fascia wordmark from Area 1 is visible; no floating signs.
 
@@ -205,6 +207,7 @@ export class View{
  }
  prop(kind,x,z,p){
   const g=new THREE.Group();g.position.set(x,0,z);this.world.add(g);
+  if(this.mission===0&&buildArea2Fixture(this,g,kind))return;
   if(this.mission===0&&['shelf','fridge','counter','desk','filing','crate','pallet'].includes(kind)){
    this.marketProp(g,kind);return;
   }
