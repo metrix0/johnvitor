@@ -8,6 +8,7 @@ import {buildLevel1Zone4} from './level1-zone-4.js?v=3';
 import {buildLevel1Zone1} from './level1-zone-1.js?v=1';
 import {buildLevel1Zone5} from './level1-zone-5.js?v=1';
 import {buildNightSky} from './night-sky.js?v=1';
+import {buildLevel1Surroundings} from './level1-surroundings.js?v=1';
 const palette={
  store:{floor:0x313536,wall:0x60686b,accent:0xffc774,light:0xffe3b4,sky:0x101719},
  office:{floor:0x303b44,wall:0x778998,accent:0x82d7fb,light:0xcce8ff,sky:0x101b2a},
@@ -110,6 +111,7 @@ export class View{
   this.sun.intensity=.76;
   this.renderer.toneMappingExposure=1.30;
   this.skyDome=buildNightSky(this);
+  buildLevel1Surroundings(this);
   this.box(world,w/2,-.32,h/2,cols*CELL,.65,rows*CELL,this.visuals.surface('asphalt',0x29343c,cols*CELL,rows*CELL));
   for(const zone of LEVEL1_ZONES){
    this.box(world,(zone.x+zone.w/2)*CELL,-.03,(zone.z+zone.h/2)*CELL,zone.w*CELL,.085,zone.h*CELL,this.visuals.surface(zone.name==='SHOP FLOOR'||zone.name==='RESTROOM'?'market-tile':zone.name==='BACK OFFICE'?'wood':zone.name==='STOCKROOM'?'concrete':'asphalt',zone.name==='SHOP FLOOR'?0xe7dfcf:zone.floor,zone.w*CELL,zone.h*CELL));
