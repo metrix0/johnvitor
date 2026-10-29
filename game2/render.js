@@ -170,7 +170,7 @@ export class View{
   for(const x of [38,42]){this.box(world,x*CELL,.35,9*CELL,.7,.5,.85,0xdbe6dc);this.box(world,x*CELL,.73,9.4*CELL,.44,.2,.27,0xeef1eb);}
 
   // Collect Area 2's detailed products into GPU batches (instead of 10k+ draw calls).
-  this.marketBatches=new Map();
+  this.marketBatches=new Map();this.stage1StaticProps=[];
   for(const [x,z,kind] of mission.decor){
    if(kind==='counter'&&z>=28&&z<=34)continue; // Zone 3 owns checkout fixtures.
    if(x>=12&&x<45&&z>=7&&z<17)continue; // Zone 4 builds its back rooms separately.
@@ -222,9 +222,11 @@ export class View{
   this.rain={mesh:new THREE.Points(geom,new THREE.PointsMaterial({color:0x9fbfd8,size:.045,transparent:true,opacity:.42,depthWrite:false})),speed:random};
   world.add(this.rain.mesh);
   this.visuals.decorate(run,p);
+  this.batchStage1Geometry();
  }
  prop(kind,x,z,p){
   const g=new THREE.Group();g.position.set(x,0,z);this.world.add(g);
+  if(this.mission===0&&this.stage1StaticProps)this.stage1StaticProps.push(g);
   if(this.mission===0&&buildArea2Fixture(this,g,kind))return;
   if(this.mission===0&&['shelf','fridge','counter','desk','filing','crate','pallet'].includes(kind)){
    this.marketProp(g,kind);return;
@@ -297,6 +299,49 @@ export class View{
   this.visuals.detailProp(g,kind);
  }
  // Spatially grouped instances retain every product and fixture while reducing draw calls.
+ batchStage1Geometry(){
+  const world=this.world,groups=new Map(),vec=new THREE.Vector3();
+  const collect=mesh=>{
+   if(!mesh.isMesh||mesh.isInstancedMesh||mesh.geometry?.type!=='BoxGeometry')return;
+   const mat=mesh.material,dim=mesh.geometry.parameters;
+   if(!mat||Array.isArray(mat)||!mat.color||!dim||
+     !(mat.isMeshStandardMaterial||mat.isMeshBasicMaterial)||
+     mat.transparent||mat.opacity!==1||mat.side!==THREE.FrontSide||
+     mat.map||mat.bumpMap||mat.normalMap||mat.envMap||mat.aoMap||
+     mat.roughnessMap||mat.metalnessMap||mat.alphaMap||mat.lightMap||
+     mat.vertexColors||mat.wireframe)return;
+   if(Math.hypot(dim.width,dim.height,dim.depth)>23)return;
+   mesh.updateWorldMatrix(true,false);
+   mesh.getWorldPosition(vec);
+   const key=[mat.type,Math.round((mat.metalness??0)*4)/4,Math.round((mat.roughness??0)*4)/4,
+     mat.emissive?.getHexString()||'0',mat.emissiveIntensity??0,
+     mat.depthWrite,mat.depthTest,mat.toneMapped,
+     Math.floor(vec.x/24),Math.floor(vec.z/24)].join(':');
+   if(!groups.has(key))groups.set(key,[]);
+   groups.get(key).push(mesh);
+  };
+  for(const obj of [...world.children])if(obj.isMesh)collect(obj);
+  for(const prop of this.stage1StaticProps||[])
+   prop.traverse(obj=>{if(obj!==prop)collect(obj);});
+  const geometry=new THREE.BoxGeometry(1,1,1);
+  const matrix=new THREE.Matrix4(),size=new THREE.Matrix4(),color=new THREE.Color();
+  for(const meshes of groups.values()){
+   if(meshes.length<3)continue;
+   const material=meshes[0].material.clone();material.color.setHex(0xffffff);
+   const batch=new THREE.InstancedMesh(geometry,material,meshes.length);
+   for(let n=0;n<meshes.length;n++){
+    const mesh=meshes[n],p=mesh.geometry.parameters;
+    size.makeScale(p.width,p.height,p.depth);
+    matrix.multiplyMatrices(mesh.matrixWorld,size);
+    batch.setMatrixAt(n,matrix);
+    batch.setColorAt(n,color.copy(mesh.material.color));
+   }
+   batch.instanceMatrix.needsUpdate=true;batch.instanceColor.needsUpdate=true;
+   batch.computeBoundingSphere();world.add(batch);
+   for(const mesh of meshes){mesh.parent.remove(mesh);mesh.geometry.dispose();}
+  }
+  this.stage1StaticProps=null;
+ }
  marketInstance(group,shape,x,y,z,w,h,d,color,metal=0){
   const px=group.position.x+x,py=group.position.y+y,pz=group.position.z+z;
   const finish=metal>=.52?'metal':metal>=.2?'semi':'matte';
