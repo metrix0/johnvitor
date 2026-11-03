@@ -53,7 +53,7 @@ function defaultMock(body) { return body.project === 'engravida' ? synced : stat
 
 test('loading the page only reads status and keeps commit titles as text', async () => {
   const { context, page, card, calls, errors } = await setup(defaultMock);
-  await expect(card.getByRole('button')).toHaveText('Validate & merge');
+  await expect(card.locator('button[data-project="imenu"]')).toHaveText('Validate & merge');
   await expect(card.locator('.commits li')).toHaveCount(2);
   await expect(card.locator('.commits')).toContainText('<script>Untrusted title</script>');
   expect(calls.every(call => call.action === 'status')).toBeTruthy();
@@ -89,9 +89,9 @@ test('queued → running → passed → merged remains visible after refresh and
     if (body.action === 'merge') { await mergeGate; hasMerged = true; return merged; }
     throw new Error('Unexpected action');
   });
-  await card.getByRole('button').click();
+  await card.locator('button[data-project="imenu"]').click();
   await expect(card.getByRole('heading', { name: 'Waiting for the TypeScript check' })).toBeVisible();
-  await expect(card.getByRole('button')).toBeDisabled();
+  await expect(card.locator('button[data-project="imenu"]')).toBeDisabled();
   await expect(card.locator('.step').nth(0)).toHaveAttribute('data-state', 'active');
   await expect(card.getByRole('heading', { name: 'TypeScript check is running' })).toBeVisible({ timeout: 6000 });
   expect(calls.filter(call => call.action === 'merge')).toHaveLength(0);
@@ -99,7 +99,7 @@ test('queued → running → passed → merged remains visible after refresh and
   await expect(card.locator('.step').nth(0)).toHaveAttribute('data-state', 'done');
   releaseMerge();
   await expect(card.getByRole('heading', { name: 'Merged successfully' })).toBeVisible();
-  await expect(card.getByRole('button')).toHaveText('Merged successfully ✓');
+  await expect(card.locator('button[data-project="imenu"]')).toHaveText('Merged successfully ✓');
   await expect(card.locator('.commits li')).toHaveCount(0);
   expect(calls.filter(call => call.action === 'merge')).toEqual([expect.objectContaining({ pr: 12, headSha: SHA })]);
   expect(errors).toEqual([]);
@@ -109,11 +109,44 @@ test('queued → running → passed → merged remains visible after refresh and
   expect(calls.filter(call => call.action === 'merge')).toHaveLength(1);
   await context.close();
 });
+test('Stop during TypeScript validation prevents merging and allows a fresh attempt', async () => {
+  let allowReady = false;
+  const { context, page, card, calls, errors } = await setup(body => {
+    if (body.project === 'engravida') return synced;
+    if (body.action === 'validate') return allowReady ? ready : {
+      status: 202, body: { ...ready, ready: false, pending: true,
+        validation: { typecheck: { state: 'pending', status: 'in_progress', url: ready.validation.typecheck.url } } }
+    };
+    if (body.action === 'merge') return merged;
+    return defaultMock(body);
+  });
+  const mergeButton = card.locator('button[data-project="imenu"]');
+  await mergeButton.click();
+  await expect(card.getByRole('heading', { name: 'TypeScript check is running' })).toBeVisible();
+  const stopButton = card.locator('.stop-validation');
+  await expect(stopButton).toBeVisible();
+  await stopButton.click();
+  await expect(card.getByRole('heading', { name: 'Validation stopped' })).toBeVisible();
+  await expect(mergeButton).toHaveText('Restart validation & merge');
+  await expect(mergeButton).toBeEnabled();
+  await expect(stopButton).toBeHidden();
+  const validationsAtStop = calls.filter(call => call.action === 'validate').length;
+  await page.waitForTimeout(3500);
+  expect(calls.filter(call => call.action === 'validate')).toHaveLength(validationsAtStop);
+  expect(calls.filter(call => call.action === 'merge')).toHaveLength(0);
+  allowReady = true;
+  await mergeButton.click();
+  await expect(card.getByRole('heading', { name: 'Merged successfully' })).toBeVisible();
+  expect(calls.filter(call => call.action === 'merge')).toHaveLength(1);
+  expect(errors).toEqual([]);
+  await context.close();
+});
+
 test('validation failure stays inline, preserves errors, and sends no merge', async () => {
   const { context, page, card, calls } = await setup(body => body.action === 'validate'
     ? { status: 409, body: { ok: false, error: 'TypeScript validation failed.', pr: 12, prUrl: ready.prUrl, validation: { typecheck: { state: 'failure', failedStep: 'Browser E2E — checkout', passedSteps: ['Typecheck', 'Build'], error: 'Failed step: Browser E2E — checkout\n\nLog excerpt:\nTimeoutError: Waiting failed: 15000ms exceeded', url: ready.validation.typecheck.url } } } }
     : defaultMock(body));
-  await card.getByRole('button').click();
+  await card.locator('button[data-project="imenu"]').click();
   await expect(card.getByRole('heading', { name: 'Validation did not pass · not merged' })).toBeVisible();
   await expect(card.locator('.outcome')).toContainText('Browser E2E — checkout');
   await expect(card.locator('.outcome')).toContainText('TypeScript passed');
@@ -131,9 +164,9 @@ test('preview changes after validation are clearly not merged', async () => {
     if (body.action === 'merge') return { status: 409, body: { ok: false, code: 'preview_changed', error: 'Preview changed', commits: ['A newer change'] } };
     return defaultMock(body);
   });
-  await card.getByRole('button').click();
+  await card.locator('button[data-project="imenu"]').click();
   await expect(card.locator('.outcome')).toContainText('Preview changed after validation');
-  await expect(card.getByRole('button')).toHaveText('Retry validation & merge');
+  await expect(card.locator('button[data-project="imenu"]')).toHaveText('Retry validation & merge');
   await expect(card.locator('.commits')).toContainText('A newer change');
   expect(calls.filter(call => call.action === 'merge')).toHaveLength(1);
   await context.close();
@@ -145,11 +178,11 @@ test('lost response checks the existing PR and confirms success without retrying
     if (body.action === 'result') return merged;
     return defaultMock(body);
   });
-  await card.getByRole('button').click();
+  await card.locator('button[data-project="imenu"]').click();
   await expect(card.getByRole('heading', { name: 'Merged successfully' })).toBeVisible();
   expect(calls.filter(call => call.action === 'merge')).toHaveLength(1);
   expect(calls.filter(call => call.action === 'result')).toHaveLength(1);
-  await expect(card.getByRole('button')).toHaveText('Merge new changes');
+  await expect(card.locator('button[data-project="imenu"]')).toHaveText('Merge new changes');
   await expect(card.locator('.outcome')).toContainText('New preview changes');
   await context.close();
 });
@@ -161,13 +194,13 @@ test('unconfirmed result stays honest and Check result only reads GitHub', async
     if (body.action === 'result') return confirm ? merged : { ok: true, merged: false, closed: false, pr: 12 };
     return defaultMock(body);
   });
-  await card.getByRole('button').click();
+  await card.locator('button[data-project="imenu"]').click();
   await expect(card.getByRole('heading', { name: 'Merge result not confirmed' })).toBeVisible({ timeout: 14000 });
-  await expect(card.getByRole('button')).toHaveText('Check merge result');
+  await expect(card.locator('button[data-project="imenu"]')).toHaveText('Check merge result');
   expect(calls.filter(call => call.action === 'merge')).toHaveLength(1);
   if (process.env.MERGE_SCREENSHOTS) await page.screenshot({ path: `${process.env.MERGE_SCREENSHOTS}/unconfirmed.png`, fullPage: true });
   confirm = true;
-  await card.getByRole('button').click();
+  await card.locator('button[data-project="imenu"]').click();
   await expect(card.getByRole('heading', { name: 'Merged successfully' })).toBeVisible();
   expect(calls.filter(call => call.action === 'merge')).toHaveLength(1);
   await context.close();
@@ -187,7 +220,7 @@ test('closed PR is confirmed as not merged', async () => {
     if (body.action === 'result') return { ok: true, merged: false, closed: true, pr: 12 };
     return defaultMock(body);
   });
-  await card.getByRole('button').click();
+  await card.locator('button[data-project="imenu"]').click();
   await expect(card.locator('.outcome')).toContainText('closed without merging');
   await expect(card.locator('.badge')).toHaveText('Not merged');
   await context.close();
@@ -195,10 +228,10 @@ test('closed PR is confirmed as not merged', async () => {
 test('loading error offers a read-only retry, not a merge', async () => {
   let fail = true;
   const { context, card, calls } = await setup(body => body.project === 'imenu' && fail ? { status: 500, body: { ok: false, error: 'GitHub unavailable' } } : defaultMock(body));
-  await expect(card.getByRole('button')).toHaveText('Retry loading changes');
+  await expect(card.locator('button[data-project="imenu"]')).toHaveText('Retry loading changes');
   fail = false;
-  await card.getByRole('button').click();
-  await expect(card.getByRole('button')).toHaveText('Validate & merge');
+  await card.locator('button[data-project="imenu"]').click();
+  await expect(card.locator('button[data-project="imenu"]')).toHaveText('Validate & merge');
   expect(calls.every(call => call.action === 'status')).toBeTruthy();
   await context.close();
 });
@@ -206,10 +239,10 @@ test('projects operate independently and the mobile page has no horizontal overf
   const { context, page, card, calls, errors } = await setup(body => body.action === 'validate'
     ? { status: 202, body: { ...ready, ready: false, pending: true } }
     : status, { viewport: { width: 390, height: 844 } });
-  await card.getByRole('button').click();
-  await expect(card.getByRole('button')).toBeDisabled();
-  await expect(page.locator('[data-id="engravida"] button')).toBeEnabled();
-  await page.locator('[data-id="engravida"] button').click();
+  await card.locator('button[data-project="imenu"]').click();
+  await expect(card.locator('button[data-project="imenu"]')).toBeDisabled();
+  await expect(page.locator('button[data-project="engravida"]')).toBeEnabled();
+  await page.locator('button[data-project="engravida"]').click();
   await expect.poll(() => calls.filter(call => call.action === 'validate').length).toBe(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   expect(errors).toEqual([]);
@@ -245,10 +278,10 @@ test('browser drives the actual function from validation to confirmed squash mer
       return { status: result.statusCode, body: JSON.parse(result.body) };
     });
     context = state.context;
-    await state.card.getByRole('button').click();
+    await state.card.locator('button[data-project="imenu"]').click();
     await expect(state.card.getByRole('heading', { name: 'TypeScript check is running' })).toBeVisible();
     await expect(state.card.getByRole('heading', { name: 'Merged successfully' })).toBeVisible({ timeout: 7000 });
-    await expect(state.card.getByRole('button')).toHaveText('Merged successfully ✓');
+    await expect(state.card.locator('button[data-project="imenu"]')).toHaveText('Merged successfully ✓');
     expect(githubCalls.filter(call => call.method === 'PUT')).toEqual([expect.objectContaining({ route: '/pulls/12/merge', method: 'PUT', body: expect.objectContaining({ merge_method: 'squash', sha: SHA, commit_message: expect.stringContaining('[merge-snapshot:') }) })]);
     expect(state.errors).toEqual([]);
   } finally {

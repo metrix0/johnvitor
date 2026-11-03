@@ -50,6 +50,8 @@
     button { width: 100%; border: 1px solid #d1c5ff; border-radius: 10px; background: #c4b5fd; color: #181222; font: inherit; font-weight: 650; font-size: 14px; padding: 13px 16px; margin-top: 16px; cursor: pointer; transition: background .15s ease; }
     button:hover { background: #d7ccff; }
     button:disabled { background: #24242c; border-color: #35353e; color: #a4a4b0; cursor: default; }
+    button.stop-validation { margin-top: 10px; background: transparent; border-color: #754248; color: var(--red); }
+    button.stop-validation:hover { background: #3c2327; }
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
     .changes { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 18px; font-size: 12px; }
     .changes summary { color: #c6c6cf; cursor: pointer; }
@@ -141,11 +143,11 @@
       try { return JSON.parse(sessionStorage.getItem(RESULT_KEY + id) || "null"); }
       catch { return null; }
     }
-    async function request(project, action, extra = {}) {
+    async function request(project, action, extra = {}, signal) {
       const response = await fetch("/api/merge", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project: project.id, password: mergePassword, action, ...extra }),
-        signal: AbortSignal.timeout(30000)
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000)
       });
       const data = await response.json();
       if (!response.ok || !data.ok) {
@@ -255,7 +257,7 @@
       const busy = ["loading", "validating", "merging", "confirming"].includes(phase);
       const tone = ["merged", "synced"].includes(phase) ? "success" :
         ["failed", "load-error"].includes(phase) ? "error" : busy || phase === "uncertain" ? "active" : "neutral";
-      const labels = { loading: "Loading", ready: "Ready", validating: "Validating", merging: "Merging", confirming: "Confirming", merged: "Merged", synced: "Synced", failed: "Not merged", "load-error": "Unavailable", uncertain: "Unconfirmed" };
+      const labels = { loading: "Loading", ready: "Ready", validating: "Validating", merging: "Merging", confirming: "Confirming", merged: "Merged", synced: "Synced", failed: "Not merged", "load-error": "Unavailable", uncertain: "Unconfirmed", stopped: "Stopped" };
       card.querySelector(".badge").textContent = labels[phase];
       card.querySelector(".badge").dataset.tone = tone;
       const outcome = card.querySelector(".outcome");
@@ -272,9 +274,10 @@
       details.hidden = !options.error;
       details.querySelector("pre").textContent = options.error || "";
       const button = card.querySelector("button");
-      const buttonLabels = { loading: "Loading changes…", ready: "Validate & merge", validating: "Validating TypeScript…", merging: "Squash & merging…", confirming: "Confirming merge…", merged: project.hasChanges ? "Merge new changes" : "Merged successfully ✓", synced: "Already synced ✓", failed: "Retry validation & merge", "load-error": "Retry loading changes", uncertain: "Check merge result" };
+      const buttonLabels = { loading: "Loading changes…", ready: "Validate & merge", validating: "Validating TypeScript…", merging: "Squash & merging…", confirming: "Confirming merge…", merged: project.hasChanges ? "Merge new changes" : "Merged successfully ✓", synced: "Already synced ✓", failed: "Retry validation & merge", "load-error": "Retry loading changes", uncertain: "Check merge result", stopped: "Restart validation & merge" };
       button.textContent = buttonLabels[phase];
       button.disabled = busy || phase === "synced" || (phase === "merged" && !project.hasChanges);
+      card.querySelector(".stop-validation").hidden = phase !== "validating";
       card.setAttribute("aria-busy", String(busy));
       const states = ["waiting", "waiting", "waiting"];
       const notes = ["TypeScript", "Squash into main", "GitHub confirmation"];
@@ -285,6 +288,7 @@
       if (phase === "uncertain") { states[1] = "waiting"; notes[1] = "Not confirmed"; notes[2] = "Unconfirmed"; }
       if (phase === "merged") { states.fill("done"); notes[1] = "Merged into main"; notes[2] = "Merge confirmed"; }
       if (phase === "synced") { notes[0] = "Not needed"; notes[1] = "No changes"; states[2] = "done"; notes[2] = "Already synced"; }
+      if (phase === "stopped") { notes[0] = "Stopped"; notes[1] = "Not started"; notes[2] = "Not merged"; }
       if (phase === "failed") {
         const step = options.step ?? 0;
         if (step === 1) { states[0] = "done"; notes[0] = "Passed"; }
@@ -351,7 +355,13 @@
       showMerged(project);
       await loadCommits(project, true);
     }
-    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const delay = (ms, signal) => new Promise(resolve => {
+      if (signal?.aborted) return resolve();
+      const timer = setTimeout(done, ms);
+      function done() { signal?.removeEventListener("abort", onAbort); resolve(); }
+      function onAbort() { clearTimeout(timer); done(); }
+      signal?.addEventListener("abort", onAbort, { once: true });
+    });
     async function confirmResult(project) {
       render(project, "confirming", "Confirming with GitHub", "The merge request may have completed. Checking the pull request before reporting a result.");
       for (let attempt = 0; attempt < 4; attempt++) {
@@ -373,13 +383,17 @@
       saveResult(project, null);
       project.pr = null; project.prUrl = null; project.checkUrl = null; project.sha = null;
       const started = Date.now();
+      const controller = new AbortController();
+      project.validationController = controller;
       render(project, "validating", "Validating TypeScript", "Preparing the preview → main pull request. Merging begins only after the check passes.");
-      while (Date.now() - started < 15 * 60 * 1000) {
+      while (!controller.signal.aborted && Date.now() - started < 15 * 60 * 1000) {
         let data;
         try {
-          data = await request(project, "validate", project.pr ? { pr: project.pr } : {});
+          data = await request(project, "validate", project.pr ? { pr: project.pr } : {}, controller.signal);
+          if (controller.signal.aborted) return;
           metadata(project, data);
         } catch (error) {
+          if (controller.signal.aborted) return;
           metadata(project, error.data || {});
           const check = error.data?.validation?.typecheck;
           const failureMessage = check?.failedStep
@@ -421,8 +435,9 @@
         render(project, "validating", running ? "TypeScript check is running" : "Waiting for the TypeScript check",
           `${running ? "GitHub is validating the preview changes." : "Waiting for GitHub to start the required check."} The merge will start automatically if it passes. Elapsed: ${duration}.`,
           { checkLabel: running ? "Running" : "Queued" });
-        await delay(3000);
+        await delay(3000, controller.signal);
       }
+      if (controller.signal.aborted) return;
       render(project, "failed", "Validation timed out · not merged", "This page waited 15 minutes without a passing check. Inspect the check on GitHub, then retry. No merge request was sent.");
     }
     function createProject(id, name, repo) {
@@ -443,11 +458,18 @@
         ${deploymentsHtml}
         <details class="error-detail" hidden open><summary>Validation details</summary><pre></pre></details>
         <button type="button" data-project="${id}" disabled>Loading changes…</button>
+        <button type="button" class="stop-validation" hidden>Stop</button>
         <details class="changes" open><summary>Changes to merge</summary><ul class="commits" data-commits="${id}"></ul><p class="empty">Loading changes…</p></details>
         <p class="refresh-note" hidden></p>`;
       document.querySelector("#projects").append(card);
       const project = { id, repo, card, hasChanges: false, busy: false };
       projects.set(id, project);
+      card.querySelector(".stop-validation").addEventListener("click", () => {
+        if (project.phase !== "validating" || !project.validationController) return;
+        project.validationController.abort();
+        render(project, "stopped", "Validation stopped",
+          "Automatic merging was stopped. Any GitHub Actions check already running may continue.");
+      });
       card.querySelector("button").addEventListener("click", async () => {
         if (project.busy) return;
         project.busy = true;
@@ -457,7 +479,7 @@
             await loadCommits(project);
           } else if (project.phase === "uncertain") await confirmResult(project);
           else await startMerge(project);
-        } finally { project.busy = false; }
+        } finally { project.busy = false; project.validationController = null; }
       });
       render(project, "loading", "Loading changes", "Comparing preview with main…");
       return project;
