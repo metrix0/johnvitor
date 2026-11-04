@@ -6,7 +6,7 @@ const KEY = 'enabled';
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
 function isEnabled(value, now = Date.now()) {
-  if (value === 'ON') return true; // Backward compatibility for existing untimed switches.
+  if (value === 'ON') return false; // Untimed legacy state fails closed; new activations have an expiry.
   if (typeof value !== 'string' || !value.startsWith('ON:')) return false;
   const expiresAt = Number(value.slice(3));
   return Number.isSafeInteger(expiresAt) && expiresAt > now;
