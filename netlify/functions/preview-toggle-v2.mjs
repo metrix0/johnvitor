@@ -2,6 +2,15 @@ import { getStore } from '@netlify/blobs';
 
 const STORE = 'preview-deploy-toggle-v2';
 const KEY = 'enabled';
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+
+function isEnabled(value, now = Date.now()) {
+  if (value === 'ON') return true; // Backward compatibility for existing untimed switches.
+  if (typeof value !== 'string' || !value.startsWith('ON:')) return false;
+  const expiresAt = Number(value.slice(3));
+  return Number.isSafeInteger(expiresAt) && expiresAt > now;
+}
+
 const PREVIEW_WORKFLOW_URL = 'https://api.github.com/repos/metrix0/imenu/actions/workflows/deploy-vps-preview.yml/dispatches';
 
 const SECONDARY_PROJECT_MATCH = 'engravida';
@@ -144,11 +153,11 @@ export default async (req) => {
 
     const store = getStore({ name: STORE, consistency: 'strong' });
     const current = await store.get(KEY, { type: 'text' });
-    const next = current === 'ON' ? 'OFF' : 'ON';
+    const next = isEnabled(current) ? 'OFF' : `ON:${Date.now() + FOUR_HOURS_MS}`;
 
     await store.set(KEY, next);
 
-    if (next === 'ON') {
+    if (next !== 'OFF') {
       try {
         await dispatchVpsPreview();
       } catch (error) {
@@ -157,7 +166,7 @@ export default async (req) => {
       }
     }
 
-    return new Response(next, {
+    return new Response(next === 'OFF' ? 'OFF' : 'ON', {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-store'
