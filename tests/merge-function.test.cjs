@@ -112,6 +112,17 @@ test('pending validation exposes queued/running state without merging', async ()
   assert.equal(data.status, 202); assert.equal(data.pending, true); assert.equal(data.validation.typecheck.status, 'in_progress');
   noMerge(calls);
 });
+test('dirty snapshot PR reports merge conflicts instead of waiting for a check', async () => {
+  const calls = setup({
+    '/pulls/12': () => Response.json({ ...SNAPSHOT_PR, mergeable: false, mergeable_state: 'dirty' })
+  });
+  const data = await run('validate', { pr: 12 });
+  assert.equal(data.status, 409);
+  assert.equal(data.code, 'merge_conflict');
+  assert.match(data.error, /merge conflicts/);
+  assert.equal(calls.some(call => call.path.includes('/check-runs')), false);
+  noMerge(calls);
+});
 test('failed validation retains source locations and errors', async () => {
   const calls = setup({
     [`/commits/${SHA}/check-runs`]: () => Response.json({ check_runs: [{ ...check, conclusion: 'failure' }] }),

@@ -158,6 +158,17 @@ test('validation failure stays inline, preserves errors, and sends no merge', as
   if (process.env.MERGE_SCREENSHOTS) await page.screenshot({ path: `${process.env.MERGE_SCREENSHOTS}/failed.png`, fullPage: true });
   await context.close();
 });
+test('merge conflicts stop validation with a useful error and PR link', async () => {
+  const { context, card, calls } = await setup(body => body.action === 'validate'
+    ? { status: 409, body: { ok: false, code: 'merge_conflict', pr: 12, prUrl: ready.prUrl, error: 'GitHub reports merge conflicts between this snapshot and main.' } }
+    : defaultMock(body));
+  await card.locator('button[data-project="imenu"]').click();
+  await expect(card.getByRole('heading', { name: 'Merge conflicts · not merged' })).toBeVisible();
+  await expect(card.locator('.outcome')).toContainText('merge conflicts');
+  await expect(card.getByRole('link', { name: 'Pull request #12' })).toHaveAttribute('href', ready.prUrl);
+  expect(calls.filter(call => call.action === 'merge')).toHaveLength(0);
+  await context.close();
+});
 test('preview changes after validation are clearly not merged', async () => {
   const { context, card, calls } = await setup(body => {
     if (body.action === 'validate') return ready;

@@ -399,7 +399,7 @@
           const failureMessage = check?.failedStep
             ? `GitHub Actions failed at "${check.failedStep}".${check.passedSteps?.includes("Typecheck") ? " TypeScript passed." : ""} See the details below before retrying.`
             : "The required GitHub Actions check did not pass. Inspect the diagnostics, then retry.";
-          render(project, "failed", check?.state === "failure" ? "Validation did not pass · not merged" : "Validation interrupted · not merged",
+          render(project, "failed", error.data?.code === "merge_conflict" ? "Merge conflicts · not merged" : check?.state === "failure" ? "Validation did not pass · not merged" : "Validation interrupted · not merged",
             check?.state === "failure" ? failureMessage : error.message,
             { error: check?.error || (check?.conclusion ? `Check conclusion: ${check.conclusion}` : null) });
           return;

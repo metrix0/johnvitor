@@ -516,6 +516,14 @@ exports.handler = async function(event) {
         error: "Preview changed after validation. Validate the new changes before merging."
       });
     }
+    if (pr.mergeable_state === "dirty") {
+      return json(409, {
+        ok: false,
+        code: "merge_conflict",
+        error: "GitHub reports merge conflicts between this snapshot and main. Resolve the conflicts before validation can start.",
+        ...metadata
+      });
+    }
     const validation = await getMergeValidation(
       repo,
       headSha,
