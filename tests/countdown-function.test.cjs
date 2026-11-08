@@ -24,7 +24,7 @@ test("validates strict date and monetary goal",()=>{
   assert.equal(_test.validDate("2027-02-29"),null);
   assert.equal(_test.validDate("2028-02-29"),"2028-02-29");
   assert.equal(_test.amount("0"),null);
-  assert.equal(_test.amount("12345.67"),12345.5);
+  assert.equal(_test.amount("12345.67"),12345.67);
   assert.equal(_test.amount("1,000"),null);
 });
 test("reports setup without calling Pluggy",async()=>{
