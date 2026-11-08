@@ -24,7 +24,7 @@ test("validates strict date and monetary goal",()=>{
   assert.equal(_test.validDate("2027-02-29"),null);
   assert.equal(_test.validDate("2028-02-29"),"2028-02-29");
   assert.equal(_test.amount("0"),null);
-  assert.equal(_test.amount("12000.50"),12000.5);
+  assert.equal(_test.amount("12345.67"),12345.5);
   assert.equal(_test.amount("1,000"),null);
 });
 test("reports setup without calling Pluggy",async()=>{
@@ -38,18 +38,18 @@ test("reports setup without calling Pluggy",async()=>{
   assert.equal(body.missing.length,5);
 });
 test("uses bank balance, never credit cards, and selects correct account",async()=>{
-  Object.assign(process.env,{COUNTDOWN_VIEW_KEY:secret,PLUGGY_CLIENT_ID:"id",PLUGGY_CLIENT_SECRET:"secret",PLUGGY_ITEM_ID:"item",RHINO_DATE:"2027-02-10",RHINO_GOAL_BRL:"12000"});
+  Object.assign(process.env,{COUNTDOWN_VIEW_KEY:secret,PLUGGY_CLIENT_ID:"id",PLUGGY_CLIENT_SECRET:"secret",PLUGGY_ITEM_ID:"item",RHINO_DATE:"2032-06-21",RHINO_GOAL_BRL:"12345"});
   global.fetch=async (url,opts)=>{
     if(String(url).endsWith("/auth"))return {ok:true,json:async()=>({apiKey:"temporary"})};
     if(String(url).includes("/accounts?"))return {ok:true,json:async()=>({
       totalPages:1,results:[
         {id:"a",type:"CREDIT",currencyCode:"BRL",balance:4500},
-        {id:"b",type:"BANK",currencyCode:"BRL",balance:5600.35,updatedAt:"2026-11-08T12:00:00Z"}
+        {id:"b",type:"BANK",currencyCode:"BRL",balance:5600.37,updatedAt:"2026-11-08T12:00:00Z"}
       ]})};
     throw Error("unexpected route");
   };
   const r=await handler(request(secret)),body=json(r);
-  assert.equal(body.bankState,"ok");assert.equal(body.balance,5600.35);
-  assert.equal(body.goal,12000);assert.equal(body.surgeryDate,"2027-02-10");
+  assert.equal(body.bankState,"ok");assert.equal(body.balance,5600.37);
+  assert.equal(body.goal,12345);assert.equal(body.surgeryDate,"2032-06-21");
   assert.equal(r.headers["Cache-Control"].includes("no-store"),true);
 });

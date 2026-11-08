@@ -152,10 +152,17 @@
     load();
   });
   el("refresh").addEventListener("click",load);
-  try{access=sessionStorage.getItem(keyName)||""}catch(_){}
-  if(access)load();
+  // The #key= fragment stays in the browser and is NOT included in HTTP requests.
+  // Notion can load this private embed URL without asking for the key every time.
+  var embedKey="";
+  try{
+    embedKey=new URLSearchParams(location.hash.slice(1)).get("key")||"";
+  }catch(_){}
+  try{access=embedKey||sessionStorage.getItem(keyName)||""}catch(_){access=embedKey}
+  if(access){el("login-form").hidden=true;load()}
   renderClock();
   setInterval(renderClock,60000);
+  setInterval(function(){if(access)load()},30*60*1000);
 })();
 </script>
 </body>
