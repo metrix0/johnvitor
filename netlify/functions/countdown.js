@@ -39,39 +39,34 @@ async function pluggy(endpoint, options) {
   if (!response.ok) throw new Error("Pluggy HTTP " + response.status);
   return response.json();
 }
-async function getBankAccount(env) {
+async function getInvestments(env) {
   const auth = await pluggy("/auth", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ clientId: env.PLUGGY_CLIENT_ID, clientSecret: env.PLUGGY_CLIENT_SECRET })
   });
   if (!auth || !auth.apiKey) throw new Error("Pluggy authentication failed");
-  const accounts = [];
-  for (let page = 1; page <= 10; page++) {
-    const query = new URLSearchParams({ itemId: env.PLUGGY_ITEM_ID, type: "BANK", page: String(page) });
-    const result = await pluggy("/accounts?" + query.toString(), {
+  const investments = [];
+  for (let page = 1; page <= 20; page++) {
+    const query = new URLSearchParams({ itemId: env.PLUGGY_ITEM_ID, page: String(page), pageSize: "500" });
+    const result = await pluggy("/investments?" + query.toString(), {
       headers: { "X-API-KEY": auth.apiKey }
     });
-    if (!Array.isArray(result.results)) throw new Error("Unexpected accounts response");
-    accounts.push(...result.results);
+    if (!Array.isArray(result.results)) throw new Error("Unexpected investments response");
+    investments.push(...result.results);
     if (!result.totalPages || page >= result.totalPages) break;
+    if (page === 20) throw new Error("Investment pagination limit exceeded");
   }
-  const bankAccounts = accounts.filter(a =>
-    a && a.type === "BANK" && a.currencyCode === "BRL" && Number.isFinite(a.balance)
+  // The investment balance is NET of tax/fees. Do not include checking,
+  // savings/current accounts, credit card limits or withdrawn/pending positions.
+  const active = investments.filter(position =>
+    position && position.currencyCode === "BRL" &&
+    (position.status == null || position.status === "ACTIVE") &&
+    typeof position.balance === "number" && Number.isFinite(position.balance)
   );
-  const selected = env.PLUGGY_ACCOUNT_ID
-    ? bankAccounts.find(a => a.id === env.PLUGGY_ACCOUNT_ID)
-    : bankAccounts.length === 1 ? bankAccounts[0] : null;
-  if (!selected) return {
-    bankState: bankAccounts.length === 0 ? "empty" : "choose_account",
-    balance: null,
-    updatedAt: null
-  };
-  return {
-    bankState: "ok",
-    balance: selected.balance,
-    updatedAt: selected.updatedAt || null
-  };
+  if (!active.length) return { bankState: "empty", balance: null };
+  const sum = Math.round(active.reduce((total, position) => total + position.balance, 0) * 100) / 100;
+  return { bankState: "ok", balance: sum };
 }
 
 exports.handler = async function handler(event) {
@@ -81,7 +76,6 @@ exports.handler = async function handler(event) {
   if (!matchesAccessKey(authorization, env.COUNTDOWN_VIEW_KEY)) {
     return reply(401, { message: "Acesso não autorizado." });
   }
-
   const missing = [];
   const surgeryDate = validDate(env.RHINO_DATE);
   const goal = amount(env.RHINO_GOAL_BRL);
@@ -90,25 +84,14 @@ exports.handler = async function handler(event) {
   for (const key of ["PLUGGY_CLIENT_ID", "PLUGGY_CLIENT_SECRET", "PLUGGY_ITEM_ID"]) {
     if (!env[key]) missing.push(key);
   }
-  const result = {
-    surgeryDate,
-    goal,
-    balance: null,
-    updatedAt: null,
-    bankState: "needs_setup",
-    missing
-  };
+  const result = { surgeryDate, goal, balance: null, bankState: "needs_setup", missing };
   if (missing.some(key => key.startsWith("PLUGGY_"))) return reply(200, result);
   try {
-    const bank = await getBankAccount(env);
-    return reply(200, { ...result, ...bank });
+    return reply(200, { ...result, ...(await getInvestments(env)) });
   } catch (_) {
-    return reply(200, {
-      ...result,
-      bankState: "error",
-      message: "Falha ao consultar o C6. Verifique o Meu Pluggy e o consentimento bancário."
-    });
+    return reply(200, { ...result, bankState: "error",
+      message: "Falha ao consultar investimentos. Confira o acesso do Meu Pluggy e a permissão de investimentos." });
   }
 };
 
-exports._test = { matchesAccessKey, validDate, amount, getBankAccount };
+exports._test = { matchesAccessKey, validDate, amount, getInvestments };

@@ -1,68 +1,84 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="referrer" content="no-referrer">
-  <meta name="robots" content="noindex,nofollow,noarchive">
-  <meta name="theme-color" content="#fff9fc">
-  <title>Rinoplastia · Meu objetivo</title>
-  <style>
-    :root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#4c3d4b;background:#fff9fc}
-    *{box-sizing:border-box}
-    body{margin:0;padding:14px;min-height:100vh;display:flex;align-items:flex-start;justify-content:center}
-    .card{width:min(100%,460px);background:#fff;border:1px solid #eee4ee;box-shadow:0 10px 35px #b39caa14;border-radius:21px;padding:22px 22px 18px}
-    .eyebrow{letter-spacing:.15em;color:#a685a0;font-weight:750;font-size:10px}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .heart{font-size:21px;color:#b3799e}
-    h1{margin:14px 0 0;font-size:13px;font-weight:570;color:#8b7d89}
-    .clock{font-size:clamp(38px,9vw,53px);font-weight:760;line-height:1.13;letter-spacing:-.065em;color:#4f344b;min-height:60px;font-variant-numeric:tabular-nums}
-    .clock small{font-size:14px;font-weight:500;letter-spacing:0;color:#947e91}
-    .date-label{font-size:12px;color:#ac99a8;min-height:18px;margin:3px 0 17px}
-    .divider{border:0;border-top:1px solid #f1e9f0;margin:0 0 17px}
-    .money{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .label{color:#9e8b9a;font-size:11px;margin-bottom:7px}
-    .value{font-size:clamp(19px,5vw,23px);font-weight:720;letter-spacing:-.035em;white-space:nowrap;font-variant-numeric:tabular-nums}
-    .value.pink{color:#ad6b91}
-    .progress-track{height:9px;background:#f4ebf1;border-radius:20px;overflow:hidden;margin-top:18px}
-    .progress-fill{height:100%;background:linear-gradient(90deg,#b585af,#db91a6);width:0%;border-radius:20px;transition:width .5s ease}
-    .progress-text{font-size:11px;color:#a38c9d;margin-top:9px;min-height:16px}
-    .foot{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10.5px;color:#ad9ca9}
-    .foot button{border:0;background:none;color:#946e91;padding:5px;cursor:pointer;font-size:11px}
-    .foot button:hover{text-decoration:underline}
-    .message{font-size:12px;color:#8c7187;margin-top:12px;line-height:1.5;min-height:18px}
-    .login{margin-top:18px;padding:15px;background:#faf4f8;border:1px solid #f1e4ed;border-radius:15px}
-    .login p{font-size:12px;color:#826b7d;margin:0 0 12px;line-height:1.45}
-    .login label{display:block;color:#80697c;font-size:11px;margin:0 0 6px}
-    .login-controls{display:flex;gap:8px}
-    .login input{min-width:0;flex:1;padding:10px 11px;border-radius:9px;border:1px solid #e2cfdc;background:#fff;color:#503b4b;font:inherit;font-size:13px}
-    .login button{background:#9c6d95;color:white;border:0;border-radius:9px;padding:9px 13px;cursor:pointer;font-size:12px;font-weight:700}
-    .login button:disabled{opacity:.6}
-    .error{color:#a74d6d}
-    [hidden]{display:none!important}
-    @media (max-width:370px){body{padding:8px}.card{padding:18px 15px}.money{gap:8px}}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="theme-color" content="#fff9fc">
+<title>Rinoplastia · Countdown</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#503c4d;background:#fff9fc;color-scheme:light}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;min-height:0}
+body{padding:8px;overflow-x:hidden}
+.card{width:100%;margin:auto;background:#fff;border:1px solid #eee4ee;box-shadow:0 6px 24px #b39caa12;border-radius:17px;padding:19px 22px 17px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:25px;align-items:center}
+.countdown{border-right:1px solid #eee7ed;padding-right:22px;min-width:0}
+.label{font-size:12px;color:#9a8997;line-height:1.3}
+h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
+.clock{font-size:clamp(18px,3.1vw,28px);letter-spacing:-.055em;font-weight:760;color:#563b50;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+.date-label{font-size:10.5px;margin-top:7px;color:#ae9eaa}
+.finances{min-width:0}
+.amount-main{font-size:clamp(27px,4.8vw,39px);font-weight:790;letter-spacing:-.06em;color:#ad6b91;line-height:1.18;font-variant-numeric:tabular-nums;white-space:nowrap;margin:3px 0 11px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.metric-value{font-size:clamp(14px,2.5vw,18px);font-weight:720;letter-spacing:-.04em;line-height:1.22;white-space:nowrap;color:#5e4657;font-variant-numeric:tabular-nums;margin-top:3px}
+.metric .label{font-size:10px}
+.progress-track{height:6px;background:#f3e9f0;border-radius:9px;overflow:hidden;margin-top:13px}
+.progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#b585af,#db91a6);border-radius:9px;transition:width .4s ease}
+.message{font-size:11px;color:#8c7187;margin-top:8px;line-height:1.45}
+.message:empty{display:none}
+.error{color:#a74d6d}
+.login{margin-top:11px;padding:12px;background:#faf4f8;border:1px solid #f1e4ed;border-radius:10px}
+.login p{font-size:11px;color:#826b7d;margin:0 0 8px;line-height:1.35}
+.login-controls{display:flex;gap:7px}
+.login input{min-width:0;flex:1;padding:9px;border-radius:7px;border:1px solid #e2cfdc;background:#fff;font:inherit;font-size:12px}
+.login button{background:#9c6d95;color:#fff;border:0;border-radius:7px;padding:8px 10px;cursor:pointer;font-size:12px}
+[hidden]{display:none!important}
+@media (max-width:520px){
+ .card{padding:15px 13px;border-radius:14px}
+ .layout{grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:11px}
+ .countdown{padding-right:10px}
+ .clock{font-size:clamp(17px,4.3vw,23px);white-space:normal}
+ .amount-main{font-size:clamp(21px,5.5vw,30px)}
+ .metrics{gap:5px}
+ .metric-value{font-size:clamp(12px,3vw,15px)}
+ .label,h1{font-size:10.5px}
+ .date-label{font-size:9px}
+ .metric .label{font-size:9px}
+}
+@media (max-width:335px){
+ .layout{gap:8px}
+ .clock{font-size:17px}
+ .amount-main{font-size:20px}
+ .metric-value{font-size:12px}
+ .card{padding:12px 9px}
+}
+</style>
 </head>
 <body>
-<main class="card" aria-label="Rinoplastia e poupança">
-  <div class="top"><span class="eyebrow">✦ MEU OBJETIVO</span><span class="heart" aria-hidden="true">♡</span></div>
-  <h1>Dias até a rinoplastia</h1>
-  <div class="clock" id="clock" aria-live="polite">—</div>
-  <div class="date-label" id="date-label">Aguardando configuração</div>
-  <hr class="divider">
-  <div class="money">
-    <div><div class="label">Saldo C6 Bank</div><div class="value" id="balance">R$ —</div></div>
-    <div><div class="label">Valor faltante</div><div class="value pink" id="remaining">R$ —</div></div>
+<main class="card" aria-label="Rinoplastia e investimentos">
+  <div class="layout">
+    <section class="countdown" aria-label="Contagem regressiva">
+      <h1>Dias até a rinoplastia</h1>
+      <div class="clock" id="clock" aria-live="polite">—</div>
+      <div class="date-label" id="date-label">Aguardando configuração</div>
+    </section>
+    <section class="finances" aria-label="Investimentos e meta">
+      <div class="label">Valor faltante</div>
+      <div class="amount-main" id="remaining">R$ —</div>
+      <div class="metrics">
+        <div class="metric"><div class="label">Investimento atual</div><div class="metric-value" id="balance">R$ —</div></div>
+        <div class="metric"><div class="label">Meta</div><div class="metric-value" id="goal">R$ —</div></div>
+      </div>
+      <div class="progress-track" role="progressbar" id="progress" aria-label="Progresso até a meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div></div>
+    </section>
   </div>
-  <div class="progress-track" role="progressbar" id="progress" aria-label="Progresso até a meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div></div>
-  <div class="progress-text" id="progress-text">Meta ainda não configurada</div>
   <div class="message" id="message" aria-live="polite"></div>
   <form class="login" id="login-form">
-    <p>🔒 Os dados financeiros são privados. Insira a chave de acesso para carregar a contagem e o saldo.</p>
-    <label for="access">Chave de acesso privada</label>
-    <div class="login-controls"><input id="access" type="password" required autocomplete="off" spellcheck="false" placeholder="Sua chave de acesso"><button id="unlock" type="submit">Abrir</button></div>
+    <p>Para visualizar, use seu link privado do Notion ou insira a chave de acesso.</p>
+    <div class="login-controls"><input id="access" type="password" required autocomplete="off" spellcheck="false" placeholder="Chave de acesso" aria-label="Chave de acesso"><button type="submit">Abrir</button></div>
   </form>
-  <div class="foot"><span id="updated">Integração C6 via Meu Pluggy</span><button id="refresh" type="button" hidden>Atualizar</button></div>
 </main>
 <script>
 (function(){
@@ -73,91 +89,76 @@
   var surgeryDate=null;
   var nf=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
   var el=function(id){return document.getElementById(id)};
-  var formatMoney=function(value){return Number.isFinite(value)?nf.format(value):"R$ —"};
+  var money=function(value){return Number.isFinite(value)?nf.format(value):"R$ —"};
   function getToday(){
     var parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
-    var obj={};
-    parts.forEach(function(part){obj[part.type]=part.value});
+    var obj={};parts.forEach(function(part){obj[part.type]=part.value});
     return {y:+obj.year,m:+obj.month,d:+obj.day};
   }
   function parseYMD(value){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(value||""))return null;
-    var a=value.split("-").map(Number),dt=new Date(Date.UTC(a[0],a[1]-1,a[2]));
-    return dt.getUTCFullYear()===a[0]&&dt.getUTCMonth()===a[1]-1&&dt.getUTCDate()===a[2]?{y:a[0],m:a[1],d:a[2]}:null;
+    var a=value.split("-").map(Number),d=new Date(Date.UTC(a[0],a[1]-1,a[2]));
+    return d.getUTCFullYear()===a[0]&&d.getUTCMonth()===a[1]-1&&d.getUTCDate()===a[2]?{y:a[0],m:a[1],d:a[2]}:null;
   }
   function dayNumber(date){return Date.UTC(date.y,date.m-1,date.d)/86400000}
   function addMonths(start,count){
-    var monthIndex=start.y*12+start.m-1+count;
-    var y=Math.floor(monthIndex/12),m=monthIndex%12+1;
-    var last=new Date(Date.UTC(y,m,0)).getUTCDate();
-    return {y:y,m:m,d:Math.min(start.d,last)};
+    var index=start.y*12+start.m-1+count,y=Math.floor(index/12),m=index%12+1;
+    return {y:y,m:m,d:Math.min(start.d,new Date(Date.UTC(y,m,0)).getUTCDate())};
   }
   function renderClock(){
     var end=parseYMD(surgeryDate);
-    if(!end){el("clock").textContent="—";el("date-label").textContent="Defina RHINO_DATE para iniciar";return}
+    if(!end){el("clock").textContent="—";el("date-label").textContent="Data não configurada";return}
     var today=getToday(),days=dayNumber(end)-dayNumber(today);
-    if(days<0){el("clock").textContent="Dia especial ✨";el("date-label").textContent="A data escolhida já passou";return}
-    if(days===0){el("clock").textContent="É hoje! ♡";el("date-label").textContent="Seu grande dia chegou";return}
-    var months=(end.y-today.y)*12+(end.m-today.m);
-    var anchor=addMonths(today,months);
+    if(days<0){el("clock").textContent="Data já passou";el("date-label").textContent="";return}
+    if(days===0){el("clock").textContent="É hoje!";el("date-label").textContent="";return}
+    var months=(end.y-today.y)*12+(end.m-today.m),anchor=addMonths(today,months);
     if(dayNumber(anchor)>dayNumber(end)){months--;anchor=addMonths(today,months)}
     var remainingDays=dayNumber(end)-dayNumber(anchor);
-    el("clock").textContent=months>0?months+"m "+remainingDays+"d":days+"d";
-    el("clock").setAttribute("aria-label",months>0?months+" meses e "+remainingDays+" dias":days+" dias");
-    el("date-label").textContent=days+" dias no total · "+new Intl.DateTimeFormat("pt-BR",{day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(end.y,end.m-1,end.d)));
+    var parts=[];
+    if(months>0)parts.push(months+" "+(months===1?"mês":"meses"));
+    if(remainingDays>0 || months===0)parts.push(remainingDays+" "+(remainingDays===1?"dia":"dias"));
+    el("clock").textContent=parts.join(" e ");
+    el("date-label").textContent=new Intl.DateTimeFormat("pt-BR",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(end.y,end.m-1,end.d)));
   }
-  function setMsg(message,error){el("message").textContent=message||"";el("message").classList.toggle("error",!!error)}
-  function update(payload){
-    surgeryDate=payload.surgeryDate||null;renderClock();
-    var balance=payload.balance,goal=payload.goal;
-    el("balance").textContent=formatMoney(balance);
-    el("remaining").textContent=Number.isFinite(goal)&&Number.isFinite(balance)?formatMoney(Math.max(0,goal-balance)):"R$ —";
-    var percent=Number.isFinite(goal)&&goal>0&&Number.isFinite(balance)?Math.max(0,Math.min(100,Math.max(balance,0)/goal*100)):0;
-    el("progress-fill").style.width=percent+"%";
-    el("progress").setAttribute("aria-valuenow",String(Math.round(percent)));
-    el("progress-text").textContent=Number.isFinite(goal)?(Number.isFinite(balance)?Math.round(percent)+"% da meta de "+formatMoney(goal):"Meta: "+formatMoney(goal)):"Defina RHINO_GOAL_BRL para calcular";
-    var stamp=payload.updatedAt?new Date(payload.updatedAt):null;
-    el("updated").textContent=stamp&&!isNaN(stamp.valueOf())?"C6 · atualizado "+new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short",timeZone:"America/Sao_Paulo"}).format(stamp):"C6 · sincronização aprox. diária";
-    if(payload.bankState==="ok")setMsg("");
-    else if(payload.bankState==="needs_setup")setMsg("Configuração pendente: "+payload.missing.join(", "));
-    else if(payload.bankState==="choose_account")setMsg("Mais de uma conta bancária encontrada. Configure PLUGGY_ACCOUNT_ID com a conta desejada.");
-    else if(payload.bankState==="empty")setMsg("Nenhuma conta bancária disponível. Verifique a conexão ou renove o consentimento no Meu Pluggy.");
-    else setMsg(payload.message||"Não foi possível atualizar o saldo neste momento.",true);
+  function message(text,isError){el("message").textContent=text||"";el("message").classList.toggle("error",!!isError)}
+  function update(data){
+    surgeryDate=data.surgeryDate||null;renderClock();
+    var balance=data.balance,goal=data.goal;
+    el("balance").textContent=money(balance);
+    el("goal").textContent=money(goal);
+    el("remaining").textContent=Number.isFinite(goal)&&Number.isFinite(balance)?money(Math.max(0,goal-balance)):"R$ —";
+    var progress=Number.isFinite(goal)&&goal>0&&Number.isFinite(balance)?Math.max(0,Math.min(100,Math.max(balance,0)/goal*100)):0;
+    el("progress-fill").style.width=progress+"%";
+    el("progress").setAttribute("aria-valuenow",String(Math.round(progress)));
+    if(data.bankState==="ok")message("");
+    else if(data.bankState==="needs_setup")message("Configuração pendente: "+data.missing.join(", "));
+    else if(data.bankState==="empty")message("Nenhum investimento ativo em reais disponível nesta conexão. Confira as permissões de investimentos do Meu Pluggy.");
+    else message(data.message||"Não foi possível consultar os investimentos.",true);
   }
   async function load(){
     if(!access)return;
-    el("refresh").disabled=true;
-    setMsg("Consultando os dados...");
+    message("Consultando investimentos...");
     try{
       var response=await fetch(api,{method:"GET",headers:{"Authorization":"Bearer "+access},cache:"no-store"});
-      var payload=await response.json().catch(function(){return {}});
+      var data=await response.json().catch(function(){return {}});
       if(response.status===401){
         access="";
         try{sessionStorage.removeItem(keyName)}catch(_){}
-        el("login-form").hidden=false;el("refresh").hidden=true;
-        el("access").value="";
-        setMsg("Chave inválida. Tente novamente.",true);
+        el("login-form").hidden=false;el("access").value="";
+        message("Chave inválida. Confira o link privado.",true);
         return;
       }
-      if(!response.ok)throw new Error(payload.message||"Não foi possível consultar os dados.");
-      el("login-form").hidden=true;el("refresh").hidden=false;
-      update(payload);
-    }catch(error){setMsg(error.message||"Sem conexão no momento.",true)}
-    finally{el("refresh").disabled=false}
+      if(!response.ok)throw new Error(data.message||"Erro ao consultar investimentos.");
+      el("login-form").hidden=true;update(data);
+    }catch(error){message(error.message||"Sem conexão no momento.",true)}
   }
   el("login-form").addEventListener("submit",function(e){
-    e.preventDefault();
-    access=el("access").value.trim();
+    e.preventDefault();access=el("access").value.trim();
     try{sessionStorage.setItem(keyName,access)}catch(_){}
     load();
   });
-  el("refresh").addEventListener("click",load);
-  // The #key= fragment stays in the browser and is NOT included in HTTP requests.
-  // Notion can load this private embed URL without asking for the key every time.
   var embedKey="";
-  try{
-    embedKey=new URLSearchParams(location.hash.slice(1)).get("key")||"";
-  }catch(_){}
+  try{embedKey=new URLSearchParams(location.hash.slice(1)).get("key")||""}catch(_){}
   try{access=embedKey||sessionStorage.getItem(keyName)||""}catch(_){access=embedKey}
   if(access){el("login-form").hidden=true;load()}
   renderClock();
