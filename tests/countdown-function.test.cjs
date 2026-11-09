@@ -124,14 +124,74 @@ test("polling Pluggy item status distinguishes completion and in-progress update
   current = "LOGIN_ERROR";
   assert.equal(body(await poll()).syncState, "error");
 });
-test("Pluggy refresh frequency limit is displayed as a safe user message", async () => {
+test("Pluggy frequency restriction falls back to scoped Connect token", async () => {
+  env();
+  const calls = [];
+  global.fetch = async (url, options) => {
+    calls.push({ url: String(url), options });
+    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
+    if (String(url).endsWith("/connect_token")) {
+      assert.equal(options.method, "POST");
+      assert.deepEqual(JSON.parse(options.body), { itemId: "c6-item" });
+      assert.equal(options.headers["X-API-KEY"], "test-key");
+      return { ok: true, json: async () => ({ accessToken: "scoped-test-token" }) };
+    }
+    return {
+      ok: false, status: 409,
+      json: async () => ({ code: 409, codeDescription: "CLIENT_IS_UPDATING_BEFORE_ALLOWED_FREQUENCY" })
+    };
+  };
+  const response = await handler(request(secret, "POST"));
+  assert.equal(response.statusCode, 200);
+  assert.equal(body(response).refreshState, "connect_required");
+  assert.equal(body(response).itemId, "c6-item");
+  assert.equal(body(response).connectToken, "scoped-test-token");
+  assert.equal(calls.length, 3);
+  assert.equal(response.body.includes("test-key"), false);
+  assert.equal(response.body.includes("secret"), false);
+});
+test("Pluggy requires reauthorization when previous login failed", async () => {
   env();
   global.fetch = async url => {
     if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
-    return { ok: false, status: 409, json: async () => ({ codeDescription: "CLIENT_IS_UPDATING_BEFORE_ALLOWED_FREQUENCY" }) };
+    if (String(url).endsWith("/connect_token")) return { ok: true, json: async () => ({ accessToken: "test-token" }) };
+    return { ok: false, status: 400, json: async () => ({ codeDescription: "LAST_EXECUTION_HAD_LOGIN_ERROR" }) };
   };
   const response = await handler(request(secret, "POST"));
-  assert.equal(response.statusCode, 429);
-  assert.match(body(response).message, /Aguarde/);
+  assert.equal(body(response).refreshState, "connect_required");
+});
+test("Pluggy item already syncing is not retriggered", async () => {
+  env();
+  const calls = [];
+  global.fetch = async (url, options) => {
+    calls.push(String(url));
+    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
+    return { ok: false, status: 400, json: async () => ({ codeDescription: "ITEM_ALREADY_UPDATING" }) };
+  };
+  const response = await handler(request(secret, "POST"));
+  assert.equal(response.statusCode, 202);
+  assert.equal(body(response).refreshState, "started");
+  assert.equal(calls.length, 2);
+});
+test("Pluggy error is specific, safe and never leaks upstream secrets", async () => {
+  env();
+  global.fetch = async url => {
+    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
+    return { ok: false, status: 409, json: async () => ({ codeDescription: "CLIENT_HAS_ITEM_UPDATES_DISABLED", message: "secret should not show" }) };
+  };
+  const response = await handler(request(secret, "POST"));
+  assert.equal(response.statusCode, 409);
+  assert.match(body(response).message, /desativou/);
   assert.equal(response.body.includes("secret"), false);
+});
+test("unexpected Pluggy errors show sanitized code instead of misleading generic message", async () => {
+  env();
+  global.fetch = async url => {
+    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
+    return { ok: false, status: 400, json: async () => ({ codeDescription: "NEW_ERROR_CODE", message: "DO NOT LEAK" }) };
+  };
+  const response = await handler(request(secret, "POST"));
+  assert.equal(response.statusCode, 502);
+  assert.match(body(response).message, /NEW_ERROR_CODE/);
+  assert.equal(response.body.includes("DO NOT LEAK"), false);
 });
