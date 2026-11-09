@@ -34,7 +34,7 @@ test("requires access key without exposing financial data", async () => {
   env();
   assert.equal((await handler({ httpMethod: "GET", headers: {} })).statusCode, 401);
   assert.equal((await handler(request("bad"))).statusCode, 401);
-  assert.equal((await handler({ httpMethod: "POST", headers: {} })).statusCode, 405);
+  assert.equal((await handler({ httpMethod: "PUT", headers: {} })).statusCode, 405);
 });
 test("rejects weak configured access keys", async () => {
   env(); process.env.COUNTDOWN_VIEW_KEY = "weak";
