@@ -5,7 +5,9 @@ const { handler, _test } = require("../netlify/functions/countdown.js");
 const secret = "test-only-private-access-token-long-enough";
 const original = { ...process.env };
 const originalFetch = global.fetch;
-const request = key => ({ httpMethod: "GET", headers: { authorization: "Bearer " + key } });
+const request = (key, method = "GET", queryStringParameters) => ({
+  httpMethod: method, headers: { authorization: "Bearer " + key }, queryStringParameters
+});
 const body = response => JSON.parse(response.body);
 test.after(() => { process.env = original; global.fetch = originalFetch; });
 function env() {
@@ -83,5 +85,53 @@ test("reports Pluggy failures without leaking credentials", async () => {
   env(); global.fetch = async () => ({ ok: false, status: 403 });
   const response = await handler(request(secret));
   assert.equal(body(response).bankState, "error");
+  assert.equal(response.body.includes("secret"), false);
+});
+
+test("manual refresh requires authentication and calls Pluggy PATCH without exposing credentials", async () => {
+  env();
+  const calls = [];
+  global.fetch = async (url, options) => {
+    calls.push({ url: String(url), options });
+    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
+    assert.equal(String(url), "https://api.pluggy.ai/items/c6-item");
+    assert.equal(options.method, "PATCH");
+    assert.equal(options.headers["X-API-KEY"], "test-key");
+    assert.equal(options.body, "{}");
+    return { ok: true, json: async () => ({ status: "UPDATING" }) };
+  };
+  assert.equal((await handler(request("bad", "POST"))).statusCode, 401);
+  assert.equal(calls.length, 0);
+  const response = await handler(request(secret, "POST"));
+  assert.equal(response.statusCode, 202);
+  assert.equal(body(response).refreshState, "started");
+  assert.equal(calls.length, 2);
+  assert.equal(response.body.includes("test-key"), false);
+});
+test("polling Pluggy item status distinguishes completion and in-progress updates", async () => {
+  env();
+  let current = "UPDATING";
+  global.fetch = async (url, options) => {
+    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
+    assert.equal(String(url), "https://api.pluggy.ai/items/c6-item");
+    assert.equal(options.headers["X-API-KEY"], "test-key");
+    return { ok: true, json: async () => ({ status: current }) };
+  };
+  const poll = () => handler(request(secret, "GET", { syncStatus: "1" }));
+  assert.equal(body(await poll()).syncState, "pending");
+  current = "UPDATED";
+  assert.equal(body(await poll()).syncState, "completed");
+  current = "LOGIN_ERROR";
+  assert.equal(body(await poll()).syncState, "error");
+});
+test("Pluggy refresh frequency limit is displayed as a safe user message", async () => {
+  env();
+  global.fetch = async url => {
+    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
+    return { ok: false, status: 409, json: async () => ({ codeDescription: "CLIENT_IS_UPDATING_BEFORE_ALLOWED_FREQUENCY" }) };
+  };
+  const response = await handler(request(secret, "POST"));
+  assert.equal(response.statusCode, 429);
+  assert.match(body(response).message, /Aguarde/);
   assert.equal(response.body.includes("secret"), false);
 });
