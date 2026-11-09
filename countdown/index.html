@@ -13,7 +13,7 @@
 html,body{margin:0;width:100%;min-height:0}
 body{padding:8px;overflow-x:hidden}
 .card{position:relative;width:100%;margin:auto;background:#fff;border:1px solid #eee4ee;box-shadow:0 6px 24px #b39caa12;border-radius:17px;padding:19px 22px 17px}
-.refresh-button{position:absolute;top:7px;right:7px;display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:transparent;color:#aa98a6;cursor:pointer}
+.refresh-button{position:absolute;bottom:7px;right:7px;display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:transparent;color:#aa98a6;cursor:pointer}
 .refresh-button:hover{background:#faf2f7;color:#8e6587}
 .refresh-button:focus-visible{outline:2px solid #9c6d95;outline-offset:1px}
 .refresh-button:disabled{opacity:.65;cursor:default}
@@ -164,6 +164,54 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
     }catch(error){message(error.message||"Sem conexão no momento.",true)}
   }
   var refreshing=false;
+  var pluggyScriptPromise=null;
+  function finishRefresh(){
+    refreshing=false;
+    var button=el("refresh-button");
+    button.disabled=false;
+    button.classList.remove("is-loading");
+  }
+  function loadPluggyConnect(){
+    if(window.PluggyConnect)return Promise.resolve();
+    if(!pluggyScriptPromise){
+      pluggyScriptPromise=new Promise(function(resolve,reject){
+        var script=document.createElement("script");
+        script.src="https://cdn.pluggy.ai/pluggy-connect/v2.3.1/pluggy-connect.js";
+        script.onload=function(){window.PluggyConnect?resolve():reject(new Error("Pluggy Connect indisponível."))};
+        script.onerror=function(){reject(new Error("Não foi possível carregar o Pluggy Connect."))};
+        document.head.appendChild(script);
+      }).catch(function(error){pluggyScriptPromise=null;throw error});
+    }
+    return pluggyScriptPromise;
+  }
+  async function openPluggyConnect(result){
+    await loadPluggyConnect();
+    var done=false;
+    function closeWithMessage(text,isError){
+      if(done)return;
+      done=true;
+      message(text,isError);
+      finishRefresh();
+    }
+    var widget=new window.PluggyConnect({
+      connectToken:result.connectToken,
+      updateItem:result.itemId,
+      theme:"light",
+      onSuccess:async function(){
+        if(done)return;
+        done=true;
+        message("Conexão atualizada. Consultando investimentos...");
+        try{await load()}finally{finishRefresh()}
+      },
+      onError:function(){
+        closeWithMessage("Não foi possível concluir a sincronização. Confira a conexão no Meu Pluggy.",true);
+      },
+      onClose:function(){
+        closeWithMessage("Atualização cancelada.",false);
+      }
+    });
+    widget.init();
+  }
   async function refreshPluggy(){
     if(!access||refreshing)return;
     refreshing=true;
@@ -171,10 +219,17 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
     button.disabled=true;
     button.classList.add("is-loading");
     message("Solicitando atualização ao banco...");
+    var widgetOpened=false;
     try{
       var response=await fetch(api,{method:"POST",headers:{"Authorization":"Bearer "+access},cache:"no-store"});
       var result=await response.json().catch(function(){return {}});
       if(!response.ok)throw new Error(result.message||"Não foi possível iniciar a atualização.");
+      if(result.refreshState==="connect_required"){
+        message("Confirme a atualização na janela do Pluggy...");
+        await openPluggyConnect(result);
+        widgetOpened=true;
+        return;
+      }
       message("Sincronizando com o banco...");
       for(var attempt=0;attempt<24;attempt++){
         await new Promise(function(resolve){setTimeout(resolve,5000)});
@@ -186,7 +241,7 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
       }
       message("O banco ainda está sincronizando. Os dados serão atualizados na próxima consulta.");
     }catch(error){message(error.message||"Não foi possível atualizar os investimentos.",true)}
-    finally{refreshing=false;button.disabled=false;button.classList.remove("is-loading")}
+    finally{if(!widgetOpened)finishRefresh()}
   }
   el("refresh-button").addEventListener("click",refreshPluggy);
   el("login-form").addEventListener("submit",function(e){
