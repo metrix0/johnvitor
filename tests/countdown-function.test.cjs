@@ -88,25 +88,35 @@ test("reports Pluggy failures without leaking credentials", async () => {
   assert.equal(response.body.includes("secret"), false);
 });
 
-test("manual refresh requires authentication and calls Pluggy PATCH without exposing credentials", async () => {
+test("manual refresh uses a scoped Pluggy Connect token, not PATCH /items", async () => {
   env();
   const calls = [];
   global.fetch = async (url, options) => {
     calls.push({ url: String(url), options });
     if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
-    assert.equal(String(url), "https://api.pluggy.ai/items/c6-item");
-    assert.equal(options.method, "PATCH");
+    assert.equal(String(url), "https://api.pluggy.ai/connect_token");
+    assert.equal(options.method, "POST");
     assert.equal(options.headers["X-API-KEY"], "test-key");
-    assert.equal(options.body, "{}");
-    return { ok: true, json: async () => ({ status: "UPDATING" }) };
+    assert.deepEqual(JSON.parse(options.body), { itemId: "c6-item" });
+    return { ok: true, json: async () => ({ accessToken: "scoped-test-token" }) };
   };
   assert.equal((await handler(request("bad", "POST"))).statusCode, 401);
   assert.equal(calls.length, 0);
   const response = await handler(request(secret, "POST"));
-  assert.equal(response.statusCode, 202);
-  assert.equal(body(response).refreshState, "started");
+  assert.equal(response.statusCode, 200);
+  assert.equal(body(response).refreshState, "connect_required");
+  assert.equal(body(response).itemId, "c6-item");
+  assert.equal(body(response).connectToken, "scoped-test-token");
   assert.equal(calls.length, 2);
+  assert.equal(calls.some(c => c.url.includes("/items/")), false);
   assert.equal(response.body.includes("test-key"), false);
+});
+test("manual refresh reports missing Pluggy config without calling upstream", async () => {
+  env();
+  delete process.env.PLUGGY_ITEM_ID;
+  global.fetch = () => { throw new Error("unexpected fetch"); };
+  const response = await handler(request(secret, "POST"));
+  assert.equal(response.statusCode, 503);
 });
 test("polling Pluggy item status distinguishes completion and in-progress updates", async () => {
   env();
@@ -124,74 +134,34 @@ test("polling Pluggy item status distinguishes completion and in-progress update
   current = "LOGIN_ERROR";
   assert.equal(body(await poll()).syncState, "error");
 });
-test("Pluggy frequency restriction falls back to scoped Connect token", async () => {
-  env();
-  const calls = [];
-  global.fetch = async (url, options) => {
-    calls.push({ url: String(url), options });
-    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
-    if (String(url).endsWith("/connect_token")) {
-      assert.equal(options.method, "POST");
-      assert.deepEqual(JSON.parse(options.body), { itemId: "c6-item" });
-      assert.equal(options.headers["X-API-KEY"], "test-key");
-      return { ok: true, json: async () => ({ accessToken: "scoped-test-token" }) };
-    }
-    return {
-      ok: false, status: 409,
-      json: async () => ({ code: 409, codeDescription: "CLIENT_IS_UPDATING_BEFORE_ALLOWED_FREQUENCY" })
-    };
-  };
-  const response = await handler(request(secret, "POST"));
-  assert.equal(response.statusCode, 200);
-  assert.equal(body(response).refreshState, "connect_required");
-  assert.equal(body(response).itemId, "c6-item");
-  assert.equal(body(response).connectToken, "scoped-test-token");
-  assert.equal(calls.length, 3);
-  assert.equal(response.body.includes("test-key"), false);
-  assert.equal(response.body.includes("secret"), false);
-});
-test("Pluggy requires reauthorization when previous login failed", async () => {
+test("Connect token request fails safely without leaking raw upstream errors", async () => {
   env();
   global.fetch = async url => {
     if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
-    if (String(url).endsWith("/connect_token")) return { ok: true, json: async () => ({ accessToken: "test-token" }) };
-    return { ok: false, status: 400, json: async () => ({ codeDescription: "LAST_EXECUTION_HAD_LOGIN_ERROR" }) };
-  };
-  const response = await handler(request(secret, "POST"));
-  assert.equal(body(response).refreshState, "connect_required");
-});
-test("Pluggy item already syncing is not retriggered", async () => {
-  env();
-  const calls = [];
-  global.fetch = async (url, options) => {
-    calls.push(String(url));
-    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
-    return { ok: false, status: 400, json: async () => ({ codeDescription: "ITEM_ALREADY_UPDATING" }) };
-  };
-  const response = await handler(request(secret, "POST"));
-  assert.equal(response.statusCode, 202);
-  assert.equal(body(response).refreshState, "started");
-  assert.equal(calls.length, 2);
-});
-test("Pluggy error is specific, safe and never leaks upstream secrets", async () => {
-  env();
-  global.fetch = async url => {
-    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
-    return { ok: false, status: 409, json: async () => ({ codeDescription: "CLIENT_HAS_ITEM_UPDATES_DISABLED", message: "secret should not show" }) };
-  };
-  const response = await handler(request(secret, "POST"));
-  assert.equal(response.statusCode, 409);
-  assert.match(body(response).message, /desativou/);
-  assert.equal(response.body.includes("secret"), false);
-});
-test("unexpected Pluggy errors show sanitized code instead of misleading generic message", async () => {
-  env();
-  global.fetch = async url => {
-    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
-    return { ok: false, status: 400, json: async () => ({ codeDescription: "NEW_ERROR_CODE", message: "DO NOT LEAK" }) };
+    return { ok: false, status: 400, json: async () => ({ message: "private-message-should-never-appear" }) };
   };
   const response = await handler(request(secret, "POST"));
   assert.equal(response.statusCode, 502);
-  assert.match(body(response).message, /NEW_ERROR_CODE/);
-  assert.equal(response.body.includes("DO NOT LEAK"), false);
+  assert.match(body(response).message, /Pluggy/);
+  assert.equal(response.body.includes("private-message-should-never-appear"), false);
+});
+test("Connect token request handles provider auth rejection safely", async () => {
+  env();
+  global.fetch = async url => {
+    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
+    return { ok: false, status: 403, json: async () => ({ message: "private" }) };
+  };
+  const response = await handler(request(secret, "POST"));
+  assert.equal(response.statusCode, 502);
+  assert.match(body(response).message, /autenticação/);
+  assert.equal(response.body.includes("private"), false);
+});
+test("Connect token without accessToken is rejected", async () => {
+  env();
+  global.fetch = async url => {
+    if (String(url).endsWith("/auth")) return { ok: true, json: async () => ({ apiKey: "test-key" }) };
+    return { ok: true, json: async () => ({}) };
+  };
+  const response = await handler(request(secret, "POST"));
+  assert.equal(response.statusCode, 502);
 });
