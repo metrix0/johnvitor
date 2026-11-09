@@ -41,7 +41,8 @@ async function pluggy(endpoint, options) {
     error.status = response.status;
     if (options && options.method === "PATCH") {
       const data = await response.json().catch(() => ({}));
-      error.code = data.codeDescription || data.code || (data.error && data.error.code);
+      error.code = typeof data.codeDescription === "string" ? data.codeDescription :
+        (data.error && typeof data.error.code === "string" ? data.error.code : null);
     }
     throw error;
   }
@@ -100,8 +101,9 @@ exports.handler = async function handler(event) {
   const pluggyMissing = missing.some(key => key.startsWith("PLUGGY_"));
   if (event.httpMethod === "POST") {
     if (pluggyMissing) return reply(503, { message: "Integração Pluggy não configurada." });
+    let apiKey;
     try {
-      const apiKey = await getPluggyApiKey(env);
+      apiKey = await getPluggyApiKey(env);
       await pluggy("/items/" + encodeURIComponent(env.PLUGGY_ITEM_ID), {
         method: "PATCH",
         headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
@@ -112,10 +114,52 @@ exports.handler = async function handler(event) {
       if (["ITEM_ALREADY_UPDATING", "ITEM_IS_ALREADY_UPDATING"].includes(error.code)) {
         return reply(202, { refreshState: "started" });
       }
-      if (error.code === "CLIENT_IS_UPDATING_BEFORE_ALLOWED_FREQUENCY") {
-        return reply(429, { message: "Pluggy limita atualizações manuais. Aguarde o intervalo permitido antes de tentar novamente." });
+      // A sync initiated directly by the API is restricted in some plans and
+      // cannot renew MFA/credentials. Pluggy Connect supports those scenarios.
+      const connectRequired = new Set([
+        "CLIENT_IS_UPDATING_BEFORE_ALLOWED_FREQUENCY",
+        "LAST_EXECUTION_HAD_LOGIN_ERROR",
+        "CONNECTOR_REQUIRED_PARAMETER_VALIDATION_ERROR",
+        "PARAMETERS_NOT_PROVIDED",
+        "SANDBOX_CLIENT_ITEM_UPDATE_NOT_ALLOWED",
+        "CREATE_ITEMS_API_FREE_DISABLED"
+      ]);
+      if (apiKey && connectRequired.has(error.code)) {
+        try {
+          const token = await pluggy("/connect_token", {
+            method: "POST",
+            headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify({ itemId: env.PLUGGY_ITEM_ID })
+          });
+          if (!token || typeof token.accessToken !== "string") throw new Error("Missing connect token");
+          return reply(200, {
+            refreshState: "connect_required",
+            connectToken: token.accessToken,
+            itemId: env.PLUGGY_ITEM_ID
+          });
+        } catch (tokenError) {
+          console.warn("Pluggy Connect fallback unavailable", { status: tokenError.status || null, code: tokenError.code || null });
+          return reply(502, { message: "A atualização precisa do Pluggy Connect, mas não foi possível iniciá-lo." });
+        }
       }
-      return reply(502, { message: "Não foi possível iniciar a sincronização no Pluggy." });
+      const code = error.code || "";
+      console.warn("Pluggy refresh rejected", { status: error.status || null, code: code || null });
+      const explanations = {
+        CLIENT_HAS_ITEM_UPDATES_DISABLED: "A Pluggy desativou as atualizações desta integração. Verifique seu plano com o suporte Pluggy.",
+        CONNECTOR_OFFLINE: "O banco está temporariamente indisponível no Pluggy. Tente novamente mais tarde.",
+        ITEM_IN_ERROR_COOLDOWN: "A conexão está em pausa após uma falha. Aguarde antes de tentar novamente.",
+        TOO_MANY_CONSECUTIVE_LOGIN_FAILURES: "A conexão está temporariamente bloqueada após falhas de autenticação.",
+        TOO_MANY_CONSECUTIVE_ERRORS: "A conexão teve falhas consecutivas. Verifique o Meu Pluggy.",
+        ITEM_NOT_FOUND: "A conexão bancária configurada não foi encontrada no Pluggy.",
+      };
+      if (explanations[code]) return reply(error.status || 502, { message: explanations[code] });
+      if (error.status === 401 || error.status === 403) {
+        return reply(502, { message: "A Pluggy recusou a autorização para atualizar a conexão. Verifique as credenciais e permissões da integração." });
+      }
+      if (error.status === 404) return reply(404, { message: "A conexão bancária não foi encontrada no Pluggy." });
+      if (error.status === 429) return reply(429, { message: "Muitas solicitações ao Pluggy. Tente novamente mais tarde." });
+      const safeCode = /^[A-Z][A-Z0-9_]{2,90}$/.test(code) ? code : null;
+      return reply(502, { message: "A sincronização foi recusada pelo Pluggy (" + (safeCode || ("HTTP " + (error.status || "indisponível"))) + ")." });
     }
   }
   if (event.queryStringParameters && event.queryStringParameters.syncStatus === "1") {
