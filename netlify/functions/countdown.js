@@ -36,21 +36,33 @@ async function pluggy(endpoint, options) {
     ...options,
     signal: AbortSignal.timeout(10000)
   });
-  if (!response.ok) throw new Error("Pluggy HTTP " + response.status);
+  if (!response.ok) {
+    const error = new Error("Pluggy HTTP " + response.status);
+    error.status = response.status;
+    if (options && options.method === "PATCH") {
+      const data = await response.json().catch(() => ({}));
+      error.code = data.codeDescription || data.code || (data.error && data.error.code);
+    }
+    throw error;
+  }
   return response.json();
 }
-async function getInvestments(env) {
+async function getPluggyApiKey(env) {
   const auth = await pluggy("/auth", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ clientId: env.PLUGGY_CLIENT_ID, clientSecret: env.PLUGGY_CLIENT_SECRET })
   });
   if (!auth || !auth.apiKey) throw new Error("Pluggy authentication failed");
+  return auth.apiKey;
+}
+async function getInvestments(env) {
+  const apiKey = await getPluggyApiKey(env);
   const investments = [];
   for (let page = 1; page <= 20; page++) {
     const query = new URLSearchParams({ itemId: env.PLUGGY_ITEM_ID, page: String(page), pageSize: "500" });
     const result = await pluggy("/investments?" + query.toString(), {
-      headers: { "X-API-KEY": auth.apiKey }
+      headers: { "X-API-KEY": apiKey }
     });
     if (!Array.isArray(result.results)) throw new Error("Unexpected investments response");
     investments.push(...result.results);
@@ -70,7 +82,7 @@ async function getInvestments(env) {
 }
 
 exports.handler = async function handler(event) {
-  if (event.httpMethod !== "GET") return reply(405, { message: "Método não permitido." });
+  if (!["GET", "POST"].includes(event.httpMethod)) return reply(405, { message: "Método não permitido." });
   const env = process.env;
   const authorization = event.headers && (event.headers.authorization || event.headers.Authorization);
   if (!matchesAccessKey(authorization, env.COUNTDOWN_VIEW_KEY)) {
@@ -85,7 +97,42 @@ exports.handler = async function handler(event) {
     if (!env[key]) missing.push(key);
   }
   const result = { surgeryDate, goal, balance: null, bankState: "needs_setup", missing };
-  if (missing.some(key => key.startsWith("PLUGGY_"))) return reply(200, result);
+  const pluggyMissing = missing.some(key => key.startsWith("PLUGGY_"));
+  if (event.httpMethod === "POST") {
+    if (pluggyMissing) return reply(503, { message: "Integração Pluggy não configurada." });
+    try {
+      const apiKey = await getPluggyApiKey(env);
+      await pluggy("/items/" + encodeURIComponent(env.PLUGGY_ITEM_ID), {
+        method: "PATCH",
+        headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+        body: "{}"
+      });
+      return reply(202, { refreshState: "started" });
+    } catch (error) {
+      if (["ITEM_ALREADY_UPDATING", "ITEM_IS_ALREADY_UPDATING"].includes(error.code)) {
+        return reply(202, { refreshState: "started" });
+      }
+      if (error.code === "CLIENT_IS_UPDATING_BEFORE_ALLOWED_FREQUENCY") {
+        return reply(429, { message: "Pluggy limita atualizações manuais. Aguarde o intervalo permitido antes de tentar novamente." });
+      }
+      return reply(502, { message: "Não foi possível iniciar a sincronização no Pluggy." });
+    }
+  }
+  if (event.queryStringParameters && event.queryStringParameters.syncStatus === "1") {
+    if (pluggyMissing) return reply(503, { message: "Integração Pluggy não configurada." });
+    try {
+      const apiKey = await getPluggyApiKey(env);
+      const item = await pluggy("/items/" + encodeURIComponent(env.PLUGGY_ITEM_ID), {
+        headers: { "X-API-KEY": apiKey }
+      });
+      const syncState = item.status === "UPDATED" ? "completed" :
+        ["OUTDATED", "LOGIN_ERROR", "WAITING_USER_INPUT"].includes(item.status) ? "error" : "pending";
+      return reply(200, { syncState, ...(syncState === "error" ? { message: "A sincronização precisa de atenção no Meu Pluggy." } : {}) });
+    } catch (_) {
+      return reply(502, { message: "Não foi possível verificar a sincronização no Pluggy." });
+    }
+  }
+  if (pluggyMissing) return reply(200, result);
   try {
     return reply(200, { ...result, ...(await getInvestments(env)) });
   } catch (_) {
