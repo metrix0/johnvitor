@@ -7,7 +7,8 @@ const NO_STORE = {
   "Pragma": "no-cache",
   "Vary": "Authorization",
   "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "no-referrer"
+  "Referrer-Policy": "no-referrer",
+  "X-Countdown-Sync-Mode": "pluggy-connect"
 };
 
 function reply(statusCode, body) {
