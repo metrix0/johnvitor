@@ -133,6 +133,71 @@ test('failed validation retains source locations and errors', async () => {
   noMerge(calls);
 });
 
+test('typecheck reports only the failed step, not expected Jest or PostgreSQL errors', async () => {
+  const calls = setup({
+    [`/commits/${SHA}/check-runs`]: () => Response.json({ check_runs: [{
+      ...check, id: 99, conclusion: 'failure',
+      details_url: 'https://github.com/metrix0/imenu/actions/runs/77/job/99'
+    }] }),
+    '/actions/jobs/99': () => Response.json({ steps: [
+      { name: 'Critical-flow, payment and PostgreSQL regression tests', conclusion: 'success',
+        started_at: '2026-11-10T15:19:00Z', completed_at: '2026-11-10T15:19:09Z' },
+      { name: 'Typecheck', conclusion: 'failure',
+        started_at: '2026-11-10T15:19:10Z', completed_at: '2026-11-10T15:19:13Z' },
+      { name: 'Stop containers', conclusion: 'success',
+        started_at: '2026-11-10T15:19:14Z', completed_at: '2026-11-10T15:19:20Z' }
+    ] }),
+    '/actions/jobs/99/logs': () => new Response([
+      '2026-11-10T15:19:04.100Z [MENU_DARK_THEME] Error: Denied',
+      '2026-11-10T15:19:08.200Z ERROR: new row violates ia_vendas_credit_purchases_price_cents_check',
+      '2026-11-10T15:19:10.100Z ##[group]Run npx tsc --noEmit',
+      "2026-11-10T15:19:13.200Z ##[error]app/(extra)/dev/analytics/page.tsx(36,25): error TS2339: Property 'setTimeout' does not exist on type 'never'.",
+      '2026-11-10T15:19:13.290Z ##[error]Process completed with exit code 2.',
+      '2026-11-10T15:19:15.100Z ERROR: new row violates ia_vendas_credit_purchases_price_cents_check'
+    ].join('\n')),
+    '/check-runs/99/annotations': () => Response.json([
+      { path: '.github', start_line: 18, message: 'Process completed with exit code 2.' }
+    ])
+  });
+  const data = await run('validate');
+  assert.equal(data.status, 409);
+  assert.match(data.error, /Failed step: Typecheck/);
+  assert.match(data.error, /analytics\/page\.tsx\(36,25\): error TS2339/);
+  assert.doesNotMatch(data.error, /MENU_DARK_THEME|ia_vendas_credit_purchases|Process completed with exit code/);
+  noMerge(calls);
+});
+
+test('Jest failure diagnostics omit expected console errors within the failed step', async () => {
+  const calls = setup({
+    [`/commits/${SHA}/check-runs`]: () => Response.json({ check_runs: [{
+      ...check, id: 99, conclusion: 'failure',
+      details_url: 'https://github.com/metrix0/imenu/actions/runs/77/job/99'
+    }] }),
+    '/actions/jobs/99': () => Response.json({ steps: [
+      { name: 'Critical-flow, payment and PostgreSQL regression tests', conclusion: 'failure',
+        started_at: '2026-11-10T14:54:46Z', completed_at: '2026-11-10T14:55:04Z' }
+    ] }),
+    '/actions/jobs/99/logs': () => new Response([
+      '2026-11-10T14:54:46.100Z ##[group]Run npx jest --runInBand',
+      '2026-11-10T14:54:50.000Z [MENU_DARK_THEME] Error: Denied',
+      '2026-11-10T14:54:51.000Z ERROR: price_cents_check expected violation',
+      '2026-11-10T14:55:02.900Z FAIL lib/ia-vendas/__tests__/checkout-ui.test.tsx',
+      '2026-11-10T14:55:02.901Z   ● Assistant free limit displays reset date',
+      '2026-11-10T14:55:02.902Z     Expected: reset date',
+      '2026-11-10T14:55:02.903Z     Received: no reset date',
+      '2026-11-10T14:55:04.400Z Test Suites: 1 failed, 124 passed'
+    ].join('\n')),
+    '/check-runs/99/annotations': () => Response.json([])
+  });
+  const data = await run('validate');
+  assert.equal(data.status, 409);
+  assert.match(data.error, /FAIL .*checkout-ui\.test\.tsx/);
+  assert.match(data.error, /Expected: reset date/);
+  assert.match(data.error, /Received: no reset date/);
+  assert.doesNotMatch(data.error, /MENU_DARK_THEME|price_cents_check/);
+  noMerge(calls);
+});
+
 test('failed E2E job shows failing step and diagnostic log after TypeScript passed', async () => {
   const calls = setup({
     [`/commits/${SHA}/check-runs`]: () => Response.json({ check_runs: [{ ...check, id: 99, conclusion: 'failure', details_url: 'https://github.com/metrix0/imenu/actions/runs/77/job/99' }] }),

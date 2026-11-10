@@ -221,30 +221,83 @@ function githubActionsJobId(run) {
   return match ? Number(match[1]) : null;
 }
 
-function failureLogExcerpt(log) {
-  const lines = log.split(/\r?\n/).map(line => line
-    .replace(/^\d{4}-\d\d-\d\dT\S+Z\s*/, "")
-    .replace(/\x1b\[[\d;]*m/g, "")
-    .replace(/github_pat_[\w]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}/g, "[redacted]")
-    .replace(/(Bearer\s+)\S+/gi, "$1[redacted]")
-    .trimEnd()).filter(Boolean);
-  const diagnostic = /\berror TS\d+\b|\b(?:TimeoutError|AssertionError|SyntaxError|ReferenceError|TypeError|Error):|\bFAIL\b|##\[error\]/i;
-  const hits = lines.map((line, index) => ({ line, index }))
-    .filter(({ line }) => diagnostic.test(line) && !/Process completed with exit code/i.test(line));
-  if (!hits.length) return null;
-  const recent = [...new Set(hits.map(hit => hit.line))].slice(-5);
-  const last = hits[hits.length - 1].index;
-  return [...new Set([...recent, ...lines.slice(last + 1, last + 10)])].join("\n").slice(0, 3000);
+function failureLogExcerpt(log, failedStep = null) {
+  const entries = log.split(/\r?\n/).map(raw => {
+    const timestamp = /^(\d{4}-\d\d-\d\dT\S+Z)\s+/.exec(raw);
+    return {
+      time: timestamp ? Date.parse(timestamp[1]) : NaN,
+      line: raw.replace(/^\d{4}-\d\d-\d\dT\S+Z\s*/, "")
+        .replace(/\x1b\[[\d;]*m/g, "")
+        .replace(/github_pat_[\w]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}/g, "[redacted]")
+        .replace(/(Bearer\s+)\S+/gi, "$1[redacted]")
+        .trimEnd()
+    };
+  }).filter(entry => entry.line);
+
+  const started = Date.parse(failedStep?.started_at || "");
+  const completed = Date.parse(failedStep?.completed_at || "");
+  let scoped = entries;
+  if (Number.isFinite(started) && Number.isFinite(completed) && completed >= started) {
+    // GitHub step times have second precision; include the full completion second.
+    scoped = entries.filter(entry => Number.isFinite(entry.time) &&
+      entry.time >= started && entry.time < completed + 1000);
+  } else {
+    // Older GitHub responses may omit step times. Use a known run-command
+    // boundary rather than mixing errors from unrelated workflow steps.
+    const name = failedStep?.name || "";
+    const command = name === "Typecheck" ? /^##\[group\]Run (?:npx )?tsc\b|^##\[group\]Run npm run typecheck\b/i
+      : name === "Build" ? /^##\[group\]Run (?:npx )?next build\b|^##\[group\]Run npm run build\b/i
+      : /^Critical-flow, payment and PostgreSQL regression tests$/.test(name)
+        ? /^##\[group\]Run (?:npx )?jest\b|^##\[group\]Run npm test\b/i
+      : /^Browser E2E\b/.test(name)
+        ? /^##\[group\]Run (?:if command -v google-chrome|node tests\/e2e\/|npx playwright\b)/i
+      : null;
+    const boundaries = entries.map((entry, index) => ({ ...entry, index }))
+      .filter(entry => /^##\[group\]Run /.test(entry.line));
+    if (boundaries.length) {
+      const position = command ? boundaries.findIndex(entry => command.test(entry.line)) : -1;
+      if (position < 0) return null;
+      const from = boundaries[position].index;
+      const to = boundaries[position + 1]?.index ?? entries.length;
+      scoped = entries.slice(from, to);
+    }
+  }
+
+  const lines = scoped.map(entry => entry.line);
+  const unique = values => [...new Set(values)].join("\n").slice(0, 3000);
+  // Compiler errors are definitive; passing Jest suites often print console.error.
+  const typeErrors = lines.filter(line => /\berror TS\d{4}\b/i.test(line));
+  if (typeErrors.length) return unique(typeErrors.slice(0, 12));
+
+  const hasFailedTests = lines.some(line => /^\s*FAIL\s+\S/.test(line) ||
+    /^\s*●\s+(?!Console\b)/.test(line));
+  if (hasFailedTests) {
+    return unique(lines.filter(line =>
+      /^\s*FAIL\s+\S|^\s*●\s+(?!Console\b)|^\s*(?:Expected|Received)(?:\s|:)|^\s*(?:Test Suites|Tests):/.test(line)
+    ).slice(0, 18));
+  }
+
+  const diagnostics = lines.map((line, index) => ({ line, index })).filter(({ line }) =>
+    /\b(?:TimeoutError|AssertionError|SyntaxError|ReferenceError|TypeError|Error):/i.test(line) ||
+    /##\[error\](?!Process completed with exit code)/i.test(line)
+  );
+  if (!diagnostics.length) return null;
+  const first = diagnostics[0].index;
+  return unique([...diagnostics.slice(0, 5).map(hit => hit.line),
+    ...lines.slice(first + 1, first + 8).filter(line =>
+      !/Process completed with exit code/i.test(line)
+    )]);
 }
 
 async function failedJobDetails(repo, run) {
   const id = githubActionsJobId(run);
   if (!id) return { failedStep: null, passedSteps: [], log: null };
-  let failedStep = null, passedSteps = [], log = null;
+  let failedStep = null, passedSteps = [], log = null, failedStepDetails = null;
   try {
     const job = await github(repo, `/actions/jobs/${id}`);
     const steps = Array.isArray(job?.steps) ? job.steps : [];
-    failedStep = steps.find(step => step?.conclusion === "failure" || step?.conclusion === "timed_out")?.name || null;
+    failedStepDetails = steps.find(step => step?.conclusion === "failure" || step?.conclusion === "timed_out") || null;
+    failedStep = failedStepDetails?.name || null;
     passedSteps = steps.filter(step => step?.conclusion === "success" && /^(Typecheck|Build)$/i.test(step?.name || ""))
       .map(step => step.name);
   } catch { /* Preserve annotations if the job metadata is unavailable. */ }
@@ -265,7 +318,7 @@ async function failedJobDetails(repo, run) {
         tail += decoder.decode(chunk, { stream: true });
         if (tail.length > 150000) tail = tail.slice(-150000);
       }
-      log = failureLogExcerpt(tail + decoder.decode());
+      log = failureLogExcerpt(tail + decoder.decode(), failedStepDetails);
     }
   } catch { /* Job logs are optional; failure must remain visible without them. */ }
   return { failedStep, passedSteps, log };
@@ -303,6 +356,7 @@ async function getMergeValidation(repo, sha, prNumber) {
     try {
       const response = await github(repo, `/check-runs/${typecheckRun.id}/annotations?per_page=100`);
       annotations = (Array.isArray(response) ? response : [])
+        .filter(annotation => !/^Process completed with exit code \d+\.?$/i.test(String(annotation?.message || "").trim()))
         .map(annotation => {
           const location = annotation?.path
             ? `${annotation.path}${annotation.start_line ? `:${annotation.start_line}` : ""}`
