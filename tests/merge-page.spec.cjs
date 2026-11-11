@@ -70,6 +70,9 @@ test('iMenu displays both deployment statuses without affecting Engravida', asyn
   await expect(card.locator('[data-branch="main"] .deploy-links a')).toHaveAttribute('href', 'https://www.imenuapp.com.br/');
   await expect(card.locator('[data-branch="preview"] .deploy-history li')).toHaveCount(3);
   await expect(card.locator('[data-branch="main"] .deploy-history')).toContainText('history unavailable');
+  await expect(page.locator("#imenu-preview-summary .deploy-state")).toHaveText("Deploying");
+  await expect(page.locator("#imenu-preview-summary .preview-summary-sha")).toHaveText(SHA.slice(0, 7));
+  await expect(page.locator("#imenu-preview-summary .preview-summary-link a")).toHaveAttribute("href", "https://github.com/metrix0/imenu/actions/runs/10");
   await expect(page.locator('[data-id="engravida"] .deployments')).toHaveCount(0);
   expect(errors).toEqual([]);
   await context.close();
