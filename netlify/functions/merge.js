@@ -438,18 +438,25 @@ async function getImenuDeployments(repo) {
     .filter(run => run?.path === ".github/workflows/deploy-vps-preview.yml")
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   const currentRun = runs.find(run => run.head_sha === previewSha) || null;
+  const summarize = run => run ? ({
+    state: deploymentRunState(run),
+    sha: run.head_sha || null,
+    date: run.created_at || null,
+    startedAt: run.run_started_at || null,
+    updatedAt: run.updated_at || null,
+    runNumber: Number.isSafeInteger(run.run_number) ? run.run_number : null,
+    url: run.html_url || null
+  }) : null;
+  const lastSuccess = runs.find(run => deploymentRunState(run) === "success") || null;
   return {
     main: { state: productionState, sha: null, url: "https://www.imenuapp.com.br", history: [] },
     preview: {
       state: !currentRun && runs.length ? "not_deployed" : deploymentRunState(currentRun),
       sha: previewSha,
       url: currentRun?.html_url || null,
-      history: runs.slice(0, 3).map(run => ({
-        state: deploymentRunState(run),
-        sha: run.head_sha || null,
-        date: run.created_at || null,
-        url: run.html_url || null
-      }))
+      latestRun: summarize(runs[0]),
+      lastSuccess: summarize(lastSuccess),
+      history: runs.slice(0, 5).map(summarize)
     }
   };
 }
