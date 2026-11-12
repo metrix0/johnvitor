@@ -73,6 +73,13 @@ test('iMenu displays both deployment statuses without affecting Engravida', asyn
   await expect(page.locator("#imenu-preview-summary .deploy-state")).toHaveText("Deploying");
   await expect(page.locator("#imenu-preview-summary .preview-summary-sha")).toHaveText(SHA.slice(0, 7));
   await expect(page.locator("#imenu-preview-summary .preview-summary-link a")).toHaveAttribute("href", "https://github.com/metrix0/imenu/actions/runs/10");
+  await expect(page.locator("#imenu-preview-summary .preview-summary-latest")).toHaveText("In progress");
+  await expect(page.locator("#imenu-preview-summary .preview-summary-success")).toHaveText("bbbbbbb");
+  await expect(page.locator("#imenu-preview-summary .preview-summary-production")).toHaveText("Healthy");
+  await expect(page.locator("#imenu-preview-summary .preview-summary-history li")).toHaveCount(3);
+  await expect(page.locator("#imenu-preview-summary .preview-summary-updated")).toContainText("auto-refresh every 60s");
+  await page.locator("#imenu-preview-refresh").click();
+  await expect(page.locator("#imenu-preview-refresh")).toBeEnabled();
   await expect(page.locator('[data-id="engravida"] .deployments')).toHaveCount(0);
   expect(errors).toEqual([]);
   await context.close();
