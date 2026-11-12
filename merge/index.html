@@ -69,11 +69,27 @@
     .deploy-history summary { cursor: pointer; }
     .deploy-history ol { margin: 6px 0 0; padding-left: 18px; }
     .deploy-history li { margin: 5px 0; overflow-wrap: anywhere; }
-    .preview-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; margin-top: 20px; border: 1px solid var(--line); border-radius: 12px; background: #151518; font-size: 12px; }
-    .preview-summary-label { font-weight: 650; }
-    .preview-summary-sha { color: var(--muted); font: 11px ui-monospace, monospace; }
-    .preview-summary .deploy-state { margin-left: auto; }
+    .preview-summary { padding: 18px; margin-top: 20px; border: 1px solid var(--line); border-radius: 14px; background: #151518; font-size: 12px; }
+    .preview-summary-head, .preview-summary-actions, .preview-summary-footer { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+    .preview-summary-label { display: block; font-size: 14px; font-weight: 650; }
+    .preview-summary-subtitle, .preview-summary-note { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .preview-summary-actions { justify-content: flex-end; gap: 8px; }
+    .preview-summary-refresh { width: auto; margin: 0; padding: 5px 10px; font-size: 11px; border-radius: 8px; border-color: #41414b; color: #d4d4db; background: #25252c; }
+    .preview-summary-refresh:hover { background: #32323b; }
+    .preview-summary-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+    .preview-summary-metric { min-width: 0; background: #101013; border: 1px solid var(--line); border-radius: 10px; padding: 11px; }
+    .preview-summary-metric small { display: block; font-size: 11px; color: var(--muted); }
+    .preview-summary-metric strong { display: block; margin: 5px 0 3px; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+    .preview-summary-metric .preview-summary-sha { font: 600 15px ui-monospace, monospace; color: #f4f4f5; }
+    .preview-summary-metric span { display: block; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
     .preview-summary-link { font-size: 11px; }
+    .preview-summary-history { border-top: 1px solid var(--line); padding-top: 11px; margin-top: 12px; color: var(--muted); }
+    .preview-summary-history summary { cursor: pointer; color: #d4d4db; }
+    .preview-summary-history ol { margin: 7px 0 0; padding-left: 19px; }
+    .preview-summary-history li { padding: 3px 0; line-height: 1.6; overflow-wrap: anywhere; }
+    .preview-summary-history li a { margin-left: 7px; }
+    @media (max-width: 720px) { .preview-summary-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 370px) { .preview-summary-metrics { grid-template-columns: 1fr; } }
     .footer { font-size: 12px; color: #858591; margin: 24px 0 0; }
     [hidden] { display: none !important; }
     @media (max-width: 720px) { main { margin: 36px auto; } .projects { grid-template-columns: 1fr; } .project { padding: 22px; } }
@@ -100,12 +116,21 @@
       <p class="intro">One click validates TypeScript, then squash &amp; merges the validated changes. Follow each step below until GitHub confirms the result.</p>
     </header>
     <div class="projects" id="projects"></div>
-    <div class="preview-summary" id="imenu-preview-summary" role="status" aria-live="polite">
-      <span class="preview-summary-label">iMenu preview deployment</span>
-      <span class="preview-summary-sha"></span>
-      <span class="deploy-state" data-tone="active">Checking…</span>
-      <span class="preview-summary-link"></span>
-    </div>
+    <section class="preview-summary" id="imenu-preview-summary" aria-label="iMenu preview deployment">
+      <div class="preview-summary-head">
+        <div><strong class="preview-summary-label">iMenu preview deployment</strong><span class="preview-summary-subtitle">VPS deployment workflow · preview branch</span></div>
+        <div class="preview-summary-actions"><span class="deploy-state" data-tone="active" role="status" aria-live="polite">Checking…</span><button type="button" class="preview-summary-refresh" id="imenu-preview-refresh">Refresh</button></div>
+      </div>
+      <div class="preview-summary-metrics">
+        <div class="preview-summary-metric"><small>Preview HEAD</small><strong class="preview-summary-sha">—</strong><span>Latest Git commit</span></div>
+        <div class="preview-summary-metric"><small>Latest run</small><strong class="preview-summary-latest">—</strong><span class="preview-summary-latest-date">—</span></div>
+        <div class="preview-summary-metric"><small>Last success</small><strong class="preview-summary-success">—</strong><span class="preview-summary-success-date">—</span></div>
+        <div class="preview-summary-metric"><small>Production health</small><strong class="preview-summary-production">—</strong><span>VPS live check</span></div>
+      </div>
+      <div class="preview-summary-footer"><span class="preview-summary-note">GitHub Actions workflow status, not an independent preview container health check.</span><span class="preview-summary-link"></span></div>
+      <details class="preview-summary-history" open><summary>Recent deployment runs</summary><ol></ol></details>
+      <span class="preview-summary-note preview-summary-updated"></span>
+    </section>
     <p class="footer">Validation starts when you click. A failed check stops the merge. Deployment happens separately after merging.</p>
   </main>
   <script>
@@ -195,9 +220,94 @@
         cancelled: "Cancelled", skipped: "Skipped", not_deployed: "Not deployed",
         unknown: "Unavailable" }[state] || "Unavailable";
     }
+
+    function previewDate(value) {
+      if (!value || !Number.isFinite(Date.parse(value))) return "Date unavailable";
+      return new Date(value).toLocaleString("en-GB", {
+        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+        timeZone: "America/Sao_Paulo"
+      }) + " BRT";
+    }
+    function previewShortSha(value) {
+      return /^[a-f0-9]{40}$/.test(value || "") ? value.slice(0, 7) : null;
+    }
+    function previewRunDuration(run) {
+      if (!run || !run.startedAt || !run.updatedAt || run.state === "pending") return "";
+      const duration = Date.parse(run.updatedAt) - Date.parse(run.startedAt);
+      if (!Number.isFinite(duration) || duration < 0) return "";
+      const minutes = Math.max(1, Math.ceil(duration / 60000));
+      return minutes < 60 ? minutes + "m" : Math.floor(minutes / 60) + "h " + minutes % 60 + "m";
+    }
+    function updatePreviewSummary(deployments) {
+      const summary = document.querySelector("#imenu-preview-summary");
+      const preview = deployments?.preview || {};
+      const main = deployments?.main || {};
+      const history = Array.isArray(preview.history) ? preview.history.slice(0, 5) : [];
+      const latest = preview.latestRun || history[0] || null;
+      const lastSuccess = preview.lastSuccess || history.find(run => run.state === "success") || null;
+      const status = summary.querySelector(".deploy-state");
+      status.textContent = ({
+        success: "Workflow passed", pending: "Deploying", failure: "Failed",
+        not_deployed: "Not deployed", cancelled: "Cancelled",
+        skipped: "Skipped", unknown: "Unavailable"
+      })[preview.state] || "Unavailable";
+      status.dataset.tone = preview.state === "success" ? "success" :
+        preview.state === "pending" ? "active" : ["failure", "not_deployed"].includes(preview.state) ? "error" : "neutral";
+      summary.querySelector(".preview-summary-sha").textContent = previewShortSha(preview.sha) || "Unknown";
+      summary.querySelector(".preview-summary-latest").textContent = latest
+        ? (latest.runNumber ? "#" + latest.runNumber + " · " : "") + deploymentLabel(latest.state)
+        : "No runs";
+      summary.querySelector(".preview-summary-latest-date").textContent = latest
+        ? previewDate(latest.date) + (previewRunDuration(latest) ? " · " + previewRunDuration(latest) : "")
+        : "No workflow runs found";
+      summary.querySelector(".preview-summary-success").textContent = previewShortSha(lastSuccess?.sha) || "None found";
+      summary.querySelector(".preview-summary-success-date").textContent = lastSuccess ? previewDate(lastSuccess.date) : "No successful run found";
+      summary.querySelector(".preview-summary-production").textContent =
+        ({ success: "Healthy", failure: "Unhealthy", unknown: "Unavailable" })[main.state] || "Unavailable";
+      const links = summary.querySelector(".preview-summary-link");
+      links.replaceChildren();
+      deploymentLink(links, preview.url || latest?.url, "Open GitHub run");
+      const list = summary.querySelector(".preview-summary-history ol");
+      list.replaceChildren();
+      if (!history.length) {
+        const item = document.createElement("li");
+        item.textContent = "No recent runs found.";
+        list.append(item);
+      } else {
+        for (const run of history) {
+          const item = document.createElement("li");
+          const parts = [
+            run.runNumber ? "#" + run.runNumber : null,
+            previewShortSha(run.sha) || "Unknown commit",
+            deploymentLabel(run.state),
+            previewDate(run.date),
+            previewRunDuration(run)
+          ].filter(Boolean);
+          item.append(document.createTextNode(parts.join(" · ")));
+          deploymentLink(item, run.url, "Details");
+          list.append(item);
+        }
+      }
+      summary.querySelector(".preview-summary-updated").textContent = "Checked " + previewDate(new Date().toISOString()) + " · auto-refresh every 60s";
+    }
+    function resetPreviewSummary() {
+      const summary = document.querySelector("#imenu-preview-summary");
+      summary.querySelector(".deploy-state").textContent = "Unavailable";
+      summary.querySelector(".deploy-state").dataset.tone = "neutral";
+      for (const selector of [".preview-summary-sha", ".preview-summary-latest",
+        ".preview-summary-latest-date", ".preview-summary-success",
+        ".preview-summary-success-date", ".preview-summary-production"]) {
+        summary.querySelector(selector).textContent = "—";
+      }
+      summary.querySelector(".preview-summary-link").replaceChildren();
+      summary.querySelector(".preview-summary-history ol").replaceChildren();
+      summary.querySelector(".preview-summary-updated").textContent = "Could not load deployment data. Try Refresh.";
+    }
     async function loadDeployments(project) {
       if (project.deploymentsLoading) return;
       project.deploymentsLoading = true;
+      const refreshButton = document.querySelector("#imenu-preview-refresh");
+      refreshButton.disabled = true;
       try {
         const data = await request(project, "deploy-status");
         for (const branch of ["main", "preview"]) {
@@ -218,16 +328,6 @@
           links.replaceChildren();
           if (branch === "main") deploymentLink(links, deployment.url, "Open site");
           else deploymentLink(links, deployment.url, "Deployment run");
-          if (branch === "preview") {
-            const summary = document.querySelector("#imenu-preview-summary");
-            const status = summary.querySelector(".deploy-state");
-            status.textContent = state.textContent;
-            status.dataset.tone = state.dataset.tone;
-            summary.querySelector(".preview-summary-sha").textContent = sha || "Commit unavailable";
-            const link = summary.querySelector(".preview-summary-link");
-            link.replaceChildren();
-            deploymentLink(link, deployment.url, "Run details");
-          }
           const history = environment.querySelector(".deploy-history");
           history.replaceChildren();
           if (branch === "main") {
@@ -263,19 +363,16 @@
             }
           }
         }
+        updatePreviewSummary(data.deployments);
       } catch {
-        const summary = document.querySelector("#imenu-preview-summary");
-        summary.querySelector(".deploy-state").textContent = "Unavailable";
-        summary.querySelector(".deploy-state").dataset.tone = "neutral";
-        summary.querySelector(".preview-summary-sha").textContent = "";
-        summary.querySelector(".preview-summary-link").replaceChildren();
+        resetPreviewSummary();
         for (const environment of project.card.querySelectorAll(".deploy-environment")) {
           environment.querySelector(".deploy-state").textContent = "Unavailable";
           environment.querySelector(".deploy-state").dataset.tone = "neutral";
           environment.querySelector("small").textContent = "Could not check VPS status";
           environment.querySelector(".deploy-history").textContent = "Deployment history unavailable.";
         }
-      } finally { project.deploymentsLoading = false; }
+      } finally { project.deploymentsLoading = false; refreshButton.disabled = false; }
     }
     function render(project, phase, title, message, options = {}) {
       project.phase = phase;
@@ -531,6 +628,7 @@
         document.body.style.display = "block";
         const imenu = createProject("imenu", "iMenu", "metrix0/imenu");
         const engravida = createProject("engravida", "Engravida", "metrix0/EngravidaHub");
+        document.querySelector("#imenu-preview-refresh").addEventListener("click", () => loadDeployments(imenu));
         await Promise.all([initialize(imenu), initialize(engravida), loadDeployments(imenu)]);
         setInterval(() => loadDeployments(imenu), 60000);
       } catch (error) { alert(error?.message || String(error)); }
