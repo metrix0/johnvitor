@@ -83,6 +83,79 @@ async function getInvestments(env) {
   return { bankState: "ok", balance: sum };
 }
 
+const saoPauloDate = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" });
+
+function transactionDates(query, now = new Date()) {
+  const today = saoPauloDate.format(now);
+  const to = query.to == null ? today : validDate(query.to);
+  if (!to || to > today) return null;
+  const end = new Date(to + "T00:00:00Z");
+  const from = query.from == null
+    ? new Date(end.getTime() - 29 * 86400000).toISOString().slice(0, 10)
+    : validDate(query.from);
+  if (!from || from > to || end.getTime() - Date.parse(from) >= 90 * 86400000) return null;
+  return { from, to };
+}
+
+async function listAccountTransactions(accountId, dates, headers) {
+  const query = new URLSearchParams({ accountId, dateFrom: dates.from, dateTo: dates.to });
+  const transactions = new Map();
+  const cursors = new Set();
+  while (true) {
+    const result = await pluggy("/v2/transactions?" + query, { headers });
+    if (!Array.isArray(result.results)) throw new Error("Unexpected transactions response");
+    for (const row of result.results) transactions.set(row.id, row);
+    if (result.next === null) return [...transactions.values()];
+    const cursor = typeof result.next === "string" && new URLSearchParams(result.next).get("after");
+    if (!cursor || cursors.has(cursor) || cursors.size >= 19) {
+      throw new Error("Invalid or excessive transaction pagination");
+    }
+    cursors.add(cursor);
+    query.set("after", cursor);
+  }
+}
+
+async function getTransactions(env, dates) {
+  const headers = { "X-API-KEY": await getPluggyApiKey(env) };
+  const itemIds = new Set([env.PLUGGY_ITEM_ID, ...(env.PLUGGY_TRANSACTION_ITEM_IDS || "").split(",")]
+    .map(id => id.trim()).filter(Boolean));
+  const connections = await Promise.all([...itemIds].map(async itemId => {
+    const [item, accounts] = await Promise.all([
+      pluggy("/items/" + encodeURIComponent(itemId), { headers }),
+      pluggy("/accounts?" + new URLSearchParams({ itemId }), { headers })
+    ]);
+    if (!Array.isArray(accounts.results) || accounts.totalPages > 1) throw new Error("Unexpected accounts response");
+    return {
+      institution: item.connector?.name || null,
+      status: item.status || null,
+      executionStatus: item.executionStatus || null,
+      lastUpdatedAt: item.lastUpdatedAt || null,
+      accounts: await Promise.all(accounts.results.map(async account => ({
+        name: account.name || account.type,
+        type: account.type,
+        subtype: account.subtype,
+        currency: account.currencyCode,
+        transactions: (await listAccountTransactions(account.id, dates, headers)).map(row => ({
+          date: row.date,
+          description: row.description,
+          merchant: row.merchant?.name || null,
+          amount: row.amount,
+          currency: row.currencyCode,
+          amountInAccountCurrency: row.amountInAccountCurrency ?? null,
+          category: row.category || null,
+          type: row.type,
+          status: row.status || null,
+          paymentMethod: row.paymentData?.paymentMethod || null,
+          installment: row.creditCardMetadata?.installmentNumber ?? null,
+          installments: row.creditCardMetadata?.totalInstallments ?? null,
+          purchaseDate: row.creditCardMetadata?.purchaseDate ?? null
+        }))
+      })))
+    };
+  }));
+  return { ...dates, connections };
+}
+
 exports.handler = async function handler(event) {
   if (!["GET", "POST"].includes(event.httpMethod)) return reply(405, { message: "Método não permitido." });
   const env = process.env;
@@ -100,6 +173,22 @@ exports.handler = async function handler(event) {
   }
   const result = { surgeryDate, goal, balance: null, bankState: "needs_setup", missing };
   const pluggyMissing = missing.some(key => key.startsWith("PLUGGY_"));
+  if (event.queryStringParameters?.transactions === "1") {
+    if (event.httpMethod !== "GET") return reply(405, { message: "Método não permitido." });
+    if (pluggyMissing) return reply(503, { message: "Integração Pluggy não configurada." });
+    const dates = transactionDates(event.queryStringParameters);
+    if (!dates) return reply(400, { message: "Informe datas válidas (AAAA-MM-DD), em um período de até 90 dias." });
+    try {
+      return reply(200, await getTransactions(env, dates));
+    } catch (error) {
+      console.warn("Pluggy transactions request failed", { status: error.status || null });
+      if (error.status === 429) return reply(429, { message: "A Pluggy está limitando solicitações. Tente novamente em instantes." });
+      if (error.status === 401 || error.status === 403) {
+        return reply(502, { message: "A Pluggy recusou o acesso a contas ou transações." });
+      }
+      return reply(502, { message: "Não foi possível consultar as transações do Pluggy." });
+    }
+  }
   if (event.httpMethod === "POST") {
     if (pluggyMissing) return reply(503, { message: "Integração Pluggy não configurada." });
     // Manual updates use Pluggy Connect. A direct PATCH /items/{id} can be

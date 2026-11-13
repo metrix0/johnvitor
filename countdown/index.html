@@ -86,6 +86,7 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
     </section>
   </div>
   <div class="message" id="message" aria-live="polite"></div>
+  <pre id="transactions" hidden style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
   <form class="login" id="login-form">
     <p>Para visualizar, use seu link privado do Notion ou insira a chave de acesso.</p>
     <div class="login-controls"><input id="access" type="password" required autocomplete="off" spellcheck="false" placeholder="Chave de acesso" aria-label="Chave de acesso"><button type="submit">Abrir</button></div>
@@ -95,6 +96,12 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
 (function(){
   "use strict";
   var api="/.netlify/functions/countdown";
+  var params=new URLSearchParams(location.search);
+  var transactionView=params.get("transactions")==="1";
+  if(transactionView){
+    document.title="Transações do Pluggy";
+    document.querySelector(".layout").hidden=true;
+  }
   var keyName="rhinoplasty_countdown_access_session";
   var access="";
   var surgeryDate=null;
@@ -146,11 +153,30 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
     else if(data.bankState==="empty")message("Nenhum investimento ativo em reais disponível nesta conexão. Confira as permissões de investimentos do Meu Pluggy.");
     else message(data.message||"Não foi possível consultar os investimentos.",true);
   }
+  function showTransactions(data){
+    var rows=[["Período",data.from,data.to]];
+    data.connections.forEach(function(connection){
+      rows.push(["Conexão",connection.institution,connection.status,connection.executionStatus,connection.lastUpdatedAt]);
+      connection.accounts.forEach(function(account){
+        rows.push(["Conta",account.name,account.type,account.subtype,account.currency,account.transactions.length]);
+        rows.push(["Data","Descrição","Loja","Valor","Moeda","Valor na moeda da conta","Categoria","Tipo","Status","Método","Parcela","Parcelas","Data da compra"]);
+        account.transactions.forEach(function(row){
+          rows.push([row.date,row.description,row.merchant,row.amount,row.currency,row.amountInAccountCurrency,row.category,row.type,row.status,row.paymentMethod,row.installment,row.installments,row.purchaseDate]);
+        });
+      });
+    });
+    var output=el("transactions");
+    output.textContent=rows.map(function(row){return row.map(function(value){return value==null?"":String(value).replace(/[\t\r\n]/g," ")}).join("\t")}).join("\n");
+    output.hidden=false;
+    message("");
+  }
   async function load(){
     if(!access)return;
-    message("Consultando investimentos...");
+    message(transactionView?"Consultando transações...":"Consultando investimentos...");
     try{
-      var response=await fetch(api,{method:"GET",headers:{"Authorization":"Bearer "+access},cache:"no-store"});
+      var transactionQuery=new URLSearchParams({transactions:"1"});
+      ["from","to"].forEach(function(key){if(params.has(key))transactionQuery.set(key,params.get(key))});
+      var response=await fetch(transactionView?api+"?"+transactionQuery:api,{method:"GET",headers:{"Authorization":"Bearer "+access},cache:"no-store"});
       var data=await response.json().catch(function(){return {}});
       if(response.status===401){
         access="";
@@ -160,7 +186,9 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
         return;
       }
       if(!response.ok)throw new Error(data.message||"Erro ao consultar investimentos.");
-      el("login-form").hidden=true;el("refresh-button").hidden=false;update(data);
+      el("login-form").hidden=true;
+      el("refresh-button").hidden=transactionView;
+      if(transactionView)showTransactions(data);else update(data);
     }catch(error){message(error.message||"Sem conexão no momento.",true)}
   }
   var refreshing=false;
@@ -252,10 +280,10 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
   var embedKey="";
   try{embedKey=new URLSearchParams(location.hash.slice(1)).get("key")||""}catch(_){}
   try{access=embedKey||sessionStorage.getItem(keyName)||""}catch(_){access=embedKey}
-  if(access){el("login-form").hidden=true;el("refresh-button").hidden=false;load()}
+  if(access){el("login-form").hidden=true;el("refresh-button").hidden=transactionView;load()}
   renderClock();
   setInterval(renderClock,60000);
-  setInterval(function(){if(access)load()},30*60*1000);
+  if(!transactionView)setInterval(function(){if(access)load()},30*60*1000);
 })();
 </script>
 </body>
