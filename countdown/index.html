@@ -27,6 +27,8 @@ body{padding:8px;overflow-x:hidden}
 h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
 .clock{font-size:clamp(18px,3.1vw,28px);letter-spacing:-.055em;font-weight:760;color:#563b50;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
 .date-label{font-size:10.5px;margin-top:7px;color:#ae9eaa}
+.income-rates{margin-top:9px;font-size:10.5px;color:#8c7187;line-height:1.5}
+.income-rates strong{color:#5e4657;white-space:nowrap}
 .finances{min-width:0}
 .amount-main{font-size:clamp(27px,4.8vw,39px);font-weight:790;letter-spacing:-.06em;color:#ad6b91;line-height:1.18;font-variant-numeric:tabular-nums;white-space:nowrap;margin:3px 0 11px}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -77,6 +79,10 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
       <h1>Dias até a rinoplastia</h1>
       <div class="clock" id="clock" aria-live="polite">—</div>
       <div class="date-label" id="date-label">Aguardando configuração</div>
+      <div class="income-rates" id="income-rates" hidden>
+        <div><strong id="income-per-day"></strong> por dia</div>
+        <div><strong id="income-per-month"></strong> por mês</div>
+      </div>
     </section>
     <section class="finances" aria-label="Investimentos e meta">
       <div class="label">Valor faltante</div>
@@ -109,6 +115,7 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
   var keyName="rhinoplasty_countdown_access_session";
   var access="";
   var surgeryDate=null;
+  var fundingGap=null;
   var nf=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
   var el=function(id){return document.getElementById(id)};
   var money=function(value){return Number.isFinite(value)?nf.format(value):"R$ —"};
@@ -129,10 +136,17 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
   }
   function renderClock(){
     var end=parseYMD(surgeryDate);
+    el("income-rates").hidden=true;
     if(!end){el("clock").textContent="—";el("date-label").textContent="Data não configurada";return}
     var today=getToday(),days=dayNumber(end)-dayNumber(today);
     if(days<0){el("clock").textContent="Data já passou";el("date-label").textContent="";return}
     if(days===0){el("clock").textContent="É hoje!";el("date-label").textContent="";return}
+    if(Number.isFinite(fundingGap)){
+      var perDay=fundingGap/days;
+      el("income-per-day").textContent=money(perDay);
+      el("income-per-month").textContent=money(perDay*30);
+      el("income-rates").hidden=false;
+    }
     var months=(end.y-today.y)*12+(end.m-today.m),anchor=addMonths(today,months);
     if(dayNumber(anchor)>dayNumber(end)){months--;anchor=addMonths(today,months)}
     var remainingDays=dayNumber(end)-dayNumber(anchor);
@@ -144,14 +158,16 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
   }
   function message(text,isError){el("message").textContent=text||"";el("message").classList.toggle("error",!!isError)}
   function update(data){
-    surgeryDate=data.surgeryDate||null;renderClock();
+    surgeryDate=data.surgeryDate||null;
     var balance=data.balance,goal=data.goal;
     el("balance").textContent=money(balance);
     el("goal").textContent=money(goal);
     el("credit-metric").hidden=!Number.isFinite(data.credit);
     el("credit").textContent=money(data.credit);
     var netCredit=Number.isFinite(data.netCredit)?data.netCredit:0;
-    el("remaining").textContent=Number.isFinite(goal)&&Number.isFinite(balance)?money(Math.max(0,goal-balance-netCredit)):"R$ —";
+    fundingGap=Number.isFinite(goal)&&Number.isFinite(balance)?Math.max(0,goal-balance-netCredit):null;
+    el("remaining").textContent=money(fundingGap);
+    renderClock();
     var progress=Number.isFinite(goal)&&goal>0&&Number.isFinite(balance)?Math.max(0,Math.min(100,Math.max(balance,0)/goal*100)):0;
     el("progress-fill").style.width=progress+"%";
     el("progress").setAttribute("aria-valuenow",String(Math.round(progress)));
