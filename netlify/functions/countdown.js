@@ -166,12 +166,15 @@ exports.handler = async function handler(event) {
   const missing = [];
   const surgeryDate = validDate(env.RHINO_DATE);
   const goal = amount(env.RHINO_GOAL_BRL);
+  const credit = amount(env.RHINO_CREDIT_BRL);
+  const creditInterestRate = 0.15;
+  const netCredit = credit === null ? 0 : Math.round(credit / (1 + creditInterestRate));
   if (!surgeryDate) missing.push("RHINO_DATE");
   if (goal === null) missing.push("RHINO_GOAL_BRL");
   for (const key of ["PLUGGY_CLIENT_ID", "PLUGGY_CLIENT_SECRET", "PLUGGY_ITEM_ID"]) {
     if (!env[key]) missing.push(key);
   }
-  const result = { surgeryDate, goal, balance: null, bankState: "needs_setup", missing };
+  const result = { surgeryDate, goal, credit, netCredit, balance: null, bankState: "needs_setup", missing };
   const pluggyMissing = missing.some(key => key.startsWith("PLUGGY_"));
   if (event.queryStringParameters?.transactions === "1") {
     if (event.httpMethod !== "GET") return reply(405, { message: "Método não permitido." });

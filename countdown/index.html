@@ -32,6 +32,9 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .metric-value{font-size:clamp(14px,2.5vw,18px);font-weight:720;letter-spacing:-.04em;line-height:1.22;white-space:nowrap;color:#5e4657;font-variant-numeric:tabular-nums;margin-top:3px}
 .metric .label{font-size:10px}
+@media (min-width:640px){
+ .metrics:has(#credit-metric:not([hidden])){grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 .progress-track{height:6px;background:#f3e9f0;border-radius:9px;overflow:hidden;margin-top:13px}
 .progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#b585af,#db91a6);border-radius:9px;transition:width .4s ease}
 .message{font-size:11px;color:#8c7187;margin-top:8px;line-height:1.45}
@@ -81,6 +84,7 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
       <div class="metrics">
         <div class="metric"><div class="label">Investimento atual</div><div class="metric-value" id="balance">R$ —</div></div>
         <div class="metric"><div class="label">Meta</div><div class="metric-value" id="goal">R$ —</div></div>
+        <div class="metric" id="credit-metric" hidden><div class="label">Credit $</div><div class="metric-value" id="credit">R$ —</div></div>
       </div>
       <div class="progress-track" role="progressbar" id="progress" aria-label="Progresso até a meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div></div>
     </section>
@@ -144,7 +148,10 @@ h1{font-size:12px;font-weight:570;margin:0 0 7px;color:#8c7d88}
     var balance=data.balance,goal=data.goal;
     el("balance").textContent=money(balance);
     el("goal").textContent=money(goal);
-    el("remaining").textContent=Number.isFinite(goal)&&Number.isFinite(balance)?money(Math.max(0,goal-balance)):"R$ —";
+    el("credit-metric").hidden=!Number.isFinite(data.credit);
+    el("credit").textContent=money(data.credit);
+    var netCredit=Number.isFinite(data.netCredit)?data.netCredit:0;
+    el("remaining").textContent=Number.isFinite(goal)&&Number.isFinite(balance)?money(Math.max(0,goal-balance-netCredit)):"R$ —";
     var progress=Number.isFinite(goal)&&goal>0&&Number.isFinite(balance)?Math.max(0,Math.min(100,Math.max(balance,0)/goal*100)):0;
     el("progress-fill").style.width=progress+"%";
     el("progress").setAttribute("aria-valuenow",String(Math.round(progress)));
